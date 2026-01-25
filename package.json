@@ -23,7 +23,7 @@
   "dependencies": {
     "@effect/cli": "^0.73.0",
     "@effect/platform": "^0.94.2",
-    "@effect/platform-node": "^0.104.0",
+    "@effect/platform-node": "^0.104.1",
     "effect": "^3.19.14",
     "fast-xml-parser": "^5.3.3"
   },
