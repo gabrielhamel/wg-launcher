@@ -29,6 +29,7 @@
     "useUnknownInCatchVariables": true,
     "allowJs": false,
     "allowUnusedLabels": false,
+    "incremental": true,
     "plugins": [
       {
         "name": "@effect/language-service"
