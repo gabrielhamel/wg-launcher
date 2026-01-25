@@ -21,7 +21,7 @@
     "ci": "npm run format:check && npm run lint:check && npm run type:check && npm run test"
   },
   "dependencies": {
-    "@effect/cli": "^0.73.0",
+    "@effect/cli": "^0.73.1",
     "@effect/platform": "^0.94.2",
     "@effect/platform-node": "^0.104.0",
     "effect": "^3.19.14",
