@@ -21,10 +21,10 @@
     "ci": "npm run format:check && npm run lint:check && npm run type:check && npm run test"
   },
   "dependencies": {
-    "@effect/cli": "^0.73.0",
+    "@effect/cli": "^0.73.1",
     "@effect/platform": "^0.94.2",
-    "@effect/platform-node": "^0.104.0",
-    "effect": "^3.19.14",
+    "@effect/platform-node": "^0.104.1",
+    "effect": "^3.19.15",
     "fast-xml-parser": "^5.3.3"
   },
   "devDependencies": {
@@ -33,15 +33,15 @@
     "@eslint/js": "^9.39.2",
     "@eslint/json": "^0.14.0",
     "@eslint/markdown": "^7.5.1",
-    "@types/node": "^25.0.9",
+    "@types/node": "^25.0.10",
     "dprint": "^0.51.1",
     "eslint": "^9.39.2",
-    "globals": "^17.0.0",
+    "globals": "^17.1.0",
     "husky": "^9.1.7",
     "jiti": "^2.6.1",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.53.1",
-    "vitest": "^3.2.0"
+    "vitest": "^3.2.4"
   }
 }
