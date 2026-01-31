@@ -36,7 +36,7 @@ export class XMLApiClientFactory extends Effect.Service<XMLApiClientFactory>()("
             return yield* Schema.decodeUnknown(responseSchema)(xml).pipe(
               Effect.catchTag("ParseError", (error) => Effect.fail(new UnexpectedResponseError({ error }))),
             );
-          }).pipe(Effect.withSpan(`XML GET ${path}`)),
+          }).pipe(Effect.withSpan(`GET ${path} (XML)`)),
       }),
     };
   }),

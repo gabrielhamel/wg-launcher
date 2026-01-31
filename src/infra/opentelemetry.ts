@@ -3,17 +3,22 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-grpc";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { Effect } from "effect";
 
-export const makeOpenTelemetryLayer = (grpcUrl: URL) => {
-  return Effect.gen(function*() {
-    yield* Effect.log(`OpenTelemetry detected, span will be sent to ${grpcUrl}`);
+export const createOpenTelemetryLayer = (
+  { spanExportGRPCUrl, serviceVersion, serviceName }: {
+    spanExportGRPCUrl: URL;
+    serviceName: string;
+    serviceVersion: string;
+  },
+) =>
+  Effect.gen(function*() {
+    yield* Effect.log(`OpenTelemetry detected, span will be sent to ${spanExportGRPCUrl}`);
 
     return NodeSdk.layer(() => ({
-      resource: { serviceName: "wg-launcher-cli", serviceVersion: "0.1.0" },
+      resource: { serviceName, serviceVersion },
       spanProcessor: new BatchSpanProcessor(
         new OTLPTraceExporter({
-          url: String(grpcUrl),
+          url: String(spanExportGRPCUrl),
         }),
       ),
     }));
   });
-};
