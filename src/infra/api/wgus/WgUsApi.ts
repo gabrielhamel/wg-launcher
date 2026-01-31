@@ -13,41 +13,58 @@ export class WgUsApi extends Effect.Service<WgUsApi>()("WgUsApi", {
     });
 
     return {
-      getMetadata: () =>
-        apiClient.get(
+      getMetadata({ gameId, protocolVersion, chainId }: {
+        gameId: string;
+        protocolVersion: string;
+        chainId: string;
+      }) {
+        return apiClient.get(
           "/metadata",
           GetMetadataResponseSchema,
           {
-            guid: "WOT.EU.PRODUCTION",
-            protocol_version: "100500.6969696",
-            chain_id: "unknown",
+            guid: gameId,
+            protocol_version: protocolVersion,
+            chain_id: chainId,
           },
-        ).pipe(Effect.catchTags({
-          ApiResponseError: (technicalError) => Effect.fail(new WgUsApiError({ technicalError })),
-          ResponseError: (technicalError) => Effect.fail(new WgUsApiError({ technicalError })),
-          UnexpectedResponseError: (technicalError) => Effect.fail(new WgUsApiError({ technicalError })),
-          RequestError: (technicalError) => Effect.fail(new WgUsApiError({ technicalError })),
-          XMLParseError: (technicalError) => Effect.fail(new WgUsApiError({ technicalError })),
-        })),
-      getPatchesChains: () =>
-        apiClient.get("/patches_chain", GetPatchesChainsResponseSchema, {
-          client_type: "sd",
-          lang: "FR",
-          metadata_version: "20251013145823",
-          game_id: "WOT.EU.PRODUCTION",
-          protocol_version: "100500.6969696",
-          metadata_protocol_version: "100500.6969696",
-          sdcontent_current_version: "0",
-          locale_current_version: "0",
-          client_current_version: "0",
-          hdcontent_current_version: "0",
-        }).pipe(Effect.catchTags({
-          ApiResponseError: (technicalError) => Effect.fail(new WgUsApiError({ technicalError })),
-          ResponseError: (technicalError) => Effect.fail(new WgUsApiError({ technicalError })),
-          UnexpectedResponseError: (technicalError) => Effect.fail(new WgUsApiError({ technicalError })),
-          RequestError: (technicalError) => Effect.fail(new WgUsApiError({ technicalError })),
-          XMLParseError: (technicalError) => Effect.fail(new WgUsApiError({ technicalError })),
-        })),
+        ).pipe(
+          Effect.mapError((error) => new WgUsApiError({ error })),
+        );
+      },
+      getPatchesChains({
+        clientType,
+        language,
+        metadataVersion,
+        gameId,
+        protocolVersion,
+        metadataProtocolVersion,
+        patchesChains,
+      }: {
+        clientType: string;
+        language: string;
+        metadataVersion: number;
+        gameId: string;
+        protocolVersion: string;
+        metadataProtocolVersion: string;
+        patchesChains: {
+          id: string;
+          version: string;
+        }[];
+      }) {
+        const chainsSearchParams = patchesChains.reduce((accumulator, currentValue) => ({
+          ...accumulator,
+          [`${currentValue.id}_current_version`]: currentValue.version,
+        }), {});
+
+        return apiClient.get("/patches_chain", GetPatchesChainsResponseSchema, {
+          client_type: clientType,
+          lang: language,
+          metadata_version: metadataVersion.toString(),
+          game_id: gameId,
+          protocol_version: protocolVersion,
+          metadata_protocol_version: metadataProtocolVersion,
+          ...chainsSearchParams,
+        }).pipe(Effect.mapError((error) => new WgUsApiError({ error })));
+      },
     };
   }),
   dependencies: [XMLApiClientFactory.Default],

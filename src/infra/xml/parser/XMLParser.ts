@@ -10,8 +10,8 @@ export class XMLParser extends Effect.Service<XMLParser>()("XMLParser", {
       parse: (textContent: string) => {
         return Effect.try({
           try: () => parser.parse(textContent),
-          catch: (internalError) => new XMLParseError({ internalError }),
-        });
+          catch: (error) => new XMLParseError({ error }),
+        }).pipe(Effect.withSpan("XML Parse"));
       },
     };
   },

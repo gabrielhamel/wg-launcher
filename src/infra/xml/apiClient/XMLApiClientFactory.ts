@@ -29,13 +29,14 @@ export class XMLApiClientFactory extends Effect.Service<XMLApiClientFactory>()("
             if (result.status !== 200) {
               return yield* new ApiResponseError({
                 body: text,
+                status: result.status,
               });
             }
 
             return yield* Schema.decodeUnknown(responseSchema)(xml).pipe(
-              Effect.catchTag("ParseError", (parseError) => Effect.fail(new UnexpectedResponseError({ parseError }))),
+              Effect.catchTag("ParseError", (error) => Effect.fail(new UnexpectedResponseError({ error }))),
             );
-          }),
+          }).pipe(Effect.withSpan(`XML GET ${path}`)),
       }),
     };
   }),
