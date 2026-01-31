@@ -30,7 +30,7 @@
     "@opentelemetry/sdk-trace-base": "^2.5.0",
     "@opentelemetry/sdk-trace-node": "^2.5.0",
     "effect": "^3.19.15",
-    "fast-xml-parser": "^5.3.3"
+    "fast-xml-parser": "^5.3.4"
   },
   "devDependencies": {
     "@effect/language-service": "^0.72.0",
