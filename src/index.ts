@@ -1,15 +1,15 @@
 import { Command } from "@effect/cli";
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
-import { Config, Effect, Option } from "effect";
+import { Config, Effect } from "effect";
 import { fetchCommandHandler } from "./core/command/fetch.js";
-import { createOpenTelemetryLayer } from "./infra/opentelemetry.js";
+import { OpenTelemetryLive } from "./infra/opentelemetry.js";
 
-const makeCLI = ({ name, version }: {
+const buildCLI = ({ name, version }: {
   name: string;
   version: string;
 }) =>
   Command.run(
-    Command.make("wg-launcher-cli").pipe(
+    Command.make(name).pipe(
       Command.withSubcommands([Command.make("fetch", {}, () => fetchCommandHandler)]),
     ),
     {
@@ -18,26 +18,16 @@ const makeCLI = ({ name, version }: {
     },
   );
 
-const setup = ({ serviceName }: { serviceName: string }) =>
+const entrypoint = () =>
   Effect.gen(function*() {
+    const serviceName = yield* Config.nonEmptyString("RELEASE_NAME").pipe(Config.withDefault("unknown"));
     const serviceVersion = yield* Config.nonEmptyString("RELEASE_VERSION").pipe(Config.withDefault("unknown"));
-    const otelUrl = yield* Config.url("OPEN_TELEMETRY_EXPORT_GRPC_URL").pipe(Config.option);
-    const cliEntryPoint = makeCLI({ name: serviceName, version: serviceVersion })(process.argv).pipe(
+
+    const runCLI = buildCLI({ name: serviceName, version: serviceVersion })(process.argv).pipe(
       Effect.withSpan("CLI entrypoint"),
     );
 
-    if (Option.isSome(otelUrl)) {
-      const otelLayer = yield* createOpenTelemetryLayer({
-        serviceName,
-        serviceVersion,
-        spanExportGRPCUrl: otelUrl.value,
-      });
-      return yield* cliEntryPoint.pipe(Effect.provide(otelLayer));
-    }
-
-    return yield* cliEntryPoint;
+    return yield* runCLI.pipe(Effect.provide(OpenTelemetryLive));
   });
 
-setup({
-  serviceName: "Wargaming launcher client",
-}).pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain);
+entrypoint().pipe(Effect.provide(NodeContext.layer), NodeRuntime.runMain);
