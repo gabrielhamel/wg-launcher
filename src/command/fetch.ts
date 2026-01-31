@@ -1,5 +1,5 @@
 import { Console, Effect } from "effect";
-import { WgUsApi } from "../../infra/api/wgus/WgUsApi.js";
+import { WgUsApi } from "../infra/api/wgus/WgUsApi.js";
 
 export const fetchCommandHandler: Effect.Effect<void> = Effect.gen(function*() {
   const wgUsApi = yield* WgUsApi;
