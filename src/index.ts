@@ -3,7 +3,7 @@ import { NodeContext, NodeRuntime } from "@effect/platform-node";
 import { Effect } from "effect";
 import { fetchCommandHandler } from "./command/fetch.js";
 import { ServiceName, ServiceVersion } from "./infra/configuration.js";
-import { makeOpenTelemetryLayer } from "./infra/makeOpenTelemetryLayer.js";
+import { makeOpenTelemetryLayer } from "./infra/openTelemetry.js";
 
 const buildCLI = ({ name, version }: {
   name: string;

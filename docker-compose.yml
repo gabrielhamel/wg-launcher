@@ -1,0 +1,8 @@
+services:
+  oteltui:
+    image: ymtdzzz/otel-tui:v0.7.0
+    container_name: wg-launcher-cli-otel-tui
+    stdin_open: true
+    tty: true
+    ports:
+      - "4317:4317"
