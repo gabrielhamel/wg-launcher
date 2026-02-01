@@ -9,8 +9,8 @@
   "main": "src/index.ts",
   "scripts": {
     "prepare": "effect-language-service patch && husky",
-    "start": "tsx src/index.ts",
-    "dev": "tsx --watch src/index.ts",
+    "start": "tsx --env-file-if-exists=.env src/index.ts",
+    "dev": "tsx --env-file-if-exists=.env --watch src/index.ts",
     "telemetry-collector": "docker compose up -d && docker attach wg-launcher-cli-otel-tui",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --passWithNoTests",

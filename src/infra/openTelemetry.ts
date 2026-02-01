@@ -1,19 +1,27 @@
 import { Otlp } from "@effect/opentelemetry";
 import { FetchHttpClient } from "@effect/platform";
 import { Effect, Layer, Option } from "effect";
-import { OpenTelemetrySpanExportUrl, ServiceName, ServiceVersion } from "./configuration.js";
+import { OpenTelemetry, Service } from "./configuration.js";
 
 export const makeOpenTelemetryLayer = Effect.gen(function*() {
-  const serviceName = yield* ServiceName;
-  const serviceVersion = yield* ServiceVersion;
-  const otelUrl = yield* OpenTelemetrySpanExportUrl;
+  const serviceName = yield* Service.name;
+  const serviceVersion = yield* Service.version;
+  const exportUrl = yield* OpenTelemetry.exportUrl;
 
-  if (Option.isSome(otelUrl)) {
-    yield* Effect.log(`OpenTelemetry configuration detected, spans will be sent to ${otelUrl.value}`);
+  if (Option.isSome(exportUrl)) {
+    yield* Effect.log(`OpenTelemetry configuration detected, spans will be sent to ${exportUrl.value}`);
+
+    const headerKey = yield* OpenTelemetry.headers.key;
+    const headerValue = yield* OpenTelemetry.headers.value;
+
+    const headers = (Option.isSome(headerKey) && Option.isSome(headerValue))
+      ? { [headerKey.value]: headerValue.value }
+      : {};
 
     return Otlp.layerProtobuf({
       resource: { serviceName, serviceVersion },
-      baseUrl: String(otelUrl.value),
+      baseUrl: String(exportUrl.value),
+      headers,
     }).pipe(Layer.provide(FetchHttpClient.layer));
   }
 
