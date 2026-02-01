@@ -46,10 +46,10 @@ This starts a Docker container running [otel-tui](https://github.com/ymtdzzz/ote
 
 #### Configuration
 
-Set the `OPEN_TELEMETRY_SPAN_EXPORT_GRPC_URL` environment variable to enable trace export:
+Set the `OPEN_TELEMETRY_SPAN_EXPORT_URL` environment variable to enable trace export:
 
 ```bash
-export OPEN_TELEMETRY_SPAN_EXPORT_GRPC_URL=http://localhost:4317
+export OPEN_TELEMETRY_SPAN_EXPORT_URL=http://localhost:4318
 npm run dev
 ```
 
