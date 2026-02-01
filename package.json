@@ -27,6 +27,7 @@
     "@effect/platform": "^0.94.2",
     "@effect/platform-node": "^0.104.1",
     "@opentelemetry/exporter-trace-otlp-grpc": "^0.211.0",
+    "@opentelemetry/sdk-logs": "^0.211.0",
     "@opentelemetry/sdk-metrics": "^2.5.0",
     "@opentelemetry/sdk-trace-base": "^2.5.0",
     "@opentelemetry/sdk-trace-node": "^2.5.0",

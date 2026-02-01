@@ -6,3 +6,4 @@ services:
     tty: true
     ports:
       - "4317:4317"
+      - "4318:4318"
