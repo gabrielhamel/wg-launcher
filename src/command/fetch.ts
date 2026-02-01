@@ -1,4 +1,4 @@
-import { Console, Effect } from "effect";
+import { Effect } from "effect";
 import { WgUsApi } from "../infra/api/wgus/WgUsApi.js";
 
 export const fetchCommandHandler: Effect.Effect<void> = Effect.gen(function*() {
@@ -13,7 +13,7 @@ export const fetchCommandHandler: Effect.Effect<void> = Effect.gen(function*() {
     chainId: "Unknown",
   });
 
-  yield* Console.log(metadata);
+  yield* Effect.log(metadata);
 
   const patchesChains = yield* wgUsApi.getPatchesChains({
     gameId,
@@ -30,7 +30,7 @@ export const fetchCommandHandler: Effect.Effect<void> = Effect.gen(function*() {
     ],
   });
 
-  yield* Console.log(patchesChains);
+  yield* Effect.log(patchesChains);
 }).pipe(
   Effect.catchTags({
     WgUsApiError: (error) => Effect.die(error),
