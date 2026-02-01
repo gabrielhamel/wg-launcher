@@ -13,7 +13,6 @@ A TypeScript CLI tool for interacting with the Wargaming Update Service (WGUS) A
 ## Prerequisites
 
 - Node.js 18 or higher
-- npm or compatible package manager
 
 ## Installation
 
@@ -30,6 +29,31 @@ Run the CLI with auto-reload during development:
 ```bash
 npm run dev
 ```
+
+### Observability with OpenTelemetry
+
+The CLI includes built-in OpenTelemetry instrumentation for tracing and observability.
+
+#### Starting the Telemetry Collector
+
+Launch the OTEL TUI collector to visualize traces:
+
+```bash
+npm run telemetry-collector
+```
+
+This starts a Docker container running [otel-tui](https://github.com/ymtdzzz/otel-tui), which provides a terminal UI for viewing OpenTelemetry traces in real-time.
+
+#### Configuration
+
+Set the `OPEN_TELEMETRY_SPAN_EXPORT_GRPC_URL` environment variable to enable trace export:
+
+```bash
+export OPEN_TELEMETRY_SPAN_EXPORT_GRPC_URL=http://localhost:4317
+npm run dev
+```
+
+When configured, the CLI will automatically export trace spans to the specified endpoint. If the variable is not set, telemetry remains disabled.
 
 ## Development
 
@@ -60,18 +84,10 @@ npm run type:check
 - **[Effect-TS](https://effect.website/)** - Functional effect system for TypeScript
 - **[@effect/cli](https://effect.website/docs/guides/cli-applications)** - CLI framework built on Effect
 - **[@effect/platform](https://effect.website/docs/guides/platform)** - Cross-platform abstractions
-- **[fast-xml-parser](https://github.com/NaturalIntelligence/fast-xml-parser)** - XML parsing library
-- **TypeScript** - Type-safe JavaScript
+- **[@effect/opentelemetry](https://effect.website/docs/guides/observability/telemetry)** - OpenTelemetry integration for tracing
 - **[Vitest](https://vitest.dev/)** - Testing framework
 - **[ESLint](https://eslint.org/)** - Linting
 - **[dprint](https://dprint.dev/)** - Code formatting
-
-## Architecture
-
-The project follows a **clean architecture** pattern with clear separation of concerns:
-
-- **`core/`** - Domain logic
-- **`infra/`** - Infrastructure layer
 
 ### Key Design Patterns
 
@@ -79,15 +95,3 @@ The project follows a **clean architecture** pattern with clear separation of co
 - **Tagged Errors**: Type-safe error handling with `Effect.catchTags`
 - **Runtime Validation**: Schema validation with `Schema.decodeUnknown`
 - **Functional Composition**: Effect generators for readable async code
-
-## License
-
-MIT
-
-## Author
-
-Gabriel Hamel <gabriel.hamel.pro@gmail.com>
-
-## Contributing
-
-This is a personal project. For issues or suggestions, please contact the author.
