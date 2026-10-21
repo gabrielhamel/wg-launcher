@@ -1,0 +1,66 @@
+name: Checks
+
+on:
+  push:
+    branches: [ 'main' ]
+
+  pull_request:
+    branches: [ 'main' ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint
+        run: cargo fmt --check
+
+  tests-windows:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Retrieve cache
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+
+      - name: Tests
+        run: cargo test --verbose
+
+  tests-linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Retrieve cache
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+
+      - name: Tests
+        run: cargo test --verbose
+
+  tests-macos:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Retrieve cache
+        uses: actions/cache@v4
+        with:
+          path: target
+          key: ${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+
+      - name: Tests
+        run: cargo test --verbose
