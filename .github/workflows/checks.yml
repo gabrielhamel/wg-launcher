@@ -15,52 +15,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Lint
         run: cargo fmt --check
 
-  tests-windows:
-    runs-on: windows-latest
+  tests:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Retrieve cache
-        uses: actions/cache@v4
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
         with:
-          path: target
-          key: ${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
+          cache-bin: false
 
       - name: Tests
-        run: cargo test --verbose
-
-  tests-linux:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Retrieve cache
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-
-      - name: Tests
-        run: cargo test --verbose
-
-  tests-macos:
-    runs-on: macos-latest
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Retrieve cache
-        uses: actions/cache@v4
-        with:
-          path: target
-          key: ${{ runner.os }}-${{ hashFiles('Cargo.lock') }}
-
-      - name: Tests
-        run: cargo test --verbose
+        run: cargo test --locked --verbose
