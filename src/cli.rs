@@ -236,7 +236,7 @@ fn finish_install_progress(
     report: &wg_launcher::InstallationReport,
 ) {
     if let Some((download, extraction)) = progress.lock().expect("progress lock").as_ref() {
-        download.finish_success(report.download.downloaded_files + report.download.skipped_files);
+        download.finish_success();
         extraction.finish_success(&report.extraction);
     }
 }
