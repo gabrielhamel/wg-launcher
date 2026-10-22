@@ -4,7 +4,7 @@ use crate::{
     model::{MetadataXml, PatchesXml},
 };
 use reqwest::Client;
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 use url::Url;
 
 pub const PROTOCOL_VERSION: &str = "100500.6969696";
@@ -188,7 +188,14 @@ impl WgusClient {
 
         let mut patches = Vec::with_capacity(chain.patches.len());
         let mut assets = Vec::new();
+        let mut latest_version_by_part = HashMap::new();
         for patch in chain.patches {
+            let version_from = inferred_version_from(
+                patch.version_from,
+                &patch.part,
+                &patch.version_to,
+                &mut latest_version_by_part,
+            );
             let files = patch
                 .files
                 .files
@@ -203,7 +210,7 @@ impl WgusClient {
             for file in &files {
                 assets.push(Asset {
                     part: patch.part.clone(),
-                    version_from: patch.version_from.clone(),
+                    version_from: version_from.clone(),
                     version_to: patch.version_to.clone(),
                     name: file.name.clone(),
                     url: seed.url.join(&file.name)?,
@@ -230,7 +237,7 @@ impl WgusClient {
                 .unwrap_or_default();
             patches.push(Patch {
                 part: patch.part,
-                version_from: patch.version_from,
+                version_from,
                 version_to: patch.version_to,
                 files,
                 torrent_hash,
@@ -321,6 +328,19 @@ fn normalize_language(language: &str) -> String {
     language.trim().replace('_', "-").to_ascii_uppercase()
 }
 
+fn inferred_version_from(
+    explicit: Option<String>,
+    part: &str,
+    version_to: &str,
+    latest_version_by_part: &mut HashMap<String, String>,
+) -> Option<String> {
+    let version_from = explicit
+        .or_else(|| latest_version_by_part.get(part).cloned())
+        .unwrap_or_else(|| "0".to_owned());
+    latest_version_by_part.insert(part.to_owned(), version_to.to_owned());
+    Some(version_from)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -335,5 +355,23 @@ mod tests {
         assert_eq!(metadata.client_types[0].parts.len(), 2);
         assert!(metadata.client_types[0].parts[0].language_specific);
         assert_eq!(metadata.publisher_ids, ["wargaming", "steam"]);
+    }
+
+    #[test]
+    fn infers_versions_for_lesta_install_chains() {
+        let mut latest = HashMap::new();
+
+        assert_eq!(
+            inferred_version_from(None, "client", "1.0", &mut latest).as_deref(),
+            Some("0")
+        );
+        assert_eq!(
+            inferred_version_from(None, "client", "1.1", &mut latest).as_deref(),
+            Some("1.0")
+        );
+        assert_eq!(
+            inferred_version_from(Some("0.9".to_owned()), "client", "1.2", &mut latest).as_deref(),
+            Some("0.9")
+        );
     }
 }

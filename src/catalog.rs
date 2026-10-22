@@ -8,11 +8,12 @@ pub enum Region {
     Na,
     Asia,
     Cn,
+    Ru,
     Ct,
 }
 
 impl Region {
-    pub const ALL: [Self; 5] = [Self::Eu, Self::Na, Self::Asia, Self::Cn, Self::Ct];
+    pub const ALL: [Self; 6] = [Self::Eu, Self::Na, Self::Asia, Self::Cn, Self::Ru, Self::Ct];
 
     pub const fn product(self) -> Product {
         match self {
@@ -44,6 +45,13 @@ impl Region {
                 game_id: "WOT.CN.PRODUCTION",
                 channel: "production",
             },
+            Self::Ru => Product {
+                region: self,
+                name: "Mir Tankov RU",
+                host: "lstus-ru.lesta.ru",
+                game_id: "MT.RU.PRODUCTION",
+                channel: "production",
+            },
             Self::Ct => Product {
                 region: self,
                 name: "World of Tanks Common Test",
@@ -62,6 +70,7 @@ impl fmt::Display for Region {
             Self::Na => "na",
             Self::Asia => "asia",
             Self::Cn => "cn",
+            Self::Ru => "ru",
             Self::Ct => "ct",
         })
     }
@@ -76,9 +85,10 @@ impl FromStr for Region {
             "na" => Ok(Self::Na),
             "asia" => Ok(Self::Asia),
             "cn" | "china" => Ok(Self::Cn),
+            "ru" | "russia" => Ok(Self::Ru),
             "ct" | "common-test" => Ok(Self::Ct),
             _ => Err(format!(
-                "unknown region '{value}'; expected eu, na, asia, cn, or ct"
+                "unknown region '{value}'; expected eu, na, asia, cn, ru, or ct"
             )),
         }
     }
@@ -91,4 +101,20 @@ pub struct Product {
     pub host: &'static str,
     pub game_id: &'static str,
     pub channel: &'static str,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn exposes_lesta_russian_production_catalog() {
+        let product = Region::Ru.product();
+
+        assert!(Region::ALL.contains(&Region::Ru));
+        assert_eq!("ru".parse(), Ok(Region::Ru));
+        assert_eq!(product.host, "lstus-ru.lesta.ru");
+        assert_eq!(product.game_id, "MT.RU.PRODUCTION");
+        assert_eq!(product.channel, "production");
+    }
 }
