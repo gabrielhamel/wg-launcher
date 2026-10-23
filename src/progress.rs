@@ -1,6 +1,6 @@
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle, style::TemplateError};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::Path,
     sync::{Arc, Mutex},
     time::Duration,
@@ -43,18 +43,31 @@ struct State {
     multi: MultiProgress,
     overall: ProgressBar,
     asset_count: usize,
+    downloading: bool,
+    active_style: ProgressStyle,
+    waiting_style: ProgressStyle,
     file_style: ProgressStyle,
-    skipped_style: ProgressStyle,
+    queued_style: ProgressStyle,
     error_style: ProgressStyle,
     files: HashMap<String, ProgressBar>,
     positions: HashMap<String, u64>,
+    active: HashSet<String>,
 }
 
 impl DownloadProgress {
-    pub(crate) fn new(total_bytes: u64, asset_count: usize) -> Result<Self, TemplateError> {
+    pub(crate) fn new<'a>(
+        total_bytes: u64,
+        assets: impl ExactSizeIterator<Item = (&'a str, u64)>,
+    ) -> Result<Self, TemplateError> {
+        let asset_count = assets.len();
         let multi = MultiProgress::new();
         let overall = multi.add(ProgressBar::new(total_bytes));
-        overall.set_style(overall_style()?);
+        let active_style = overall_style()?;
+        let waiting_style = ProgressStyle::with_template(
+            "{spinner:.green} {msg:.bold} [{wide_bar:.cyan/blue}] {bytes}/{total_bytes} • Extraction in progress",
+        )?
+        .progress_chars("━━╸");
+        overall.set_style(active_style.clone());
         overall.set_message(format!("Downloading {asset_count} assets"));
         overall.enable_steady_tick(Duration::from_millis(100));
         if asset_count == 0 {
@@ -62,17 +75,25 @@ impl DownloadProgress {
             overall.finish_and_clear();
         }
 
+        let mut state = State {
+            multi,
+            overall,
+            asset_count,
+            downloading: false,
+            active_style,
+            waiting_style,
+            file_style: file_style()?,
+            queued_style: ProgressStyle::with_template("  {msg:38.dim} queued • {total_bytes}")?,
+            error_style: error_style()?,
+            files: HashMap::new(),
+            positions: HashMap::new(),
+            active: HashSet::new(),
+        };
+        for (name, size) in assets {
+            state.ensure_file(name, size);
+        }
         Ok(Self {
-            state: Arc::new(Mutex::new(State {
-                multi,
-                overall,
-                asset_count,
-                file_style: file_style()?,
-                skipped_style: skipped_style()?,
-                error_style: error_style()?,
-                files: HashMap::new(),
-                positions: HashMap::new(),
-            })),
+            state: Arc::new(Mutex::new(state)),
         })
     }
 
@@ -85,6 +106,7 @@ impl DownloadProgress {
                 resumed_at,
             } => {
                 state.ensure_file(&name, size);
+                state.start_file(&name);
                 state.set_position(&name, resumed_at);
             }
             DownloadEvent::Progress {
@@ -93,31 +115,26 @@ impl DownloadProgress {
                 size,
             } => {
                 state.ensure_file(&name, size);
+                state.start_file(&name);
                 state.set_position(&name, downloaded);
             }
             DownloadEvent::Completed { name, size } => {
                 state.ensure_file(&name, size);
                 state.set_position(&name, size);
-                if let Some(bar) = state.files.get(&name) {
-                    bar.finish_with_message(short_name(&name));
-                }
+                state.finish_file(&name);
             }
             DownloadEvent::Skipped { name, size } => {
                 state.ensure_file(&name, size);
                 state.set_position(&name, size);
-                if let Some(bar) = state.files.get(&name) {
-                    bar.set_style(state.skipped_style.clone());
-                    bar.finish_with_message(format!(
-                        "✓ {} (already downloaded)",
-                        short_name(&name)
-                    ));
-                }
+                state.finish_file(&name);
             }
         }
         if state.files.len() == state.asset_count
             && state.files.values().all(ProgressBar::is_finished)
         {
             state.finish_success();
+        } else {
+            state.refresh_activity();
         }
     }
 
@@ -145,24 +162,31 @@ impl DownloadProgress {
 #[derive(Clone)]
 pub(crate) struct ExtractionProgress {
     bar: ProgressBar,
+    file: ProgressBar,
 }
 
 impl ExtractionProgress {
     pub(crate) fn new(download: &DownloadProgress) -> Result<Self, TemplateError> {
         let state = download.state.lock().expect("download progress lock");
-        let bar = state.multi.add(ProgressBar::new_spinner());
+        Self::with_multi(&state.multi)
+    }
+
+    fn with_multi(multi: &MultiProgress) -> Result<Self, TemplateError> {
+        let bar = multi.add(ProgressBar::new_spinner());
         bar.set_style(extraction_style()?);
         bar.set_message("Preparing extraction");
         bar.enable_steady_tick(Duration::from_millis(100));
-        Ok(Self { bar })
+        let file = multi.add(ProgressBar::new(0));
+        file.set_style(
+            ProgressStyle::with_template("  {msg} [{wide_bar:.cyan/blue}] {bytes}/{total_bytes}")?
+                .progress_chars("━━╸"),
+        );
+        file.finish_and_clear();
+        Ok(Self { bar, file })
     }
 
     pub(crate) fn standalone() -> Result<Self, TemplateError> {
-        let bar = ProgressBar::new_spinner();
-        bar.set_style(extraction_style()?);
-        bar.set_message("Preparing extraction");
-        bar.enable_steady_tick(Duration::from_millis(100));
-        Ok(Self { bar })
+        Self::with_multi(&MultiProgress::new())
     }
 
     pub(crate) fn update(&self, event: ExtractionEvent) {
@@ -178,22 +202,46 @@ impl ExtractionProgress {
                 index,
                 total,
             } => {
+                self.file.finish_and_clear();
+                self.bar.reset();
+                self.bar.enable_steady_tick(Duration::from_millis(100));
                 self.bar.set_length(total as u64);
                 self.bar.set_position(index.saturating_sub(1) as u64);
                 self.bar.set_message(format!(
                     "[{index}/{total}] {part}: {version_from} → {version_to}"
                 ));
             }
+            ExtractionEvent::ExtractingFile {
+                path,
+                index,
+                total,
+                extracted,
+                size,
+            } => {
+                if extracted == 0 {
+                    self.file.reset();
+                }
+                self.file.set_length(size);
+                self.file
+                    .set_message(format!("Extracting file {index}/{total}: {path}"));
+                self.file.set_position(extracted);
+            }
             ExtractionEvent::ApplyingDelta { path } => {
+                self.file.finish_and_clear();
                 self.bar.set_message(format!("Applying delta to {path}"));
             }
             ExtractionEvent::InstallingFile { path } => {
+                self.file.finish_and_clear();
                 self.bar.set_message(format!("Installing {path}"));
             }
             ExtractionEvent::Finalizing => {
+                self.file.finish_and_clear();
+                self.bar.reset();
+                self.bar.enable_steady_tick(Duration::from_millis(100));
                 self.bar.set_message("Finalizing installation");
             }
             ExtractionEvent::CleaningCache => {
+                self.file.finish_and_clear();
                 self.bar.set_message("Removing downloaded packages");
             }
             ExtractionEvent::Completed {
@@ -201,6 +249,7 @@ impl ExtractionProgress {
                 deltas,
                 cache_removed,
             } => {
+                self.file.finish_and_clear();
                 if let Some(length) = self.bar.length() {
                     self.bar.set_position(length);
                 }
@@ -219,6 +268,7 @@ impl ExtractionProgress {
     }
 
     pub(crate) fn finish_success(&self, report: &ExtractionReport) {
+        self.file.finish_and_clear();
         if !self.bar.is_finished() {
             self.bar.disable_steady_tick();
             self.bar.set_style(extraction_completed_style());
@@ -235,21 +285,38 @@ impl ExtractionProgress {
     }
 
     pub(crate) fn finish_error(&self) {
+        self.file.finish_and_clear();
         self.bar.disable_steady_tick();
         self.bar
             .set_style(error_style().unwrap_or_else(|_| ProgressStyle::default_spinner()));
         self.bar.abandon_with_message("✗ Extraction failed");
     }
 
-    pub(crate) fn released_packages(&self, part: &str, files: usize, bytes: u64) {
-        self.bar.set_message(format!(
-            "Released {files} {part} package volume(s) ({})",
-            human_bytes(bytes)
-        ));
+    pub(crate) fn finish_patch(&self) {
+        self.file.finish_and_clear();
+        self.bar.disable_steady_tick();
+        self.bar.finish_and_clear();
     }
 }
 
 impl State {
+    fn refresh_activity(&mut self) {
+        let downloading = !self.active.is_empty();
+        if downloading == self.downloading {
+            return;
+        }
+        self.downloading = downloading;
+        if downloading {
+            self.overall.reset_eta();
+            self.overall.set_style(self.active_style.clone());
+            self.overall
+                .set_message(format!("Downloading {} assets", self.asset_count));
+        } else {
+            self.overall.set_style(self.waiting_style.clone());
+            self.overall.set_message("Downloaded packages");
+        }
+    }
+
     fn finish_success(&self) {
         self.overall.disable_steady_tick();
         self.overall.finish_and_clear();
@@ -262,10 +329,26 @@ impl State {
         let bar = self
             .multi
             .insert_before(&self.overall, ProgressBar::new(size));
-        bar.set_style(self.file_style.clone());
+        bar.set_style(self.queued_style.clone());
         bar.set_message(short_name(name));
-        bar.enable_steady_tick(Duration::from_millis(100));
         self.files.insert(name.to_owned(), bar);
+    }
+
+    fn start_file(&mut self, name: &str) {
+        if self.active.insert(name.to_owned()) {
+            let bar = &self.files[name];
+            bar.set_style(self.file_style.clone());
+            bar.reset_eta();
+            bar.enable_steady_tick(Duration::from_millis(100));
+        }
+    }
+
+    fn finish_file(&mut self, name: &str) {
+        self.active.remove(name);
+        let bar = &self.files[name];
+        bar.disable_steady_tick();
+        bar.finish_and_clear();
+        self.multi.remove(bar);
     }
 
     fn set_position(&mut self, name: &str, position: u64) {
@@ -303,13 +386,6 @@ fn file_style() -> Result<ProgressStyle, TemplateError> {
     )?
     .progress_chars("━━╸")
     .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏", "✓"]))
-}
-
-fn skipped_style() -> Result<ProgressStyle, TemplateError> {
-    Ok(
-        ProgressStyle::with_template("  {msg:60.dim} [{bar:24.green}] {bytes:>9}/{total_bytes:9}")?
-            .progress_chars("━━╸"),
-    )
 }
 
 fn error_style() -> Result<ProgressStyle, TemplateError> {
@@ -351,28 +427,120 @@ fn short_name(name: &str) -> String {
     format!("{start}…{end}")
 }
 
-fn human_bytes(bytes: u64) -> String {
-    const UNITS: [&str; 5] = ["B", "KiB", "MiB", "GiB", "TiB"];
-    let mut value = bytes as f64;
-    let mut unit = 0;
-    while value >= 1024.0 && unit < UNITS.len() - 1 {
-        value /= 1024.0;
-        unit += 1;
-    }
-    if unit == 0 {
-        format!("{bytes} B")
-    } else {
-        format!("{value:.1} {}", UNITS[unit])
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
+    fn extraction_tracks_file_bytes_without_replacing_patch_progress() {
+        let progress = ExtractionProgress::standalone().unwrap();
+        progress.update(ExtractionEvent::ExtractingPatch {
+            part: "client".to_owned(),
+            version_from: "0".to_owned(),
+            version_to: "1".to_owned(),
+            index: 2,
+            total: 7,
+        });
+        for extracted in [0, 40, 100] {
+            progress.update(ExtractionEvent::ExtractingFile {
+                path: "res/packages/test.pkg".to_owned(),
+                index: 3,
+                total: 10,
+                extracted,
+                size: 100,
+            });
+        }
+        assert_eq!(progress.file.position(), 100);
+        assert_eq!(progress.file.length(), Some(100));
+        assert_eq!(
+            progress.file.message(),
+            "Extracting file 3/10: res/packages/test.pkg"
+        );
+        assert_eq!(progress.bar.message(), "[2/7] client: 0 → 1");
+        progress.update(ExtractionEvent::ExtractingFile {
+            path: "next.pkg".to_owned(),
+            index: 4,
+            total: 10,
+            extracted: 0,
+            size: 200,
+        });
+        assert_eq!(progress.file.position(), 0);
+        assert_eq!(progress.file.length(), Some(200));
+        assert!(!progress.file.is_finished());
+        progress.update(ExtractionEvent::ApplyingDelta {
+            path: "test.pkg".to_owned(),
+        });
+        assert!(progress.file.is_finished());
+        assert!(!progress.bar.is_finished());
+    }
+
+    #[test]
+    fn planned_downloads_are_queued_and_completed_rows_are_cleared() {
+        let progress = DownloadProgress::new(
+            30,
+            [("cached", 10), ("active", 10), ("later-patch", 10)].into_iter(),
+        )
+        .unwrap();
+        {
+            let state = progress.state.lock().unwrap();
+            assert_eq!(state.files.len(), 3);
+            assert!(state.active.is_empty());
+            assert!(!state.files["later-patch"].is_finished());
+            assert_eq!(state.files["later-patch"].length(), Some(10));
+        }
+        progress.update(DownloadEvent::Skipped {
+            name: "cached".to_owned(),
+            size: 10,
+        });
+        progress.update(DownloadEvent::Started {
+            name: "active".to_owned(),
+            size: 10,
+            resumed_at: 4,
+        });
+        {
+            let state = progress.state.lock().unwrap();
+            assert!(state.files["cached"].is_finished());
+            assert_eq!(state.active.len(), 1);
+            assert!(state.active.contains("active"));
+            assert_eq!(state.overall.position(), 14);
+        }
+        progress.update(DownloadEvent::Completed {
+            name: "active".to_owned(),
+            size: 10,
+        });
+        let state = progress.state.lock().unwrap();
+        assert!(state.files["active"].is_finished());
+        assert!(!state.files["later-patch"].is_finished());
+        assert!(state.active.is_empty());
+        assert_eq!(state.overall.position(), 20);
+        assert!(!state.overall.is_finished());
+    }
+
+    #[test]
+    fn releasing_packages_hides_extraction_until_the_next_patch() {
+        let progress = ExtractionProgress::standalone().unwrap();
+        progress.finish_patch();
+        assert!(progress.bar.is_finished());
+        assert!(progress.file.is_finished());
+        progress.update(ExtractionEvent::ExtractingPatch {
+            part: "client".to_owned(),
+            version_from: "0".to_owned(),
+            version_to: "1".to_owned(),
+            index: 2,
+            total: 7,
+        });
+        assert!(!progress.bar.is_finished());
+        assert_eq!(progress.bar.message(), "[2/7] client: 0 → 1");
+        progress.finish_patch();
+        progress.update(ExtractionEvent::Finalizing);
+        assert!(!progress.bar.is_finished());
+        assert_eq!(progress.bar.message(), "Finalizing installation");
+    }
+
+    #[test]
     fn download_progress_finishes_only_after_all_assets_are_ready() {
-        let progress = DownloadProgress::new(20, 2).unwrap();
+        let progress =
+            DownloadProgress::new(20, [("cached", 10), ("downloaded", 10)].into_iter()).unwrap();
         progress.update(DownloadEvent::Skipped {
             name: "cached".to_owned(),
             size: 10,
@@ -399,7 +567,57 @@ mod tests {
 
     #[test]
     fn download_progress_finishes_when_there_are_no_assets() {
-        let progress = DownloadProgress::new(0, 0).unwrap();
+        let progress = DownloadProgress::new(0, [].into_iter()).unwrap();
+        assert!(progress.state.lock().unwrap().overall.is_finished());
+    }
+
+    #[test]
+    fn streaming_download_waits_between_patches_and_resumes() {
+        let progress = DownloadProgress::new(
+            30,
+            [("first", 10), ("prefetched", 10), ("next", 10)].into_iter(),
+        )
+        .unwrap();
+        for name in ["first", "prefetched"] {
+            progress.update(DownloadEvent::Started {
+                name: name.to_owned(),
+                size: 10,
+                resumed_at: 0,
+            });
+        }
+        progress.update(DownloadEvent::Completed {
+            name: "first".to_owned(),
+            size: 10,
+        });
+        assert!(progress.state.lock().unwrap().downloading);
+        progress.update(DownloadEvent::Completed {
+            name: "prefetched".to_owned(),
+            size: 10,
+        });
+        {
+            let state = progress.state.lock().unwrap();
+            assert!(!state.downloading);
+            assert!(!state.overall.is_finished());
+            assert_eq!(state.overall.position(), 20);
+            assert_eq!(state.overall.message(), "Downloaded packages");
+        }
+        let extraction = ExtractionProgress::new(&progress).unwrap();
+        assert!(!extraction.bar.is_finished());
+        progress.update(DownloadEvent::Started {
+            name: "next".to_owned(),
+            size: 10,
+            resumed_at: 0,
+        });
+        {
+            let state = progress.state.lock().unwrap();
+            assert!(state.downloading);
+            assert_eq!(state.overall.position(), 20);
+            assert_eq!(state.overall.message(), "Downloading 3 assets");
+        }
+        progress.update(DownloadEvent::Completed {
+            name: "next".to_owned(),
+            size: 10,
+        });
         assert!(progress.state.lock().unwrap().overall.is_finished());
     }
 

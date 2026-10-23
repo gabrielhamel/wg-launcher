@@ -398,7 +398,12 @@ fn observe_install(event: InstallEvent, progress: &std::sync::Mutex<ProgressBars
                 plan.root.display(),
             );
             println!("  package cache: {}", plan.cache.display());
-            match DownloadProgress::new(plan.compressed_bytes, plan.assets.len()) {
+            match DownloadProgress::new(
+                plan.compressed_bytes,
+                plan.assets
+                    .iter()
+                    .map(|asset| (asset.name.as_str(), asset.size)),
+            ) {
                 Ok(download) => match ExtractionProgress::new(&download) {
                     Ok(extraction) => {
                         *progress.lock().expect("progress lock") = Some((download, extraction));
@@ -420,8 +425,8 @@ fn observe_install(event: InstallEvent, progress: &std::sync::Mutex<ProgressBars
             match event {
                 wg_launcher::InstallationEvent::Download(event) => download.update(event),
                 wg_launcher::InstallationEvent::Extraction(event) => extraction.update(event),
-                wg_launcher::InstallationEvent::ReleasedPackages { part, files, bytes } => {
-                    extraction.released_packages(&part, files, bytes);
+                wg_launcher::InstallationEvent::ReleasedPackages { .. } => {
+                    extraction.finish_patch();
                 }
             }
         }
@@ -435,7 +440,12 @@ fn observe_download(
     match event {
         DownloadAssetsEvent::Planned(plan) => {
             print_plan(&plan);
-            match DownloadProgress::new(plan.compressed_bytes, plan.assets.len()) {
+            match DownloadProgress::new(
+                plan.compressed_bytes,
+                plan.assets
+                    .iter()
+                    .map(|asset| (asset.name.as_str(), asset.size)),
+            ) {
                 Ok(download) => *progress.lock().expect("progress lock") = Some(download),
                 Err(error) => eprintln!("warning: terminal progress unavailable: {error}"),
             }

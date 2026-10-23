@@ -10,6 +10,7 @@ use std::{
     io::{BufReader, BufWriter, Read, Seek, SeekFrom, Write},
     path::{Component, Path, PathBuf},
     sync::Arc,
+    time::{Duration, Instant},
 };
 
 pub const DOWNLOAD_CACHE_DIRECTORY: &str = ".download";
@@ -41,6 +42,14 @@ pub enum ExtractionEvent {
         version_to: String,
         index: usize,
         total: usize,
+    },
+    /// Progress through a file in the current patch's transport archive.
+    ExtractingFile {
+        path: String,
+        index: usize,
+        total: usize,
+        extracted: u64,
+        size: u64,
     },
     ApplyingDelta {
         path: String,
@@ -430,13 +439,13 @@ fn extract_patch_sync(
         total,
     });
     if patch.version_from.as_deref() == Some("0") {
-        extract_archive(patch, paths.cache, paths.game)?;
+        extract_archive(patch, paths.cache, paths.game, observer)?;
         return Ok(0);
     }
 
     let patch_dir = paths.work.join(format!("patch-{index}"));
     fs::create_dir_all(&patch_dir)?;
-    extract_archive(patch, paths.cache, &patch_dir)?;
+    extract_archive(patch, paths.cache, &patch_dir, observer)?;
     let mut report = ExtractionReport::default();
     apply_patch_directory(&patch_dir, paths.game, observer, &mut report)?;
     fs::remove_dir_all(&patch_dir)?;
@@ -596,7 +605,12 @@ fn ordered_patches(manifest: &PatchManifest) -> Result<Vec<&Patch>> {
     Ok(ordered)
 }
 
-fn extract_archive(patch: &Patch, cache: &Path, destination: &Path) -> Result<()> {
+fn extract_archive(
+    patch: &Patch,
+    cache: &Path,
+    destination: &Path,
+    observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
+) -> Result<()> {
     let mut volumes = patch
         .files
         .iter()
@@ -610,13 +624,66 @@ fn extract_archive(patch: &Patch, cache: &Path, destination: &Path) -> Result<()
     }
 
     let reader = MultiVolumeReader::open(&volumes)?;
-    sevenz_rust::decompress_with_extract_fn(reader, destination, |entry, reader, _| {
-        let relative = safe_archive_path(entry.name())
-            .map_err(|error| sevenz_rust::Error::other(error.to_string()))?;
-        let target = destination.join(relative);
-        sevenz_rust::default_entry_extract_fn(entry, reader, &target)
-    })
-    .map_err(|error| Error::ArchiveExtraction(error.to_string()))
+    let length = reader.length;
+    let mut archive = sevenz_rust::SevenZReader::new(reader, length, Default::default())
+        .map_err(|error| Error::ArchiveExtraction(error.to_string()))?;
+    let total = archive
+        .archive()
+        .files
+        .iter()
+        .filter(|entry| !entry.is_directory())
+        .count();
+    fs::create_dir_all(destination)?;
+    let mut index = 0;
+    archive
+        .for_each_entries(|entry, reader| {
+            let relative = safe_archive_path(entry.name())
+                .map_err(|error| sevenz_rust::Error::other(error.to_string()))?;
+            let target = destination.join(&relative);
+            if entry.is_directory() {
+                return sevenz_rust::default_entry_extract_fn(entry, reader, &target);
+            }
+            index += 1;
+            let notify = |extracted| {
+                observer(ExtractionEvent::ExtractingFile {
+                    path: relative.to_string_lossy().into_owned(),
+                    index,
+                    total,
+                    extracted,
+                    size: entry.size(),
+                });
+            };
+            notify(0);
+            let mut progress = ExtractionReader {
+                reader,
+                notify: &notify,
+                extracted: 0,
+                last_update: Instant::now(),
+            };
+            let result = sevenz_rust::default_entry_extract_fn(entry, &mut progress, &target)?;
+            notify(progress.extracted);
+            Ok(result)
+        })
+        .map_err(|error| Error::ArchiveExtraction(error.to_string()))
+}
+
+struct ExtractionReader<'a> {
+    reader: &'a mut dyn Read,
+    notify: &'a dyn Fn(u64),
+    extracted: u64,
+    last_update: Instant,
+}
+
+impl Read for ExtractionReader<'_> {
+    fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
+        let count = self.reader.read(buffer)?;
+        self.extracted += count as u64;
+        if self.last_update.elapsed() >= Duration::from_millis(100) {
+            (self.notify)(self.extracted);
+            self.last_update = Instant::now();
+        }
+        Ok(count)
+    }
 }
 
 fn apply_patch_directory(
@@ -1156,6 +1223,28 @@ mod tests {
     }
 
     #[test]
+    fn extraction_reader_reports_intermediate_bytes_and_throttles_updates() {
+        let mut source = &b"abcdef"[..];
+        let positions = std::cell::RefCell::new(Vec::new());
+        let notify = |position| positions.borrow_mut().push(position);
+        let mut reader = ExtractionReader {
+            reader: &mut source,
+            notify: &notify,
+            extracted: 0,
+            last_update: Instant::now() - Duration::from_secs(1),
+        };
+        let mut buffer = [0; 2];
+        assert_eq!(reader.read(&mut buffer).unwrap(), 2);
+        assert_eq!(buffer, *b"ab");
+        assert_eq!(*positions.borrow(), [2]);
+        // A fresh interval prevents an event for every small decoder read.
+        reader.last_update = Instant::now();
+        assert_eq!(reader.read(&mut buffer).unwrap(), 2);
+        assert_eq!(reader.extracted, 4);
+        assert_eq!(*positions.borrow(), [2]);
+    }
+
+    #[test]
     fn extracts_a_split_7z_archive_without_concatenating_it() {
         let root = test_directory("split-archive");
         let source = root.join("source");
@@ -1196,7 +1285,28 @@ mod tests {
             torrent_urls: vec![],
         };
 
-        extract_archive(&patch, &cache, &destination).unwrap();
+        let events = Arc::new(std::sync::Mutex::new(Vec::new()));
+        let captured = Arc::clone(&events);
+        let observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> =
+            Arc::new(move |event| captured.lock().unwrap().push(event));
+        extract_archive(&patch, &cache, &destination, &observer).unwrap();
+        let events = events.lock().unwrap();
+        let progress = events
+            .iter()
+            .filter_map(|event| match event {
+                ExtractionEvent::ExtractingFile {
+                    path,
+                    index,
+                    total,
+                    extracted,
+                    size,
+                } => Some((path.as_str(), *index, *total, *extracted, *size)),
+                _ => None,
+            })
+            .collect::<Vec<_>>();
+        let size = b"a payload spanning archive volumes".len() as u64;
+        assert_eq!(progress.first(), Some(&("payload.bin", 1, 1, 0, size)));
+        assert_eq!(progress.last(), Some(&("payload.bin", 1, 1, size, size)));
 
         assert_eq!(
             fs::read(destination.join("payload.bin")).unwrap(),
