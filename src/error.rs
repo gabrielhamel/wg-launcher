@@ -12,8 +12,6 @@ pub enum Error {
     Json(#[from] serde_json::Error),
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
-    #[error("the operating system did not provide user cache and data directories")]
-    UserDirectoriesUnavailable,
     #[error("unknown client type '{requested}' (available: {available})")]
     UnknownClientType {
         requested: String,
@@ -81,6 +79,8 @@ pub enum Error {
     InstallationLocked(PathBuf),
     #[error("no wg-launcher installation record was found for {0:?}")]
     InstallationNotFound(PathBuf),
+    #[error("no downloaded manifest was found in {0:?}; run `wg-launcher download` first")]
+    DownloadManifestNotFound(PathBuf),
     #[error("background extraction task failed: {0}")]
     ExtractionTask(String),
     #[error(

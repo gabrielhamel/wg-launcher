@@ -28,6 +28,9 @@ The crate must remain usable by a future GUI without invoking or parsing the
 CLI. High-level workflows live in the library and are exported from `lib.rs`:
 
 - `list(ListOptions)`
+- `inspect(InspectOptions)`
+- `download(DownloadAssetsOptions, observer)`
+- `extract(ExtractOptions, observer)`
 - `install(InstallOptions, observer)`
 - `status(StatusOptions)`
 - `update(UpdateOptions, observer)`
@@ -55,13 +58,28 @@ GUI needs more information instead of coupling the core to a specific UI.
 The supported user workflows are:
 
 - `list`
+- `inspect`
+- `download`
+- `extract`
 - `install`
 - `status`
 - `update`
 
-Earlier iterations exposed `inspect`, `download`, and `extract` as separate
-commands. They were intentionally removed. Installation is one end-to-end
-pipeline, not a set of manual stages.
+`install` remains the convenient integrated pipeline. `download` and `extract`
+also expose its package and installation phases independently for users who
+need explicit control, offline transfer, or staged operation. `inspect`
+resolves a selection without changing files and shares `install`'s default
+EU/SD selection when invoked without arguments.
+
+`extract` is local-only: it takes an optional positional installation
+directory, defaults to the current directory, and reads the pinned manifest
+from `.download`. It must not expose region, client type, or language options
+or query the live catalog to decide what cached packages mean.
+
+`inspect` should expose enough patch detail to make component downloads
+understandable: part, source version, target version, package count, and
+compressed size. `download` with no `--part` selects the complete installation;
+one or more `--part` flags intentionally filter that set.
 
 The CLI also intentionally has no JSON output, `--dry-run`, `--yes`, or
 confirmation step. Running `install` or `update` performs the operation
@@ -88,52 +106,41 @@ of that crate.
 
 ## Installation and storage invariants
 
-### A game directory contains game files only
+### An installation directory is standalone
 
-This is a non-negotiable product requirement. Never put launcher-owned
-artifacts in the installed game directory. That includes caches, locks,
-download manifests, progress state, temporary extraction directories, and the
-installed-version record.
+All launcher-owned state for an installation lives alongside its game files:
 
-`installation_storage` in `src/install.rs` derives per-installation locations
-from `directories::BaseDirs` and a hash of the absolute game path:
+- package volumes and the pinned manifest live in `.download`;
+- temporary extraction work lives in `.installing`;
+- installed build identity lives in `.wg-launcher.json`;
+- `.wg-launcher.lock` prevents concurrent mutation.
 
-- package files and the pinned download manifest go to the OS-native user
-  cache directory;
-- locks, temporary patch work, and `installed.json` go to the OS-native
-  user-local data directory.
+Do not add a dependency on user-home cache or data directories. A user must be
+able to move the complete folder to another machine or location and retain its
+installed identity and resumable state.
 
-This maps naturally to XDG directories on Linux, `~/Library` on macOS, and
-`%LOCALAPPDATA%` on Windows. Preserve per-installation isolation so two game
-directories cannot share mutable state accidentally.
+### Default installation names preserve initial identity
 
-Legacy `.download`, `.installing`, `.wg-launcher.json`, and
-`.wg-launcher.lock` artifacts are migration inputs, not the desired layout.
-Migration may recover or remove them, but new code must not recreate them in
-the game directory.
+The default directory includes region, channel, the initially downloaded game
+version, payload platform, architecture, client type, and language. For
+example:
 
-### Default installation names identify a stable installation
+`wot-eu-production-2.4.1.5493-windows-x64-sd-en`
 
-The default directory includes the dimensions that distinguish installations:
-region, channel, payload platform, architecture, client type, and language.
-It intentionally excludes the game version. For example:
-
-`wot-eu-production-windows-x64-sd-en`
-
-An update must target the same stable directory instead of creating a new
-version-named directory. When changing selection fields, check both naming and
-external storage-key implications.
+An update must target that same directory instead of creating or renaming it
+for the newer version. The folder name records its initial download identity;
+`.wg-launcher.json` records its current installed version.
 
 ### Installation is resumable and storage-conscious
 
 The installation pipeline is intentionally integrated:
 
 1. resolve and pin the manifest;
-2. download a patch's package volumes into the external cache;
+2. download a patch's package volumes into `.download`;
 3. begin downloading the next patch when possible;
 4. extract or apply the current patch;
 5. delete that patch's package volumes only after successful extraction;
-6. finalize the installation and write external `installed.json`.
+6. finalize the installation and write `.wg-launcher.json`.
 
 This overlaps network and extraction work while limiting peak disk usage.
 Do not change it back into “download everything, then extract everything.”
@@ -160,7 +167,7 @@ same installation.
 
 ## Status and update model
 
-`installed.json` is launcher state stored outside the game directory. It
+`.wg-launcher.json` is launcher state stored inside the game directory. It
 records the game ID, region, channel, installed version, client type, language,
 payload platform, architecture, and metadata version.
 
@@ -232,9 +239,9 @@ the CLI.
 - `src/service.rs`: WGUS-compatible HTTP/XML protocol and manifest building.
 - `src/model.rs`: protocol-independent public models and stable output naming.
 - `src/download.rs`: resumable, concurrent package transfer.
-- `src/install.rs`: patch ordering, extraction, deltas, external state, locks,
+- `src/install.rs`: patch ordering, extraction, deltas, local state, locks,
   cleanup, and the streaming install pipeline.
-- `src/launcher.rs`: high-level list/install/status/update workflows.
+- `src/launcher.rs`: high-level list/inspect/download/extract/install/status/update workflows.
 - `src/cli.rs`: argument parsing and human-readable command output.
 - `src/progress.rs`: terminal-only progress rendering.
 - `src/lib.rs`: the public library contract.
@@ -246,7 +253,7 @@ consider whether a model, option, report, or event should be extended instead.
 
 - Inspect `git status` before editing. Preserve unrelated user changes.
 - Prefer extending the high-level library contract before changing CLI code.
-- Keep serialized external state backward compatible or provide migration.
+- Keep serialized installation state backward compatible or provide migration.
 - Do not silently change defaults, directory naming, cleanup timing, or cache
   identity; these affect resumability and existing installations.
 - Errors must explain the actionable condition without exposing an internal
@@ -266,6 +273,19 @@ cargo clippy --all-targets --all-features --locked -- -D warnings
 cargo build --locked
 git diff --check
 ```
+
+After every code-editing operation or coherent editing batch, the minimum
+mandatory validation is:
+
+```console
+cargo fmt
+cargo check --locked
+```
+
+Fix formatting and compilation errors immediately before continuing. Do not
+treat `cargo test`, Clippy, or an earlier successful build as a substitute for
+this post-edit check, and do not report a code operation as complete until both
+commands pass.
 
 For catalog or protocol changes, also run the relevant live list command, for
 example:

@@ -157,6 +157,14 @@ impl ExtractionProgress {
         Ok(Self { bar })
     }
 
+    pub(crate) fn standalone() -> Result<Self, TemplateError> {
+        let bar = ProgressBar::new_spinner();
+        bar.set_style(extraction_style()?);
+        bar.set_message("Preparing extraction");
+        bar.enable_steady_tick(Duration::from_millis(100));
+        Ok(Self { bar })
+    }
+
     pub(crate) fn update(&self, event: ExtractionEvent) {
         match event {
             ExtractionEvent::CheckingCache { assets } => {

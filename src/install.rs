@@ -12,13 +12,11 @@ use std::{
     sync::Arc,
 };
 
-pub const DOWNLOAD_CACHE_DIRECTORY: &str = "downloads";
+pub const DOWNLOAD_CACHE_DIRECTORY: &str = ".download";
 pub const DOWNLOAD_MANIFEST_FILE: &str = ".wg-manifest.json";
-pub(crate) const LEGACY_DOWNLOAD_CACHE_DIRECTORY: &str = ".download";
-pub(crate) const LEGACY_STAGING_DIRECTORY: &str = ".installing";
-const INSTALL_MARKER: &str = "installed.json";
-const INSTALL_LOCK_FILE: &str = "install.lock";
-const WORK_DIRECTORY: &str = "work";
+pub const STAGING_DIRECTORY: &str = ".installing";
+pub const INSTALL_MARKER_FILE: &str = ".wg-launcher.json";
+const INSTALL_LOCK_FILE: &str = ".wg-launcher.lock";
 
 pub fn installation_assets(manifest: &PatchManifest) -> Result<Vec<Asset>> {
     let patches = ordered_patches(manifest)?
@@ -130,42 +128,17 @@ impl Default for ExtractionOptions {
 #[derive(Debug, Clone)]
 pub(crate) struct InstallationStorage {
     pub cache: PathBuf,
-    pub state: PathBuf,
     pub work: PathBuf,
     pub marker: PathBuf,
     pub lock: PathBuf,
 }
 
 pub(crate) fn installation_storage(install_root: &Path) -> Result<InstallationStorage> {
-    let base = directories::BaseDirs::new().ok_or(Error::UserDirectoriesUnavailable)?;
-    let absolute = std::path::absolute(install_root)?;
-    let mut hash = 0xcbf29ce484222325_u64;
-    for byte in absolute.to_string_lossy().as_bytes() {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-    let label = install_root
-        .file_name()
-        .and_then(OsStr::to_str)
-        .unwrap_or("installation")
-        .chars()
-        .map(|character| {
-            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_') {
-                character.to_ascii_lowercase()
-            } else {
-                '-'
-            }
-        })
-        .collect::<String>();
-    let id = format!("{label}-{hash:016x}");
-    let cache_root = base.cache_dir().join("wg-launcher").join(&id);
-    let state = base.data_local_dir().join("wg-launcher").join(id);
     Ok(InstallationStorage {
-        cache: cache_root.join(DOWNLOAD_CACHE_DIRECTORY),
-        work: state.join(WORK_DIRECTORY),
-        marker: state.join(INSTALL_MARKER),
-        lock: state.join(INSTALL_LOCK_FILE),
-        state,
+        cache: install_root.join(DOWNLOAD_CACHE_DIRECTORY),
+        work: install_root.join(STAGING_DIRECTORY),
+        marker: install_root.join(INSTALL_MARKER_FILE),
+        lock: install_root.join(INSTALL_LOCK_FILE),
     })
 }
 
@@ -399,16 +372,6 @@ fn merge_download_report(total: &mut DownloadReport, patch: DownloadReport) {
 
 fn prepare_installation(install_root: &Path, storage: &InstallationStorage) -> Result<()> {
     fs::create_dir_all(install_root)?;
-    let legacy_staging = install_root.join(LEGACY_STAGING_DIRECTORY);
-    if legacy_staging.exists() {
-        fs::remove_dir_all(legacy_staging)?;
-    }
-    for legacy_file in [".wg-launcher.json", ".wg-launcher.lock"] {
-        let path = install_root.join(legacy_file);
-        if path.exists() {
-            fs::remove_file(path)?;
-        }
-    }
     if storage.work.exists() {
         fs::remove_dir_all(&storage.work)?;
     }
@@ -422,7 +385,7 @@ struct InstallationLock {
 
 impl InstallationLock {
     fn acquire(storage: &InstallationStorage, install_root: &Path) -> Result<Self> {
-        fs::create_dir_all(&storage.state)?;
+        fs::create_dir_all(install_root)?;
         let file = OpenOptions::new()
             .create(true)
             .truncate(false)
@@ -997,7 +960,7 @@ mod tests {
     fn installed_record_can_be_read_for_future_update_checks() {
         let root = test_directory("installed-record");
         fs::create_dir_all(&root).unwrap();
-        let marker = root.join(INSTALL_MARKER);
+        let marker = root.join(INSTALL_MARKER_FILE);
         let manifest = manifest(vec![]);
 
         write_marker(&manifest, &marker).unwrap();
@@ -1095,7 +1058,6 @@ mod tests {
         if root.exists() {
             fs::remove_dir_all(root).unwrap();
         }
-        fs::remove_dir_all(storage.state).unwrap();
     }
 
     #[tokio::test]
@@ -1116,7 +1078,7 @@ mod tests {
         fs::remove_file(&payload).unwrap();
         let body = fs::read(&archive).unwrap();
         fs::remove_file(&archive).unwrap();
-        let interrupted_staging = root.join(LEGACY_STAGING_DIRECTORY);
+        let interrupted_staging = root.join(STAGING_DIRECTORY);
         fs::create_dir_all(&interrupted_staging).unwrap();
         fs::write(interrupted_staging.join("partial-file"), b"interrupted").unwrap();
 
@@ -1182,24 +1144,15 @@ mod tests {
 
         server.join().unwrap();
         assert_eq!(fs::read(root.join("installed.bin")).unwrap(), installed);
-        assert!(!root.join("partial-file").exists());
-        assert_eq!(
-            fs::read_dir(&root)
-                .unwrap()
-                .map(|entry| entry.unwrap().file_name())
-                .collect::<Vec<_>>(),
-            [std::ffi::OsString::from("installed.bin")]
-        );
-        assert!(!storage.cache.starts_with(&root));
+        assert!(storage.cache.starts_with(&root));
         assert!(storage.marker.is_file());
         assert!(!storage.cache.exists());
-        assert!(!root.join(LEGACY_DOWNLOAD_CACHE_DIRECTORY).exists());
-        assert!(!root.join(LEGACY_STAGING_DIRECTORY).exists());
+        assert!(!root.join(DOWNLOAD_CACHE_DIRECTORY).exists());
+        assert!(!root.join(STAGING_DIRECTORY).exists());
         assert_eq!(report.released_package_bytes, file.size);
         assert!(report.extraction.cache_removed);
 
         fs::remove_dir_all(&root).unwrap();
-        fs::remove_dir_all(storage.state).unwrap();
     }
 
     #[test]

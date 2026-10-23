@@ -85,19 +85,6 @@ impl PatchManifest {
     pub fn default_output_directory(&self) -> PathBuf {
         let architecture = self.architecture.as_deref().unwrap_or("unknown-arch");
         PathBuf::from(format!(
-            "wot-{}-{}-{}-{}-{}-{}",
-            slug(&self.region.to_string()),
-            slug(&self.channel),
-            slug(&self.platform),
-            slug(architecture),
-            slug(&self.client_type),
-            slug(&self.language),
-        ))
-    }
-
-    pub(crate) fn legacy_output_directory(&self) -> PathBuf {
-        let architecture = self.architecture.as_deref().unwrap_or("unknown-arch");
-        PathBuf::from(format!(
             "wot-{}-{}-{}-{}-{}-{}-{}",
             slug(&self.region.to_string()),
             slug(&self.channel),
@@ -373,7 +360,7 @@ mod tests {
 
         assert_eq!(
             manifest.default_output_directory(),
-            PathBuf::from("wot-eu-production-windows-x64-sd-pt-br")
+            PathBuf::from("wot-eu-production-2.4.1.5493-windows-x64-sd-pt-br")
         );
 
         let encoded = serde_json::to_vec(&manifest).unwrap();

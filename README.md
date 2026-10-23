@@ -15,11 +15,52 @@ wg-launcher list --region eu
 Use `list` to compare the available regions, editions, versions, platforms,
 architectures, download sizes, and languages in a terminal-friendly table.
 
+Inspect the default EU/SD selection without changing files, or override its
+selection options:
+
+```console
+wg-launcher inspect
+wg-launcher inspect --region eu --client-type sd --language EN
+```
+
+The inspection includes the available parts and a patch-chain table with each
+source and target version, package count, and compressed download size.
+
+The pipeline can be run as separate resumable stages:
+
+```console
+wg-launcher download --region eu --client-type sd --language EN
+cd wot-eu-production-2.4.1.5493-windows-x64-sd-en
+wg-launcher extract
+# Or, from elsewhere:
+wg-launcher extract wot-eu-production-2.4.1.5493-windows-x64-sd-en
+```
+
+Use `--output /path/to/game` with `download` to choose its destination.
+`download` also accepts repeatable `--part <name>` filters. `extract` takes an
+optional downloaded game directory and otherwise uses the current directory.
+It reads the pinned manifest from `.download`, so it has no region, client type,
+or language arguments. Extraction requires the complete package set for that
+manifest.
+
+Without any `--part`, `download` retrieves every package required by the
+selected build. Use `--part` only when intentionally staging specific
+components.
+
 Running `install` starts the download and installation immediately:
 
 ```console
 wg-launcher install --region eu --client-type sd --language EN
 ```
+
+The default folder identifies the initially downloaded build, for example:
+
+```text
+wot-eu-production-2.4.1.5493-windows-x64-sd-en
+```
+
+Later updates modify that same folder; they do not rename it when the installed
+version changes.
 
 From an installed game directory, check or apply updates without arguments:
 
@@ -35,11 +76,19 @@ wg-launcher status --path /path/to/world-of-tanks
 wg-launcher update --path /path/to/world-of-tanks
 ```
 
-Launcher files never live in the game directory. Package downloads use the
-operating system's per-user cache directory. Locks, manifests, installed
-version metadata, and temporary patch work use its per-user local data
-directory. This maps to XDG directories on Linux, `~/Library` on macOS, and
-`%LOCALAPPDATA%` on Windows.
+An installation folder is standalone and carries the launcher state needed to
+resume or update it:
+
+- `.download/` contains downloaded package volumes and the pinned manifest;
+- `.installing/` contains temporary extraction work;
+- `.wg-launcher.json` records the installed build;
+- `.wg-launcher.lock` prevents concurrent mutation of the same folder.
+
+Completed `download` commands keep `.download`. A successful `extract`,
+`install`, or `update` removes `.download` and `.installing`; interrupted work
+is retained or safely reconstructed so the command can be retried. Moving the
+whole installation folder preserves its installed-version metadata and any
+resumable package cache without depending on user-home storage.
 
 ## Lower-level protocol example
 

@@ -1,8 +1,7 @@
 use crate::{
-    Asset, AssetDownloader, DOWNLOAD_MANIFEST_FILE, DownloadOptions, InstallationEvent,
-    InstallationReport, InstalledBuild, PackageExtractor, PatchManifest, Region, Result,
-    WgusClient,
-    install::{LEGACY_DOWNLOAD_CACHE_DIRECTORY, LEGACY_STAGING_DIRECTORY, installation_storage},
+    Asset, AssetDownloader, DOWNLOAD_MANIFEST_FILE, DownloadEvent, DownloadOptions, DownloadReport,
+    ExtractionEvent, ExtractionReport, InstallationEvent, InstallationReport, InstalledBuild,
+    PackageExtractor, PatchManifest, Region, Result, WgusClient, install::installation_storage,
     installation_assets,
 };
 use serde::Serialize;
@@ -60,6 +59,123 @@ pub struct ListReport {
 
 pub async fn list(options: ListOptions) -> Result<ListReport> {
     list_with_client(&WgusClient::new()?, options).await
+}
+
+/// Selects a build whose resolved WGUS manifest should be inspected.
+#[derive(Debug, Clone, Default)]
+pub struct InspectOptions {
+    pub selection: BuildSelection,
+}
+
+/// Resolves a build without downloading or changing any files.
+pub async fn inspect(options: InspectOptions) -> Result<PatchManifest> {
+    resolve(&WgusClient::new()?, &options.selection).await
+}
+
+/// Configures a package-only download. The complete manifest is pinned inside
+/// `<root>/.download` even when `parts` limits the transferred package set.
+#[derive(Debug, Clone, Default)]
+pub struct DownloadAssetsOptions {
+    pub selection: BuildSelection,
+    pub output: Option<PathBuf>,
+    pub parts: Vec<String>,
+    pub download: DownloadOptions,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "phase", content = "detail", rename_all = "snake_case")]
+pub enum DownloadAssetsEvent {
+    Planned(Box<InstallPlan>),
+    Progress(DownloadEvent),
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DownloadAssetsOutcome {
+    pub plan: InstallPlan,
+    pub report: DownloadReport,
+}
+
+/// Downloads package files into `<root>/.download` without extracting them.
+pub async fn download<F>(
+    options: DownloadAssetsOptions,
+    observer: F,
+) -> Result<DownloadAssetsOutcome>
+where
+    F: Fn(DownloadAssetsEvent) + Send + Sync + 'static,
+{
+    let client = WgusClient::new()?;
+    let (manifest, root) =
+        resolve_installation(&client, &options.selection, options.output).await?;
+    let all_assets = installation_assets(&manifest)?;
+    let assets = select_download_assets(all_assets, &options.parts);
+    if assets.is_empty() {
+        return Err(crate::Error::EmptySelection(options.parts.join(", ")));
+    }
+    let plan = build_plan(manifest, root, assets)?;
+    observer(DownloadAssetsEvent::Planned(Box::new(plan.clone())));
+    save_cache_manifest(&plan.manifest, &plan.cache).await?;
+    let report = AssetDownloader::new()?
+        .download(
+            plan.assets.clone(),
+            &plan.cache,
+            options.download,
+            move |event| {
+                observer(DownloadAssetsEvent::Progress(event));
+            },
+        )
+        .await?;
+    Ok(DownloadAssetsOutcome { plan, report })
+}
+
+fn select_download_assets(assets: Vec<Asset>, parts: &[String]) -> Vec<Asset> {
+    if parts.is_empty() {
+        return assets;
+    }
+    assets
+        .into_iter()
+        .filter(|asset| parts.iter().any(|part| part == &asset.part))
+        .collect()
+}
+
+/// Configures extraction of the complete pinned package cache.
+#[derive(Debug, Clone)]
+pub struct ExtractOptions {
+    pub path: PathBuf,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "phase", content = "detail", rename_all = "snake_case")]
+pub enum ExtractEvent {
+    Planned(Box<InstallPlan>),
+    Progress(ExtractionEvent),
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ExtractOutcome {
+    pub plan: InstallPlan,
+    pub report: ExtractionReport,
+}
+
+/// Extracts the complete package cache into the installation folder. On
+/// success the package cache and temporary `.installing` directory are removed.
+pub async fn extract<F>(options: ExtractOptions, observer: F) -> Result<ExtractOutcome>
+where
+    F: Fn(ExtractEvent) + Send + Sync + 'static,
+{
+    let root = std::path::absolute(options.path)?;
+    let cache = installation_storage(&root)?.cache;
+    let manifest = load_cache_manifest(&cache)
+        .await?
+        .ok_or_else(|| crate::Error::DownloadManifestNotFound(cache.clone()))?;
+    let assets = installation_assets(&manifest)?;
+    let plan = build_plan(manifest, root, assets)?;
+    observer(ExtractEvent::Planned(Box::new(plan.clone())));
+    let report = PackageExtractor::new()
+        .extract(plan.manifest.clone(), &plan.root, move |event| {
+            observer(ExtractEvent::Progress(event));
+        })
+        .await?;
+    Ok(ExtractOutcome { plan, report })
 }
 
 async fn list_with_client(client: &WgusClient, options: ListOptions) -> Result<ListReport> {
@@ -170,15 +286,7 @@ where
     let (manifest, root) =
         resolve_installation(&client, &options.selection, options.output).await?;
     let assets = installation_assets(&manifest)?;
-    let compressed_bytes = assets.iter().map(|asset| asset.size).sum();
-    let cache = installation_storage(&root)?.cache;
-    let plan = InstallPlan {
-        manifest,
-        root,
-        cache,
-        assets,
-        compressed_bytes,
-    };
+    let plan = build_plan(manifest, root, assets)?;
     observer(InstallEvent::Planned(Box::new(plan.clone())));
 
     let extractor = PackageExtractor::new();
@@ -199,8 +307,6 @@ where
 
 pub async fn status(options: StatusOptions) -> Result<StatusReport> {
     let path = std::path::absolute(options.path)?;
-    let storage = installation_storage(&path)?;
-    migrate_legacy_launcher_data(&path, &storage).await?;
     let installed = load_installed_build(&path).await?;
     let latest = WgusClient::new()?
         .manifest(
@@ -223,7 +329,6 @@ where
 {
     let path = std::path::absolute(options.path)?;
     let storage = installation_storage(&path)?;
-    migrate_legacy_launcher_data(&path, &storage).await?;
     let installed = load_installed_build(&path).await?;
     let status = if let Some(pending) = load_cache_manifest(&storage.cache).await? {
         validate_cached_selection(
@@ -286,7 +391,6 @@ async fn resolve_installation(
 ) -> Result<(PatchManifest, PathBuf)> {
     if let Some(root) = requested_root {
         let storage = installation_storage(&root)?;
-        migrate_legacy_launcher_data(&root, &storage).await?;
         if let Some(manifest) = load_cache_manifest(&storage.cache).await? {
             validate_cached_selection(&manifest, selection)?;
             return Ok((manifest, root));
@@ -297,14 +401,23 @@ async fn resolve_installation(
     let live = resolve(client, selection).await?;
     let root = live.default_output_directory();
     let storage = installation_storage(&root)?;
-    migrate_legacy_launcher_data(&root, &storage).await?;
-    let legacy_root = live.legacy_output_directory();
-    migrate_legacy_launcher_data(&legacy_root, &storage).await?;
     if let Some(manifest) = load_cache_manifest(&storage.cache).await? {
         validate_cached_selection(&manifest, selection)?;
         return Ok((manifest, root));
     }
     Ok((live, root))
+}
+
+fn build_plan(manifest: PatchManifest, root: PathBuf, assets: Vec<Asset>) -> Result<InstallPlan> {
+    let compressed_bytes = assets.iter().map(|asset| asset.size).sum();
+    let cache = installation_storage(&root)?.cache;
+    Ok(InstallPlan {
+        manifest,
+        root,
+        cache,
+        assets,
+        compressed_bytes,
+    })
 }
 
 async fn resolve(client: &WgusClient, selection: &BuildSelection) -> Result<PatchManifest> {
@@ -324,105 +437,6 @@ async fn load_cache_manifest(cache: &Path) -> Result<Option<PatchManifest>> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error.into()),
     }
-}
-
-async fn migrate_legacy_launcher_data(
-    legacy_root: &Path,
-    storage: &crate::install::InstallationStorage,
-) -> Result<()> {
-    let legacy_cache = legacy_root.join(LEGACY_DOWNLOAD_CACHE_DIRECTORY);
-    let has_legacy_data = legacy_cache.exists()
-        || legacy_root.join(LEGACY_STAGING_DIRECTORY).exists()
-        || legacy_root.join(".wg-launcher.json").exists()
-        || legacy_root.join(".wg-launcher.lock").exists();
-    if !has_legacy_data {
-        return Ok(());
-    }
-    let legacy_root = legacy_root.to_path_buf();
-    let storage = storage.clone();
-    tokio::task::spawn_blocking(move || migrate_legacy_launcher_data_sync(&legacy_root, &storage))
-        .await
-        .map_err(|error| crate::Error::ExtractionTask(error.to_string()))?
-}
-
-fn migrate_legacy_launcher_data_sync(
-    legacy_root: &Path,
-    storage: &crate::install::InstallationStorage,
-) -> Result<()> {
-    std::fs::create_dir_all(&storage.state)?;
-    let lock = std::fs::OpenOptions::new()
-        .create(true)
-        .truncate(false)
-        .read(true)
-        .write(true)
-        .open(&storage.lock)?;
-    match fs2::FileExt::try_lock_exclusive(&lock) {
-        Ok(()) => {}
-        Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-            return Err(crate::Error::InstallationLocked(legacy_root.to_path_buf()));
-        }
-        Err(error) => return Err(error.into()),
-    }
-
-    let legacy_cache = legacy_root.join(LEGACY_DOWNLOAD_CACHE_DIRECTORY);
-    if legacy_cache.exists() {
-        if let Some(parent) = storage.cache.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        let moved_whole_directory =
-            !storage.cache.exists() && std::fs::rename(&legacy_cache, &storage.cache).is_ok();
-        if !moved_whole_directory {
-            move_directory_contents(&legacy_cache, &storage.cache)?;
-            std::fs::remove_dir_all(&legacy_cache)?;
-        }
-    }
-
-    let legacy_staging = legacy_root.join(LEGACY_STAGING_DIRECTORY);
-    if legacy_staging.exists() {
-        std::fs::remove_dir_all(legacy_staging)?;
-    }
-    let legacy_marker = legacy_root.join(".wg-launcher.json");
-    if legacy_marker.exists() {
-        if let Some(parent) = storage.marker.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-        std::fs::rename(&legacy_marker, &storage.marker)
-            .or_else(|_| std::fs::copy(&legacy_marker, &storage.marker).map(|_| ()))?;
-        if legacy_marker.exists() {
-            std::fs::remove_file(legacy_marker)?;
-        }
-    }
-    drop(lock);
-    let legacy_lock = legacy_root.join(".wg-launcher.lock");
-    if legacy_lock.exists() {
-        std::fs::remove_file(legacy_lock)?;
-    }
-    if legacy_root.is_dir() && std::fs::read_dir(legacy_root)?.next().is_none() {
-        std::fs::remove_dir(legacy_root)?;
-    }
-    Ok(())
-}
-
-fn move_directory_contents(source: &Path, destination: &Path) -> Result<()> {
-    std::fs::create_dir_all(destination)?;
-    for entry in std::fs::read_dir(source)? {
-        let entry = entry?;
-        let source_path = entry.path();
-        let destination_path = destination.join(entry.file_name());
-        if entry.file_type()?.is_dir() {
-            move_directory_contents(&source_path, &destination_path)?;
-            std::fs::remove_dir_all(source_path)?;
-        } else {
-            let temporary = destination_path.with_extension("wg-launcher-migrating");
-            std::fs::copy(&source_path, &temporary)?;
-            if destination_path.exists() {
-                std::fs::remove_file(&destination_path)?;
-            }
-            std::fs::rename(temporary, destination_path)?;
-            std::fs::remove_file(source_path)?;
-        }
-    }
-    Ok(())
 }
 
 async fn save_cache_manifest(manifest: &PatchManifest, cache: &Path) -> Result<()> {
@@ -470,6 +484,7 @@ fn validate_cached_selection(manifest: &PatchManifest, selection: &BuildSelectio
 mod tests {
     use super::*;
     use std::time::{SystemTime, UNIX_EPOCH};
+    use url::Url;
 
     fn test_directory(label: &str) -> PathBuf {
         let unique = SystemTime::now()
@@ -483,32 +498,14 @@ mod tests {
     }
 
     #[test]
-    fn migrates_legacy_launcher_files_out_of_the_game_directory() {
-        let root = test_directory("legacy-storage");
-        let legacy_cache = root.join(LEGACY_DOWNLOAD_CACHE_DIRECTORY);
-        std::fs::create_dir_all(&legacy_cache).unwrap();
-        std::fs::write(legacy_cache.join("asset.wgpkg.part"), b"partial").unwrap();
-        std::fs::create_dir_all(root.join(LEGACY_STAGING_DIRECTORY)).unwrap();
-        std::fs::write(root.join(".wg-launcher.json"), b"installed").unwrap();
-        std::fs::write(root.join(".wg-launcher.lock"), b"").unwrap();
+    fn installation_storage_is_self_contained() {
+        let root = test_directory("standalone-storage");
         let storage = installation_storage(&root).unwrap();
 
-        migrate_legacy_launcher_data_sync(&root, &storage).unwrap();
-
-        assert_eq!(
-            std::fs::read(storage.cache.join("asset.wgpkg.part")).unwrap(),
-            b"partial"
-        );
-        assert_eq!(std::fs::read(&storage.marker).unwrap(), b"installed");
-        assert!(!root.exists());
-
-        let cache_root = storage.cache.parent().unwrap().to_path_buf();
-        if storage.state.exists() {
-            std::fs::remove_dir_all(&storage.state).unwrap();
-        }
-        if cache_root.exists() {
-            std::fs::remove_dir_all(cache_root).unwrap();
-        }
+        assert_eq!(storage.cache, root.join(".download"));
+        assert_eq!(storage.work, root.join(".installing"));
+        assert_eq!(storage.marker, root.join(".wg-launcher.json"));
+        assert_eq!(storage.lock, root.join(".wg-launcher.lock"));
     }
 
     #[test]
@@ -542,5 +539,29 @@ mod tests {
             )
             .is_ok()
         );
+    }
+
+    #[test]
+    fn an_empty_part_selection_downloads_every_asset() {
+        let assets = ["locale", "client", "sdcontent"]
+            .into_iter()
+            .map(|part| Asset {
+                part: part.to_owned(),
+                version_from: Some("0".to_owned()),
+                version_to: "1".to_owned(),
+                name: format!("{part}.wgpkg"),
+                url: Url::parse(&format!("https://example.invalid/{part}.wgpkg")).unwrap(),
+                size: 1,
+                unpacked_size: None,
+                diffs_size: None,
+            })
+            .collect::<Vec<_>>();
+
+        let selected = select_download_assets(assets.clone(), &[]);
+        assert_eq!(selected.len(), assets.len());
+
+        let selected = select_download_assets(assets, &["locale".to_owned()]);
+        assert_eq!(selected.len(), 1);
+        assert_eq!(selected[0].part, "locale");
     }
 }

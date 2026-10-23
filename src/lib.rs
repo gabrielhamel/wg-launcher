@@ -11,13 +11,15 @@ pub use download::{AssetDownloader, DownloadEvent, DownloadOptions, DownloadRepo
 pub use error::{Error, Result};
 pub use install::{
     DOWNLOAD_CACHE_DIRECTORY, DOWNLOAD_MANIFEST_FILE, ExtractionEvent, ExtractionOptions,
-    ExtractionReport, InstallationEvent, InstallationReport, InstalledBuild, PackageExtractor,
-    installation_assets,
+    ExtractionReport, INSTALL_MARKER_FILE, InstallationEvent, InstallationReport, InstalledBuild,
+    PackageExtractor, STAGING_DIRECTORY, installation_assets,
 };
 pub use launcher::{
-    BuildSelection, BuildSummary, InstallEvent, InstallOptions, InstallOutcome, InstallPlan,
-    ListOptions, ListReport, ListWarning, StatusOptions, StatusReport, UpdateOptions,
-    UpdateOutcome, install, list, status, update,
+    BuildSelection, BuildSummary, DownloadAssetsEvent, DownloadAssetsOptions,
+    DownloadAssetsOutcome, ExtractEvent, ExtractOptions, ExtractOutcome, InspectOptions,
+    InstallEvent, InstallOptions, InstallOutcome, InstallPlan, ListOptions, ListReport,
+    ListWarning, StatusOptions, StatusReport, UpdateOptions, UpdateOutcome, download, extract,
+    inspect, install, list, status, update,
 };
 pub use model::{
     Asset, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile, PatchManifest,
