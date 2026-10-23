@@ -29,11 +29,11 @@ CLI. High-level workflows live in the library and are exported from `lib.rs`:
 
 - `list(ListOptions)`
 - `inspect(InspectOptions)`
-- `download(DownloadAssetsOptions, observer)`
-- `extract(ExtractOptions, observer)`
-- `install(InstallOptions, observer)`
+- `download(DownloadAssetsOptions)`
+- `extract(ExtractOptions)`
+- `install(InstallOptions)`
 - `status(StatusOptions)`
-- `update(UpdateOptions, observer)`
+- `update(UpdateOptions)`
 
 The CLI in `src/cli.rs` should only:
 
@@ -52,6 +52,37 @@ download, extraction, storage, retry, or update logic in the CLI.
 
 The observer/event types are the UI contract. Extend those contracts when a
 GUI needs more information instead of coupling the core to a specific UI.
+
+### Keep library use simple and progress optional
+
+Product decision: the consumer decides whether to receive progress. The primary
+`download`, `extract`, `install`, and `update` functions take only options and
+return their result without requiring a callback. Their `_with_observer`
+counterparts opt in to the existing structured events. Neither form prints
+terminal output. The CLI opts in to observers for its progress display.
+
+Keep both forms on one implementation path so defaults, reports, errors,
+locking, cleanup, and resumability behave identically. Apply this convention to
+lower-level downloader and extractor APIs too. Do not require dummy callbacks,
+UI types, or presentation settings for the ordinary library workflow. Prefer
+simple defaults and a small number of concepts before adding API machinery.
+
+### Record product decisions in consumer documentation
+
+Every new or changed product decision must leave a durable explanation in the
+relevant library rustdoc or CLI documentation in the same change. Describe the
+chosen behavior, its reason, defaults, consumer-visible consequences, and any
+migration callers need. `AGENTS.md` records agent guidance; it is not a substitute
+for documentation that library or CLI consumers can read.
+
+Keep examples and API references synchronized with implementation. Public APIs
+must remain documented, rustdoc links must resolve, and examples must compile.
+For library API or documentation changes, also run:
+
+```console
+RUSTDOCFLAGS="-D warnings" cargo doc --lib --no-deps --all-features --locked
+cargo test --doc --all-features --locked
+```
 
 ### Keep the CLI direct and deliberately small
 

@@ -1,20 +1,40 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 
+/// Supported publisher catalogs. The region also selects a channel and application ID.
+///
+/// Display and Serde use lowercase identifiers (`eu`, `na`, `asia`, `cn`, `ru`, `ct`).
+/// Parsing is case-insensitive and also accepts `china`, `russia`, and `common-test`.
+///
+/// ```
+/// use wg_launcher::Region;
+///
+/// assert_eq!("russia".parse::<Region>().unwrap(), Region::Ru);
+/// assert_eq!(Region::Ct.to_string(), "ct");
+/// assert_eq!(Region::Ru.product().game_id, "MT.RU.PRODUCTION");
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Region {
+    /// Wargaming Europe production.
     Eu,
+    /// Wargaming North America production.
     Na,
+    /// Wargaming Asia production.
     Asia,
+    /// China production.
     Cn,
+    /// Lesta Mir Tankov Russia production.
     Ru,
+    /// Wargaming Common Test.
     Ct,
 }
 
 impl Region {
+    /// All supported catalogs in discovery order.
     pub const ALL: [Self; 6] = [Self::Eu, Self::Na, Self::Asia, Self::Cn, Self::Ru, Self::Ct];
 
+    /// Returns the publisher endpoint and product identity for this region.
     pub const fn product(self) -> Product {
         match self {
             Self::Eu => Product {
@@ -94,12 +114,18 @@ impl FromStr for Region {
     }
 }
 
+/// Publisher endpoint and application identity bound to a catalog region.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Product {
+    /// Catalog region that owns this product.
     pub region: Region,
+    /// Human-readable product name.
     pub name: &'static str,
+    /// WGUS-compatible HTTPS hostname, without a scheme or path.
     pub host: &'static str,
+    /// Publisher application identifier used for discovery.
     pub game_id: &'static str,
+    /// Release channel, such as `production` or `common-test`.
     pub channel: &'static str,
 }
 

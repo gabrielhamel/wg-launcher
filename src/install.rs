@@ -13,9 +13,13 @@ use std::{
     time::{Duration, Instant},
 };
 
+/// Directory beneath an installation root containing transport volumes and the pinned manifest.
 pub const DOWNLOAD_CACHE_DIRECTORY: &str = ".download";
+/// Pinned manifest filename inside [`DOWNLOAD_CACHE_DIRECTORY`].
 pub const DOWNLOAD_MANIFEST_FILE: &str = ".wg-manifest.json";
+/// Directory beneath an installation root used for temporary extraction and delta work.
 pub const STAGING_DIRECTORY: &str = ".installing";
+/// Installed-build JSON filename beneath an installation root.
 pub const INSTALL_MARKER_FILE: &str = ".wg-launcher.json";
 const INSTALL_LOCK_FILE: &str = ".wg-launcher.lock";
 // Stop starting patches once this much data is queued ahead of the current
@@ -23,6 +27,15 @@ const INSTALL_LOCK_FILE: &str = ".wg-launcher.lock";
 // before it can be extracted, even when it is larger than the buffer.
 const DOWNLOAD_PREFETCH_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 
+/// Clones the transport assets required by the ordered installation chain.
+///
+/// Orders full-install and subsequent patches for each selected component, then
+/// resolves their volumes by name. Does not read disk or contact the catalog.
+///
+/// # Errors
+///
+/// Returns an error for a missing full-install patch, cyclic patch chain, or a patch
+/// volume absent from the manifest assets.
 pub fn installation_assets(manifest: &PatchManifest) -> Result<Vec<Asset>> {
     let patches = ordered_patches(manifest)?
         .into_iter()
@@ -34,59 +47,106 @@ pub fn installation_assets(manifest: &PatchManifest) -> Result<Vec<Asset>> {
         .collect())
 }
 
+/// Progress through local patch extraction, delta application, and finalization.
+///
+/// Patch and file indices are one-based. File indices reset for each patch. Paths
+/// are relative to the current archive or game tree, depending on the event.
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "event", rename_all = "snake_case")]
 pub enum ExtractionEvent {
+    /// Required local package volumes are about to be checked.
     CheckingCache {
+        /// Number of assets in the supplied manifest, before patch-chain filtering.
         assets: usize,
     },
+    /// An ordered patch is about to be extracted.
     ExtractingPatch {
+        /// Component being extracted.
         part: String,
+        /// Source component version, or `?` if unspecified.
         version_from: String,
+        /// Target component version.
         version_to: String,
+        /// One-based patch or file index within its reported total.
         index: usize,
+        /// Total patches in the chain, or non-directory files in the current archive.
         total: usize,
     },
-    /// Progress through a file in the current patch's transport archive.
+    /// Progress through one file in the current transport archive.
     ExtractingFile {
+        /// Relative archive entry or game file path.
         path: String,
+        /// One-based patch or file index within its reported total.
         index: usize,
+        /// Total patches in the chain, or non-directory files in the current archive.
         total: usize,
+        /// Uncompressed bytes read for the current file, not a per-event increment.
         extracted: u64,
+        /// Expected uncompressed file size in bytes.
         size: u64,
     },
+    /// A delta is about to be applied to a game file.
     ApplyingDelta {
+        /// Relative archive entry or game file path.
         path: String,
     },
+    /// A replacement file from a patch is about to be installed.
     InstallingFile {
+        /// Relative archive entry or game file path.
         path: String,
     },
+    /// The installed-build record and temporary-work cleanup are about to be written.
     Finalizing,
+    /// Successful finalization is about to remove the remaining download cache.
     CleaningCache,
+    /// Extraction and requested cleanup completed successfully.
     Completed {
+        /// Files counted in the final game tree; see [`ExtractionReport::installed_files`].
         files: usize,
+        /// Delta files applied during this operation.
         deltas: usize,
+        /// Whether finalization removed the download cache.
         cache_removed: bool,
     },
 }
 
+/// Results after successful extraction and finalization.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct ExtractionReport {
+    /// Files counted recursively beneath the installation root before finalization.
+    /// Includes pre-existing files and launcher state still present at that point;
+    /// this is not the number of files newly extracted.
     pub installed_files: usize,
+    /// Delta files successfully applied during this operation.
     pub applied_deltas: usize,
+    /// Whether successful finalization requested and completed cache removal.
     pub cache_removed: bool,
 }
 
+/// Build identity serialized in [`INSTALL_MARKER_FILE`].
+///
+/// Created from a manifest only after extraction succeeds. Records the current
+/// installed build, while the installation directory may retain its original version
+/// name. Does not track individual component versions.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InstalledBuild {
+    /// Publisher application identifier.
     pub game_id: String,
+    /// Publisher catalog region.
     pub region: crate::Region,
+    /// Publisher release channel.
     pub channel: String,
+    /// Publisher game build version.
     pub version: String,
+    /// Publisher client variant identifier, such as `sd` or `hd`.
     pub client_type: String,
+    /// Selected normalized language identifier.
     pub language: String,
+    /// Game payload platform, independent of the launcher host OS.
     pub platform: String,
+    /// Game payload architecture, or `None` when not published.
     pub architecture: Option<String>,
+    /// Publisher metadata revision, distinct from the game version.
     pub metadata_version: String,
 }
 
@@ -106,27 +166,46 @@ impl From<&PatchManifest> for InstalledBuild {
     }
 }
 
+/// Interleaved streaming installation progress.
+///
+/// Download and extraction notifications may arrive concurrently. Package release
+/// is reported only after successful extraction and removal of that patch's volumes.
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "phase", content = "detail", rename_all = "snake_case")]
 pub enum InstallationEvent {
+    /// An individual transport volume download event.
     Download(DownloadEvent),
+    /// A local patch extraction or finalization event.
     Extraction(ExtractionEvent),
+    /// Successfully extracted transport volumes were removed from disk.
     ReleasedPackages {
+        /// Component whose package volumes were released.
         part: String,
+        /// Number of package volumes removed for this patch.
         files: usize,
+        /// Compressed package bytes released by this patch.
         bytes: u64,
     },
 }
 
+/// Combined transfer, extraction, and early package-release totals.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct InstallationReport {
+    /// Transfer totals accumulated across patches.
     pub download: DownloadReport,
+    /// Final extraction and cleanup results.
     pub extraction: ExtractionReport,
+    /// Compressed package bytes removed after successful patches, before final
+    /// cache cleanup. Zero when cache cleanup is disabled.
     pub released_package_bytes: u64,
 }
 
+/// Controls cache retention. The default removes downloaded packages after success.
 #[derive(Debug, Clone, Copy)]
 pub struct ExtractionOptions {
+    /// Remove the cache on successful finalization and release each patch's volumes
+    /// after successful extraction. When `false`, retain
+    /// packages; temporary `.installing` work is still removed after success.
     pub clean_download_cache: bool,
 }
 
@@ -155,15 +234,48 @@ pub(crate) fn installation_storage(install_root: &Path) -> Result<InstallationSt
     })
 }
 
+/// In-process transport archive extraction and delta application.
+///
+/// Acquires the per-installation lock and runs blocking archive/filesystem work
+/// on Tokio's blocking pool. Game-owned inner `.pkg` files remain packed. These
+/// lower-level methods accept a resolved manifest; they do not discover or pin it.
+/// An error can leave partially changed game files; no whole-install rollback is provided.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PackageExtractor;
 
 impl PackageExtractor {
+    /// Creates a stateless package extractor.
     pub const fn new() -> Self {
         Self
     }
 
-    pub async fn extract<F>(
+    /// Extracts cached packages without progress notifications and with default cleanup.
+    ///
+    /// See [`Self::extract_with_observer`] for the installation lifecycle.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same errors as [`Self::extract_with_observer`].
+    pub async fn extract(
+        &self,
+        manifest: PatchManifest,
+        install_root: impl AsRef<Path>,
+    ) -> Result<ExtractionReport> {
+        self.extract_with_observer(manifest, install_root, |_| {})
+            .await
+    }
+
+    /// Extracts an already downloaded manifest with default cache cleanup.
+    ///
+    /// Equivalent to [`Self::extract_with_options_and_observer`] with [`ExtractionOptions::default`].
+    /// Reads volumes from `install_root/.download` without network access and writes
+    /// the installed-build record on success.
+    ///
+    /// # Errors
+    ///
+    /// Returns the lock, cache, patch-chain, filesystem, archive, delta, or worker
+    /// errors described by [`Self::extract_with_options_and_observer`].
+    pub async fn extract_with_observer<F>(
         &self,
         manifest: PatchManifest,
         install_root: impl AsRef<Path>,
@@ -172,7 +284,7 @@ impl PackageExtractor {
     where
         F: Fn(ExtractionEvent) + Send + Sync + 'static,
     {
-        self.extract_with_options(
+        self.extract_with_options_and_observer(
             manifest,
             install_root,
             ExtractionOptions::default(),
@@ -181,7 +293,36 @@ impl PackageExtractor {
         .await
     }
 
-    pub async fn extract_with_options<F>(
+    /// Extracts cached packages with a cache-retention policy and no progress notifications.
+    ///
+    /// See [`Self::extract_with_options_and_observer`] for the installation lifecycle.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same errors as [`Self::extract_with_options_and_observer`].
+    pub async fn extract_with_options(
+        &self,
+        manifest: PatchManifest,
+        install_root: impl AsRef<Path>,
+        options: ExtractionOptions,
+    ) -> Result<ExtractionReport> {
+        self.extract_with_options_and_observer(manifest, install_root, options, |_| {})
+            .await
+    }
+
+    /// Extracts local packages with an explicit cache-retention policy.
+    ///
+    /// Acquires the installation lock, verifies required volume sizes, rebuilds staging
+    /// work, applies ordered patches, and records the installed build. Does not load
+    /// or save a pinned manifest. Callbacks run on the blocking extraction worker;
+    /// see the [observer contract](crate#observers-and-async-execution).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for lock contention, incomplete cache, invalid patch chains or
+    /// paths, filesystem failures, invalid archives, failed deltas, or worker failure.
+    /// Cache verification uses sizes rather than content hashes.
+    pub async fn extract_with_options_and_observer<F>(
         &self,
         manifest: PatchManifest,
         install_root: impl AsRef<Path>,
@@ -202,7 +343,50 @@ impl PackageExtractor {
         .map_err(|error| Error::ExtractionTask(error.to_string()))?
     }
 
-    pub async fn download_and_extract<F>(
+    /// Streams downloads and extraction without progress notifications.
+    ///
+    /// See [`Self::download_and_extract_with_observer`] for the installation lifecycle.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same errors as [`Self::download_and_extract_with_observer`].
+    pub async fn download_and_extract(
+        &self,
+        downloader: AssetDownloader,
+        manifest: PatchManifest,
+        install_root: impl AsRef<Path>,
+        download_options: DownloadOptions,
+        extraction_options: ExtractionOptions,
+    ) -> Result<InstallationReport> {
+        self.download_and_extract_with_observer(
+            downloader,
+            manifest,
+            install_root,
+            download_options,
+            extraction_options,
+            |_| {},
+        )
+        .await
+    }
+
+    /// Streams package downloads and ordered extraction under the installation lock.
+    ///
+    /// Downloads later patches while extracting the current patch, with bounded
+    /// prefetching. A complete patch may exceed the prefetch threshold. Cache cleanup
+    /// controls both early volume release after successful patches and final removal.
+    /// Writes the installed-build record on success, but does not pin the supplied
+    /// manifest; high-level [`install`](crate::install) handles manifest persistence.
+    ///
+    /// Callbacks may run concurrently on download and blocking extraction workers.
+    /// Dropping the future stops pending async download work, but a started blocking
+    /// extraction task may continue; await completion before reusing its destination.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for lock contention, invalid patch chains, failed downloads,
+    /// filesystem, archive, delta, or background-task failures. On extraction failure,
+    /// pending downloads are cancelled before returning the error.
+    pub async fn download_and_extract_with_observer<F>(
         &self,
         downloader: AssetDownloader,
         manifest: PatchManifest,
@@ -382,7 +566,7 @@ impl PatchDownloads {
                 }
                 let progress = Arc::clone(&observer);
                 let result = downloader
-                    .download(assets, cache.clone(), options.clone(), move |event| {
+                    .download_with_observer(assets, cache.clone(), options.clone(), move |event| {
                         progress(InstallationEvent::Download(event));
                     })
                     .await;
@@ -1306,7 +1490,7 @@ mod tests {
         manifest.assets = assets;
         let result = tokio::time::timeout(
             Duration::from_secs(10),
-            PackageExtractor::new().download_and_extract(
+            PackageExtractor::new().download_and_extract_with_observer(
                 AssetDownloader::new().unwrap(),
                 manifest,
                 &root,
@@ -1433,7 +1617,7 @@ mod tests {
         let storage = installation_storage(&root).unwrap();
 
         let report = extractor
-            .download_and_extract(
+            .download_and_extract_with_observer(
                 AssetDownloader::new().unwrap(),
                 manifest,
                 &root,

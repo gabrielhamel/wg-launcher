@@ -141,4 +141,6 @@ changes to the same directory.
 The same workflows are available through the `wg_launcher` crate, with typed
 options, reports, and progress events for applications embedding the launcher.
 See the [library guide](docs/library.md) for API examples, event handling, and
-installation internals.
+installation internals. Generate the full API reference locally with
+`cargo doc --lib --no-deps --locked --open`; its landing page includes checked
+examples for embedding the library.

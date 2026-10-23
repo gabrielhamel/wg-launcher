@@ -7,16 +7,28 @@ use reqwest::Client;
 use std::{collections::HashMap, time::Duration};
 use url::Url;
 
+/// WGUS protocol version sent in metadata and patch-chain requests.
 pub const PROTOCOL_VERSION: &str = "100500.6969696";
 const INSTALLATION_ID: &str = "wg-launcher";
 const MAX_REDIRECTS: usize = 3;
 
+/// Reusable client for live WGUS-compatible metadata and full installation chains.
+///
+/// Supports the catalogs in [`Region`], including Lesta RU. Resolves transport URLs
+/// without downloading package contents. Use [`AssetDownloader`](crate::AssetDownloader)
+/// for transfers or the high-level workflows for installation lifecycle management.
 #[derive(Clone)]
 pub struct WgusClient {
     http: Client,
 }
 
 impl WgusClient {
+    /// Creates a protocol client with a 15-second connection timeout, 60-second
+    /// request timeout, and the crate version in its user agent.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Http`] if the HTTP client cannot be built.
     pub fn new() -> Result<Self> {
         let http = Client::builder()
             .connect_timeout(Duration::from_secs(15))
@@ -26,16 +38,38 @@ impl WgusClient {
         Ok(Self { http })
     }
 
+    /// Uses a caller-configured HTTP client without adding default client settings.
+    ///
+    /// Useful for application-specific TLS, timeout, proxy, or user-agent policies.
     pub fn with_http_client(http: Client) -> Self {
         Self { http }
     }
 
+    /// Fetches metadata for a region's configured publisher application.
+    ///
+    /// Does not fetch package contents or write local state.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for failed HTTP requests or invalid metadata XML.
     pub async fn metadata(&self, region: Region) -> Result<GameMetadata> {
         let product = region.product();
         let (_, metadata) = self.fetch_metadata(product.host, product.game_id).await?;
         Ok(metadata)
     }
 
+    /// Resolves a full installation manifest for a client variant and optional language.
+    ///
+    /// Client type matching is exact. Language is normalized; `None` selects the
+    /// publisher default. Requests component chains from version `0`, follows bounded
+    /// protocol host redirects, and resolves asset URLs using the first HTTP seed.
+    /// Omitted source versions are inferred per component, starting at `0`.
+    /// No packages are downloaded and no filesystem state is changed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error for HTTP/XML/URL failures, unknown client variants, unsupported
+    /// languages, missing patch chains or web seeds, or an exceeded redirect limit.
     pub async fn manifest(
         &self,
         region: Region,

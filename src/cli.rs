@@ -7,8 +7,8 @@ use std::{path::PathBuf, process::ExitCode, str::FromStr, sync::Arc};
 use wg_launcher::{
     BuildSelection, BuildSummary, DownloadAssetsEvent, DownloadAssetsOptions, DownloadOptions,
     ExtractEvent, ExtractOptions, InspectOptions, InstallEvent, InstallOptions, ListOptions,
-    PatchManifest, Region, StatusOptions, UpdateOptions, download, extract, inspect, install, list,
-    status, update,
+    PatchManifest, Region, StatusOptions, UpdateOptions, download_with_observer,
+    extract_with_observer, inspect, install_with_observer, list, status, update_with_observer,
 };
 
 #[derive(Debug, Parser)]
@@ -160,7 +160,7 @@ async fn run_inspect(args: InspectArgs) -> Result<(), Box<dyn std::error::Error>
 async fn run_download(args: DownloadArgs) -> Result<(), Box<dyn std::error::Error>> {
     let progress = Arc::new(std::sync::Mutex::new(None));
     let observed_progress = Arc::clone(&progress);
-    let result = download(
+    let result = download_with_observer(
         DownloadAssetsOptions {
             selection: args.build.into(),
             output: args.output,
@@ -200,7 +200,7 @@ async fn run_download(args: DownloadArgs) -> Result<(), Box<dyn std::error::Erro
 async fn run_extract(args: ExtractArgs) -> Result<(), Box<dyn std::error::Error>> {
     let progress = Arc::new(std::sync::Mutex::new(None));
     let observed_progress = Arc::clone(&progress);
-    let result = extract(
+    let result = extract_with_observer(
         ExtractOptions {
             path: game_path(args.directory)?,
         },
@@ -260,7 +260,7 @@ async fn run_update(args: UpdateArgs) -> Result<(), Box<dyn std::error::Error>> 
     let progress = Arc::new(std::sync::Mutex::new(None));
     let observed_progress = Arc::clone(&progress);
     let observed_loader = loader.clone();
-    let result = update(
+    let result = update_with_observer(
         UpdateOptions {
             path: game_path(args.path)?,
             download: DownloadOptions {
@@ -328,7 +328,7 @@ async fn run_list(args: ListArgs) -> Result<(), Box<dyn std::error::Error>> {
 async fn run_install(args: InstallArgs) -> Result<(), Box<dyn std::error::Error>> {
     let progress = Arc::new(std::sync::Mutex::new(None));
     let observed_progress = Arc::clone(&progress);
-    let result = install(
+    let result = install_with_observer(
         InstallOptions {
             selection: args.build.into(),
             output: args.output,

@@ -12,9 +12,13 @@ use tokio::{
     io::{AsyncWriteExt, BufWriter},
 };
 
+/// HTTP volume transfer policy. Defaults to three concurrent files and five attempts.
 #[derive(Debug, Clone)]
 pub struct DownloadOptions {
+    /// Maximum simultaneous file transfers; zero is treated as one.
     pub concurrency: usize,
+    /// Maximum attempts per file, including the initial request; zero becomes one.
+    /// Retries use a quadratic delay of 500 milliseconds times the attempt squared.
     pub attempts: usize,
 }
 
@@ -27,42 +31,80 @@ impl Default for DownloadOptions {
     }
 }
 
+/// Progress for an individual transport volume.
+///
+/// Names identify assets across concurrent transfers. Retried attempts may restart
+/// the event sequence. Byte counts describe the current attempt and include resumed
+/// prefixes. Size-based cache hits do not verify file contents.
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "event", rename_all = "snake_case")]
 pub enum DownloadEvent {
+    /// A network response is ready and a transfer attempt is starting.
     Started {
+        /// Relative transport volume name.
         name: String,
+        /// Expected total compressed volume size in bytes.
         size: u64,
+        /// Existing byte prefix retained for this attempt; zero when starting over.
         resumed_at: u64,
     },
+    /// Additional response bytes were written for the current attempt.
     Progress {
+        /// Relative transport volume name.
         name: String,
+        /// Bytes present so far, including the resumed prefix; not a per-event increment.
         downloaded: u64,
+        /// Expected total compressed volume size in bytes.
         size: u64,
     },
+    /// The volume has the expected size and was promoted to its final filename.
     Completed {
+        /// Relative transport volume name.
         name: String,
+        /// Expected total compressed volume size in bytes.
         size: u64,
     },
+    /// A final file already had the expected size; no transfer was needed.
     Skipped {
+        /// Relative transport volume name.
         name: String,
+        /// Expected total compressed volume size in bytes.
         size: u64,
     },
 }
 
+/// Totals for successful downloads and cache hits.
+///
+/// No report is returned if any selected file ultimately fails.
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct DownloadReport {
+    /// Volumes completed or promoted from complete partial files.
+    /// A promoted partial file counts here even when no network request was needed.
     pub downloaded_files: usize,
+    /// Volumes whose final files already had the expected size.
     pub skipped_files: usize,
+    /// New bytes retained by successful file attempts, excluding resumed prefixes
+    /// and skipped volumes. This is not total network traffic across failed attempts.
     pub downloaded_bytes: u64,
 }
 
+/// Reusable HTTP downloader for transport volumes.
+///
+/// Uses expected file sizes to reuse or validate files, without hashing their
+/// contents. Does not resolve manifests, pin state, extract packages, or acquire
+/// an installation lock. Prefer [`download`](crate::download) for the package workflow.
 #[derive(Clone)]
 pub struct AssetDownloader {
     http: Client,
 }
 
 impl AssetDownloader {
+    /// Creates a downloader with a 15-second connection timeout, 60-second read
+    /// timeout, and the crate version in its user agent.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Http`] if the HTTP client cannot be built.
     pub fn new() -> Result<Self> {
         let http = Client::builder()
             .connect_timeout(Duration::from_secs(15))
@@ -72,11 +114,49 @@ impl AssetDownloader {
         Ok(Self { http })
     }
 
+    /// Uses a caller-configured HTTP client.
+    ///
+    /// The caller controls timeouts, TLS, proxies, and user agent; default constructor
+    /// settings are not added to this client.
     pub fn with_http_client(http: Client) -> Self {
         Self { http }
     }
 
-    pub async fn download<F>(
+    /// Downloads volumes without progress notifications.
+    ///
+    /// Uses the same retry, resume, and cache behavior as
+    /// [`Self::download_with_observer`]. Does not print terminal output.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same errors as [`Self::download_with_observer`].
+    pub async fn download(
+        &self,
+        assets: Vec<Asset>,
+        output: impl AsRef<Path>,
+        options: DownloadOptions,
+    ) -> Result<DownloadReport> {
+        self.download_with_observer(assets, output, options, |_| {})
+            .await
+    }
+
+    /// Transfers `assets` beneath `output`, retaining resumable partial files.
+    ///
+    /// Asset names must be safe relative paths. Matching final file sizes are reused;
+    /// incomplete final files are removed. Partial files use a `.part` suffix and HTTP
+    /// range requests; a server returning a full response causes a restart.
+    /// No installation lock is acquired; callers must coordinate destination access.
+    ///
+    /// Observers can run concurrently across files. Retries may emit repeated start
+    /// events, and byte progress includes the resumed prefix for that attempt. The
+    /// method waits for all selected transfers before reporting any failure.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::DownloadRetries`] with the final per-file error when attempts
+    /// are exhausted, including unsafe paths, I/O, HTTP, and size mismatch failures.
+    /// Successfully completed files and partial files are retained after failure.
+    pub async fn download_with_observer<F>(
         &self,
         assets: Vec<Asset>,
         output: impl AsRef<Path>,

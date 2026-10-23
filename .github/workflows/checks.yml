@@ -41,3 +41,23 @@ jobs:
 
       - name: Tests
         run: cargo test --locked --verbose
+
+  documentation:
+    name: Rust documentation
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -D warnings
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-bin: false
+
+      - name: Build API documentation
+        run: cargo doc --lib --no-deps --all-features --locked
+
+      - name: Check documentation examples
+        run: cargo test --doc --all-features --locked
