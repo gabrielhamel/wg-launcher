@@ -1,111 +1,144 @@
 # wg-launcher
 
-A Rust library and CLI for discovering, downloading, and installing World of
-Tanks assets directly from the Wargaming Update Service (WGUS).
+Discover, download, install, and update World of Tanks assets from your terminal.
+Supports Wargaming regions, Common Test, and Lesta RU.
 
-It does **not** authenticate a player or launch the game yet.
+![Installing World of Tanks: downloading, extracting, applying patches, and completing the installation](docs/assets/install.gif)
 
-## Usage
+The CLI runs on Windows, Linux, and macOS. The supported game payload is
+Windows/x64. Player authentication and launching the game are outside its
+current scope.
+
+## Install the CLI
+
+Build and install from source with Rust and Cargo:
 
 ```console
-wg-launcher list
-wg-launcher list --region eu
+git clone https://github.com/gabrielhamel/wg-launcher.git
+cd wg-launcher
+cargo install --path . --locked
 ```
 
-Use `list` to compare the available regions, editions, versions, platforms,
-architectures, download sizes, and languages in a terminal-friendly table.
+No external archive or patching utilities are required.
 
-Inspect the default EU/SD selection without changing files, or override its
-selection options:
+## Quick start
+
+Commands that select a new build (`inspect`, `download`, and `install`) default
+to EU/SD. Customize the build with `--region` and `--client-type`, or use
+`--language` to override the region's default language.
+
+Inspect a build, install it into a directory of your choice, then check its status:
 
 ```console
 wg-launcher inspect
-wg-launcher inspect --region eu --client-type sd --language EN
+wg-launcher install --output ./world-of-tanks
+wg-launcher status --path ./world-of-tanks
 ```
 
-The inspection includes the available parts and a patch-chain table with each
-source and target version, package count, and compressed download size.
+Run `wg-launcher update --path ./world-of-tanks` when a newer build is available.
 
-The pipeline can be run as separate resumable stages:
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `list` | Compare available builds, sizes, and languages. |
+| `inspect` | Show a build's components and patch chain without changing files. |
+| `download` | Save packages for a staged or offline installation. |
+| `extract` | Install a complete local package cache. |
+| `install` | Download and install in one pipeline. |
+| `status` | Compare the installed version with the latest published build. |
+| `update` | Update an existing installation in place. |
+
+Use `wg-launcher <command> --help` for all options.
+
+### Discover and inspect builds
 
 ```console
-wg-launcher download --region eu --client-type sd --language EN
-cd wot-eu-production-2.4.1.5493-windows-x64-sd-en
-wg-launcher extract
-# Or, from elsewhere:
-wg-launcher extract wot-eu-production-2.4.1.5493-windows-x64-sd-en
+wg-launcher list
+wg-launcher list --region ru
+wg-launcher inspect --region eu --client-type hd --language FR
 ```
 
-Use `--output /path/to/game` with `download` to choose its destination.
-`download` also accepts repeatable `--part <name>` filters. `extract` takes an
-optional downloaded game directory and otherwise uses the current directory.
-It reads the pinned manifest from `.download`, so it has no region, client type,
-or language arguments. Extraction requires the complete package set for that
-manifest.
+`list` queries all regions by default: `eu`, `na`, `asia`, `cn`, `ru`, and `ct`.
+Its table shows versions, payload targets, compressed sizes, and languages;
+`*` marks each region's default language.
 
-Without any `--part`, `download` retrieves every package required by the
-selected build. Use `--part` only when intentionally staging specific
-components.
+`inspect` shows the selected build and each patch's part,
+source version, target version, package count, and compressed size.
 
-Running `install` starts the download and installation immediately:
+### Install a game build
 
 ```console
-wg-launcher install --region eu --client-type sd --language EN
+wg-launcher install
+wg-launcher install --region eu --client-type hd --language FR --output ./world-of-tanks
 ```
 
-The default folder identifies the initially downloaded build, for example:
+Without `--output`, the directory name includes the region, channel, initial
+version, payload platform, architecture, client type, and language. Updates keep
+that original directory name.
 
-```text
-wot-eu-production-2.4.1.5493-windows-x64-sd-en
+Downloading overlaps extraction, and packages are released after their patch
+has been extracted successfully. `--concurrency` controls simultaneous package
+downloads and defaults to `3`.
+
+### Download and extract separately
+
+```console
+wg-launcher download --output ./world-of-tanks
+wg-launcher extract ./world-of-tanks
 ```
 
-Later updates modify that same folder; they do not rename it when the installed
-version changes.
+`download` keeps packages and a pinned manifest in the destination's `.download`
+directory. You can move the whole folder to another machine before extracting.
+`extract` reads that local manifest without querying the catalog. Its optional
+directory argument defaults to the current directory.
 
-From an installed game directory, check or apply updates without arguments:
+To stage individual components, use the part names shown by `inspect`:
+
+```console
+wg-launcher download --output ./world-of-tanks --part client --part locale
+```
+
+Without `--part`, every required package is downloaded. Extraction requires the
+complete package set, so rerun `download` without a filter before extracting a
+partially downloaded build.
+
+### Check and apply updates
+
+From the game directory:
 
 ```console
 wg-launcher status
 wg-launcher update
 ```
 
-From any other directory, identify the game directory explicitly:
+Or specify its location:
 
 ```console
-wg-launcher status --path /path/to/world-of-tanks
-wg-launcher update --path /path/to/world-of-tanks
+wg-launcher status --path ./world-of-tanks
+wg-launcher update --path ./world-of-tanks
 ```
 
-An installation folder is standalone and carries the launcher state needed to
-resume or update it:
+Both commands use the installation's recorded region, client type, and language.
+Updates follow the publisher's installation chain and may download more than
+only the changed components.
 
-- `.download/` contains downloaded package volumes and the pinned manifest;
-- `.installing/` contains temporary extraction work;
-- `.wg-launcher.json` records the installed build;
-- `.wg-launcher.lock` prevents concurrent mutation of the same folder.
+## Resume or move an installation
 
-Completed `download` commands keep `.download`. A successful `extract`,
-`install`, or `update` removes `.download` and `.installing`; interrupted work
-is retained or safely reconstructed so the command can be retried. Moving the
-whole installation folder preserves its installed-version metadata and any
-resumable package cache without depending on user-home storage.
+Retry an interrupted command with the same destination. Complete packages are
+reused, and partial downloads resume when the server supports it. Packages
+already released after extraction may need to be downloaded again during a
+retry.
 
-During `install` and `update`, downloading continues in parallel with ordered
-extraction. Downloads pause once at least 8 GiB of later patches is queued,
-then resume as extraction advances. A patch may exceed this threshold because
-all of its volumes are needed for extraction. The current patch is excluded
-from that buffer; its volumes are deleted only after successful extraction.
+Successful installation or extraction cleans up `.download` and `.installing`.
+Keep `.wg-launcher.json` alongside the game files: it records the installed
+build for `status` and `update`. Moving the whole folder preserves its identity
+and any remaining download cache. A per-installation lock prevents concurrent
+changes to the same directory.
 
-## Lower-level protocol example
+## Rust library
 
-```rust,no_run
-use wg_launcher::{Region, WgusClient};
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let client = WgusClient::new()?;
-    let manifest = client.manifest(Region::Eu, "hd", Some("FR")).await?;
-    println!("{} requires {} bytes", manifest.version, manifest.download_size());
-    Ok(())
-}
-```
+The same workflows are available through the `wg_launcher` crate, with typed
+options, reports, and progress events for applications embedding the launcher.
+See the [library guide](docs/library.md) for API examples, event handling, and
+installation internals.
