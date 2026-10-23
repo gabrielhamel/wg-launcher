@@ -123,7 +123,7 @@ EU/SD selection when invoked without arguments.
 
 `extract` is local-only: it takes an optional positional installation
 directory, defaults to the current directory, and reads the pinned manifest
-from `.download`. It must not expose region, client type, or language options
+from `.wg-launcher/.download`. It must not expose region, client type, or language options
 or query the live catalog to decide what cached packages mean.
 
 `inspect` should expose enough patch detail to make component downloads
@@ -158,12 +158,18 @@ of that crate.
 
 ### An installation directory is standalone
 
-All launcher-owned state for an installation lives alongside its game files:
+All CLI- and library-owned installation files must live inside
+`<installation>/.wg-launcher/`:
 
-- package volumes and the pinned manifest live in `.download`;
-- temporary extraction work lives in `.installing`;
-- installed build identity lives in `.wg-launcher.json`;
-- `.wg-launcher.lock` prevents concurrent mutation.
+- package volumes and the pinned manifest live in `.wg-launcher/.download`;
+- temporary extraction work lives in `.wg-launcher/.installing`;
+- installed build identity lives in `.wg-launcher/.wg-launcher.json`;
+- `.wg-launcher/.wg-launcher.lock` prevents concurrent mutation.
+
+This includes all future metadata, logs, caches, locks, temporary files, and
+replacement backups. Only game payload files belong outside `.wg-launcher`.
+Reserve this directory against archive writes. Preserve it during successful
+cleanup; remove only cache and staging contents.
 
 Do not add a dependency on user-home cache or data directories. A user must be
 able to move the complete folder to another machine or location and retain its
@@ -179,18 +185,18 @@ example:
 
 An update must target that same directory instead of creating or renaming it
 for the newer version. The folder name records its initial download identity;
-`.wg-launcher.json` records its current installed version.
+`.wg-launcher/.wg-launcher.json` records its current installed version.
 
 ### Installation is resumable and storage-conscious
 
 The installation pipeline is intentionally integrated:
 
 1. resolve and pin the manifest;
-2. download a patch's package volumes into `.download`;
+2. download a patch's package volumes into `.wg-launcher/.download`;
 3. begin downloading the next patch when possible;
 4. extract or apply the current patch;
 5. delete that patch's package volumes only after successful extraction;
-6. finalize the installation and write `.wg-launcher.json`.
+6. finalize the installation and write `.wg-launcher/.wg-launcher.json`.
 
 This overlaps network and extraction work while limiting peak disk usage.
 Do not change it back into “download everything, then extract everything.”
@@ -217,7 +223,7 @@ same installation.
 
 ## Status and update model
 
-`.wg-launcher.json` is launcher state stored inside the game directory. It
+`.wg-launcher/.wg-launcher.json` is launcher state stored inside the game directory. It
 records the game ID, region, channel, installed version, client type, language,
 payload platform, architecture, and metadata version.
 

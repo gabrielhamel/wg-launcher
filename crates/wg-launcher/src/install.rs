@@ -13,15 +13,15 @@ use std::{
     time::{Duration, Instant},
 };
 
-/// Directory beneath an installation root containing transport volumes and the pinned manifest.
-pub const DOWNLOAD_CACHE_DIRECTORY: &str = ".download";
+/// Installation-relative directory containing transport volumes and the pinned manifest.
+pub const DOWNLOAD_CACHE_DIRECTORY: &str = ".wg-launcher/.download";
 /// Pinned manifest filename inside [`DOWNLOAD_CACHE_DIRECTORY`].
 pub const DOWNLOAD_MANIFEST_FILE: &str = ".wg-manifest.json";
 /// Directory beneath an installation root used for temporary extraction and delta work.
-pub const STAGING_DIRECTORY: &str = ".installing";
-/// Installed-build JSON filename beneath an installation root.
-pub const INSTALL_MARKER_FILE: &str = ".wg-launcher.json";
-const INSTALL_LOCK_FILE: &str = ".wg-launcher.lock";
+pub const STAGING_DIRECTORY: &str = ".wg-launcher/.installing";
+/// Installed-build JSON path relative to an installation root.
+pub const INSTALL_MARKER_FILE: &str = ".wg-launcher/.wg-launcher.json";
+const INSTALL_LOCK_FILE: &str = ".wg-launcher/.wg-launcher.lock";
 // Stop starting patches once this much data is queued ahead of the current
 // extraction. One patch may cross the threshold: it must be downloaded in full
 // before it can be extracted, even when it is larger than the buffer.
@@ -205,7 +205,7 @@ pub struct InstallationReport {
 pub struct ExtractionOptions {
     /// Remove the cache on successful finalization and release each patch's volumes
     /// after successful extraction. When `false`, retain
-    /// packages; temporary `.installing` work is still removed after success.
+    /// packages; temporary `.wg-launcher/.installing` work is still removed after success.
     pub clean_download_cache: bool,
 }
 
@@ -268,7 +268,7 @@ impl PackageExtractor {
     /// Extracts an already downloaded manifest with default cache cleanup.
     ///
     /// Equivalent to [`Self::extract_with_options_and_observer`] with [`ExtractionOptions::default`].
-    /// Reads volumes from `install_root/.download` without network access and writes
+    /// Reads volumes from `install_root/.wg-launcher/.download` without network access and writes
     /// the installed-build record on success.
     ///
     /// # Errors
@@ -623,7 +623,7 @@ struct InstallationLock {
 
 impl InstallationLock {
     fn acquire(storage: &InstallationStorage, install_root: &Path) -> Result<Self> {
-        fs::create_dir_all(install_root)?;
+        fs::create_dir_all(install_root.join(".wg-launcher"))?;
         let file = OpenOptions::new()
             .create(true)
             .truncate(false)
@@ -676,7 +676,7 @@ fn extract_patch_sync(
     fs::create_dir_all(&patch_dir)?;
     extract_archive(patch, paths.cache, &patch_dir, observer)?;
     let mut report = ExtractionReport::default();
-    apply_patch_directory(&patch_dir, paths.game, observer, &mut report)?;
+    apply_patch_directory(&patch_dir, paths.game, paths.work, observer, &mut report)?;
     fs::remove_dir_all(&patch_dir)?;
     Ok(report.applied_deltas)
 }
@@ -918,6 +918,7 @@ impl Read for ExtractionReader<'_> {
 fn apply_patch_directory(
     patch_dir: &Path,
     game: &Path,
+    work: &Path,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
     report: &mut ExtractionReport,
 ) -> Result<()> {
@@ -930,7 +931,7 @@ fn apply_patch_directory(
         observer(ExtractionEvent::InstallingFile {
             path: relative.to_string_lossy().into_owned(),
         });
-        replace_file(source, &target)?;
+        replace_file(source, &target, &work.join("replacement-backup"))?;
     }
     for delta in files.iter().filter(|path| delta_target(path).is_some()) {
         let relative = delta
@@ -945,14 +946,15 @@ fn apply_patch_directory(
         observer(ExtractionEvent::ApplyingDelta {
             path: target_relative.to_string_lossy().into_owned(),
         });
-        apply_delta(&target, delta)?;
+        apply_delta(&target, delta, work)?;
         report.applied_deltas += 1;
     }
     Ok(())
 }
 
-fn apply_delta(target: &Path, delta: &Path) -> Result<()> {
-    let temporary = target.with_extension("wg-launcher-new");
+fn apply_delta(target: &Path, delta: &Path, work: &Path) -> Result<()> {
+    fs::create_dir_all(work)?;
+    let temporary = work.join("delta-output");
     if temporary.exists() {
         fs::remove_file(&temporary)?;
     }
@@ -968,7 +970,7 @@ fn apply_delta(target: &Path, delta: &Path) -> Result<()> {
     if !fs::metadata(&temporary).is_ok_and(|metadata| metadata.len() > 0) {
         return Err(Error::EmptyDeltaOutput(temporary));
     }
-    replace_file(&temporary, target)
+    replace_file(&temporary, target, &work.join("replacement-backup"))
 }
 
 fn apply_vcdiff(target: &Path, delta: &Path, output: &Path) -> Result<()> {
@@ -1015,13 +1017,12 @@ fn write_marker(manifest: &PatchManifest, marker: &Path) -> Result<()> {
     Ok(())
 }
 
-fn replace_file(source: &Path, target: &Path) -> Result<()> {
+fn replace_file(source: &Path, target: &Path, backup: &Path) -> Result<()> {
     if let Some(parent) = target.parent() {
         fs::create_dir_all(parent)?;
     }
-    let backup = target.with_extension("wg-launcher-old");
     if target.exists() {
-        fs::rename(target, &backup)?;
+        fs::rename(target, backup)?;
     }
     match fs::rename(source, target) {
         Ok(()) => {
@@ -1032,7 +1033,7 @@ fn replace_file(source: &Path, target: &Path) -> Result<()> {
         }
         Err(error) => {
             if backup.exists() {
-                let _ = fs::rename(&backup, target);
+                let _ = fs::rename(backup, target);
             }
             Err(error.into())
         }
@@ -1099,7 +1100,16 @@ fn safe_relative_path(name: &str) -> Result<PathBuf> {
 
 fn safe_archive_path(name: &str) -> Result<PathBuf> {
     let normalized = name.replace('\\', "/");
-    safe_relative_path(&normalized)
+    let relative = safe_relative_path(&normalized)?;
+    if relative.components().next().is_some_and(|component| {
+        component
+            .as_os_str()
+            .to_string_lossy()
+            .eq_ignore_ascii_case(".wg-launcher")
+    }) {
+        return Err(Error::UnsafeAssetPath(name.to_owned()));
+    }
+    Ok(relative)
 }
 
 #[derive(Debug)]
@@ -1267,6 +1277,39 @@ mod tests {
         assert_eq!(installed.region, manifest.region);
         assert_eq!(installed.client_type, manifest.client_type);
         assert_eq!(installed.language, manifest.language);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[test]
+    fn archives_cannot_overwrite_launcher_state() {
+        for name in [
+            ".wg-launcher/.wg-launcher.json",
+            ".WG-LAUNCHER/file",
+            ".wg-launcher\\.download\\package",
+        ] {
+            assert!(matches!(
+                safe_archive_path(name),
+                Err(Error::UnsafeAssetPath(_))
+            ));
+        }
+        assert_eq!(
+            safe_archive_path("res/packages/game.pkg").unwrap(),
+            Path::new("res/packages/game.pkg")
+        );
+    }
+
+    #[test]
+    fn failed_replacement_restores_game_file_and_keeps_backups_in_work_directory() {
+        let root = test_directory("replacement-rollback");
+        let work = root.join(STAGING_DIRECTORY);
+        fs::create_dir_all(&work).unwrap();
+        let target = root.join("game.pkg");
+        fs::write(&target, b"original").unwrap();
+        let backup = work.join("replacement-backup");
+        assert!(replace_file(&work.join("missing"), &target, &backup).is_err());
+        assert_eq!(fs::read(&target).unwrap(), b"original");
+        assert!(!backup.exists());
+        assert!(!target.with_extension("wg-launcher-old").exists());
         fs::remove_dir_all(root).unwrap();
     }
 
@@ -1773,7 +1816,7 @@ mod tests {
         )
         .unwrap();
 
-        apply_delta(&target, &delta).unwrap();
+        apply_delta(&target, &delta, &root.join(STAGING_DIRECTORY)).unwrap();
 
         assert_eq!(fs::read(&target).unwrap(), [1_u8, 2, 3, 4, 5, 6, 7]);
         fs::remove_dir_all(root).unwrap();
@@ -1791,14 +1834,14 @@ mod tests {
             44, 2, 21, 19, 5, 0, 5, 5, 0, 12, 5, 0, 0, 2, 1, 6, 166, 2, 41, 19, 5, 0,
         ];
         fs::write(&delta, patch).unwrap();
-        apply_delta(&target, &delta).unwrap();
+        apply_delta(&target, &delta, &root.join(STAGING_DIRECTORY)).unwrap();
         assert_eq!(fs::read(&target).unwrap(), b"helloworld");
 
         fs::write(&target, b"worldhello").unwrap();
         let mut corrupt = patch;
         corrupt[39] ^= 1;
         fs::write(&delta, corrupt).unwrap();
-        let error = apply_delta(&target, &delta).unwrap_err();
+        let error = apply_delta(&target, &delta, &root.join(STAGING_DIRECTORY)).unwrap_err();
         assert!(matches!(error, Error::DeltaDecode { .. }));
         assert!(error.to_string().contains("checksum mismatch"));
         assert_eq!(fs::read(&target).unwrap(), b"worldhello");
@@ -1814,7 +1857,7 @@ mod tests {
         fs::write(&target, b"original").unwrap();
         fs::write(&delta, [0xd6, 0xc3, 0xc4, 0, 0, 0xff]).unwrap();
         assert!(matches!(
-            apply_delta(&target, &delta),
+            apply_delta(&target, &delta, &root.join(STAGING_DIRECTORY)),
             Err(Error::DeltaDecode { .. })
         ));
         assert_eq!(fs::read(&target).unwrap(), b"original");
@@ -1842,7 +1885,7 @@ mod tests {
         fast_rsync::diff(&indexed, after, &mut delta_bytes).unwrap();
         fs::write(&delta, delta_bytes).unwrap();
 
-        apply_delta(&target, &delta).unwrap();
+        apply_delta(&target, &delta, &root.join(STAGING_DIRECTORY)).unwrap();
 
         assert_eq!(fs::read(&target).unwrap(), after);
         fs::remove_dir_all(root).unwrap();

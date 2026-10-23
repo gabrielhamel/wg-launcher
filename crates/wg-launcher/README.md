@@ -144,17 +144,29 @@ provide their own presentation.
 
 ## Installation storage and lifecycle
 
-All launcher state lives inside the installation directory:
+All launcher state lives in `.wg-launcher` inside the installation directory:
 
 | Path | Purpose |
 | --- | --- |
-| `.download/` | Transport package volumes and the pinned `.wg-manifest.json` |
-| `.installing/` | Temporary extraction and patch work |
-| `.wg-launcher.json` | Installed build identity |
-| `.wg-launcher.lock` | Per-installation mutation lock |
+| `.wg-launcher/.download/` | Transport package volumes and the pinned `.wg-manifest.json` |
+| `.wg-launcher/.installing/` | Temporary extraction and patch work |
+| `.wg-launcher/.wg-launcher.json` | Installed build identity |
+| `.wg-launcher/.wg-launcher.lock` | Per-installation mutation lock |
+
+All files created by the CLI or library for an installation, including future
+metadata, logs, caches, locks, temporary outputs, and replacement backups, belong
+under `<installation>/.wg-launcher/`. Game payload files remain in the game tree.
+The `.wg-launcher` directory is reserved and archive entries cannot write into it.
+Successful cleanup removes only its cache and temporary work; identity and lock
+remain so the installation stays portable and usable by `status` and `update`.
+
+The exported `DOWNLOAD_CACHE_DIRECTORY`, `STAGING_DIRECTORY`, and
+`INSTALL_MARKER_FILE` constants are paths relative to the installation root and
+include the `.wg-launcher/` prefix. Callers should join them directly to the
+installation root. `DOWNLOAD_MANIFEST_FILE` is a filename within the cache.
 
 The default directory name preserves the initial selection and version. Updates
-keep that directory and write the current identity to `.wg-launcher.json`.
+keep that directory and write the current identity to `.wg-launcher/.wg-launcher.json`.
 `InstalledBuild` records the game ID, region, channel, version, client type,
 language, payload platform, architecture, and metadata version.
 

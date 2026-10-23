@@ -125,7 +125,7 @@
 //! # Staged and offline installation
 //!
 //! [`download()`] pins the complete manifest and saves transport volumes in
-//! `.download`. An empty [`DownloadAssetsOptions::parts`] selects all required
+//! `.wg-launcher/.download`. An empty [`DownloadAssetsOptions::parts`] selects all required
 //! packages. A filter downloads only matching components; complete the package
 //! set before extracting. Move the entire installation directory to transfer
 //! the cache to another machine.
@@ -168,15 +168,25 @@
 //!
 //! # Storage, retries, and updates
 //!
-//! All launcher-owned state lives beside the game files:
+//! All CLI- and library-owned installation files live under `.wg-launcher/`:
 //!
 //! | Path within installation | Purpose |
 //! | --- | --- |
-//! | `.download/.wg-manifest.json` | Pinned [`PatchManifest`] |
-//! | `.download/` | Complete and partial transport volumes |
-//! | `.installing/` | Temporary archive and delta work |
-//! | `.wg-launcher.json` | Serialized [`InstalledBuild`] identity |
-//! | `.wg-launcher.lock` | Extraction and integrated installation mutation lock |
+//! | `.wg-launcher/.download/.wg-manifest.json` | Pinned [`PatchManifest`] |
+//! | `.wg-launcher/.download/` | Complete and partial transport volumes |
+//! | `.wg-launcher/.installing/` | Temporary archive and delta work |
+//! | `.wg-launcher/.wg-launcher.json` | Serialized [`InstalledBuild`] identity |
+//! | `.wg-launcher/.wg-launcher.lock` | Extraction and integrated installation mutation lock |
+//!
+//! All files created by the CLI or library for an installation, including future
+//! metadata, logs, caches, locks, temporary outputs, and replacement backups, belong
+//! under `<installation>/.wg-launcher/`. Game payload files remain in the game tree.
+//! The `.wg-launcher` directory is reserved and archive entries cannot write into it.
+//! Successful cleanup removes only its cache and temporary work; identity and lock
+//! remain so the installation stays portable and usable by `status` and `update`.
+//!
+//! The exported storage path constants include `.wg-launcher/`; join them directly
+//! to the installation root. [`DOWNLOAD_MANIFEST_FILE`] is a cache filename.
 //!
 //! [`install()`] overlaps later downloads with ordered patch extraction. A patch's
 //! packages are released only after successful extraction. Successful high-level
