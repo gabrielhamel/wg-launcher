@@ -6,6 +6,15 @@
 //! target Windows/x64. Player authentication and launching the game are outside
 //! its scope.
 //!
+//! # Package boundary
+//!
+//! Product decision: this is a library-only package. Terminal parsing, tables,
+//! and progress rendering live in the separate `wg-launcher-cli` package, which
+//! depends on this public API. Library consumers do not depend on those terminal
+//! components. The Rust import remains `wg_launcher`; a local path dependency
+//! must point to `crates/wg-launcher` inside the checkout rather than its workspace
+//! root. The CLI still installs the `wg-launcher` executable.
+//!
 //! # Start with the high-level workflows
 //!
 //! | Workflow | Input | Successful result |

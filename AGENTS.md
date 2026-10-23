@@ -22,10 +22,29 @@ payload; do not confuse the launcher's host OS with the payload platform.
 
 ## Architectural philosophy
 
+### Workspace package boundaries
+
+The root is a virtual Cargo workspace with two packages:
+
+- `crates/wg-launcher`: library-only package `wg-launcher`, imported as `wg_launcher`.
+- `crates/wg-launcher-cli`: binary package `wg-launcher-cli`, executable `wg-launcher`.
+
+Keep library behavior and its dependencies in the library package. CLI-only
+crates such as `clap`, `comfy-table`, and `indicatif` belong exclusively to the
+CLI package. The CLI may access only the library's public API; the library must
+never depend on the CLI. Each package owns its README, source, and license;
+CLI assets live under `crates/wg-launcher-cli/docs/assets`.
+
+Both packages are workspace defaults. Use `--workspace` for full validation and
+`-p wg-launcher` for library-only documentation. Install from source with
+`cargo install --path crates/wg-launcher-cli --locked`. Release both packages
+with `cargo publish --workspace --locked`; keep the shared package version and
+the CLI's versioned path dependency synchronized before releasing.
+
 ### The library owns behavior; the CLI owns presentation
 
 The crate must remain usable by a future GUI without invoking or parsing the
-CLI. High-level workflows live in the library and are exported from `lib.rs`:
+CLI. High-level workflows live in the library and are exported from `crates/wg-launcher/src/lib.rs`:
 
 - `list(ListOptions)`
 - `inspect(InspectOptions)`
@@ -35,16 +54,16 @@ CLI. High-level workflows live in the library and are exported from `lib.rs`:
 - `status(StatusOptions)`
 - `update(UpdateOptions)`
 
-The CLI in `src/cli.rs` should only:
+The CLI in `crates/wg-launcher-cli/src/cli.rs` should only:
 
 - parse human input;
 - translate arguments into the library option types;
 - render tables, spinners, progress bars, summaries, and errors;
 - call the high-level library functions.
 
-`src/main.rs` is only the executable bootstrap. Keep it limited to runtime
+`crates/wg-launcher-cli/src/main.rs` is only the executable bootstrap. Keep it limited to runtime
 setup and `cli::run()`; command definitions and rendering belong in
-`src/cli.rs` and `src/progress.rs`.
+`crates/wg-launcher-cli/src/cli.rs` and `crates/wg-launcher-cli/src/progress.rs`.
 
 Do not move terminal formatting, `indicatif` objects, prompts, or process exit
 behavior into the library. Conversely, do not reproduce catalog, networking,
@@ -80,8 +99,8 @@ must remain documented, rustdoc links must resolve, and examples must compile.
 For library API or documentation changes, also run:
 
 ```console
-RUSTDOCFLAGS="-D warnings" cargo doc --lib --no-deps --all-features --locked
-cargo test --doc --all-features --locked
+RUSTDOCFLAGS="-D warnings" cargo doc -p wg-launcher --lib --no-deps --all-features --locked
+cargo test -p wg-launcher --doc --all-features --locked
 ```
 
 ### Keep the CLI direct and deliberately small
@@ -215,7 +234,7 @@ migration design.
 
 ## Catalog and protocol rules
 
-Catalog entries live in `src/catalog.rs`. A region is more than a display
+Catalog entries live in `crates/wg-launcher/src/catalog.rs`. A region is more than a display
 label: it binds a publisher host, application ID, and channel. When adding or
 changing one:
 
@@ -233,7 +252,7 @@ uses:
 - application ID: `MT.RU.PRODUCTION`
 - CLI region: `ru` (alias `russia`)
 
-Lesta's install chain omits `version_from` on patches. `src/service.rs`
+Lesta's install chain omits `version_from` on patches. `crates/wg-launcher/src/service.rs`
 normalizes that compatible representation: the first patch for a component
 starts at `0`, and a later patch starts at the previous patch's `version_to`.
 Preserve the explicit value when a publisher provides one. This normalization
@@ -265,17 +284,17 @@ the CLI.
 
 ## File responsibilities
 
-- `src/catalog.rs`: regions and publisher product endpoints.
-- `src/main.rs`: minimal async executable bootstrap.
-- `src/service.rs`: WGUS-compatible HTTP/XML protocol and manifest building.
-- `src/model.rs`: protocol-independent public models and stable output naming.
-- `src/download.rs`: resumable, concurrent package transfer.
-- `src/install.rs`: patch ordering, extraction, deltas, local state, locks,
+- `crates/wg-launcher/src/catalog.rs`: regions and publisher product endpoints.
+- `crates/wg-launcher-cli/src/main.rs`: minimal async executable bootstrap.
+- `crates/wg-launcher/src/service.rs`: WGUS-compatible HTTP/XML protocol and manifest building.
+- `crates/wg-launcher/src/model.rs`: protocol-independent public models and stable output naming.
+- `crates/wg-launcher/src/download.rs`: resumable, concurrent package transfer.
+- `crates/wg-launcher/src/install.rs`: patch ordering, extraction, deltas, local state, locks,
   cleanup, and the streaming install pipeline.
-- `src/launcher.rs`: high-level list/inspect/download/extract/install/status/update workflows.
-- `src/cli.rs`: argument parsing and human-readable command output.
-- `src/progress.rs`: terminal-only progress rendering.
-- `src/lib.rs`: the public library contract.
+- `crates/wg-launcher/src/launcher.rs`: high-level list/inspect/download/extract/install/status/update workflows.
+- `crates/wg-launcher-cli/src/cli.rs`: argument parsing and human-readable command output.
+- `crates/wg-launcher-cli/src/progress.rs`: terminal-only progress rendering.
+- `crates/wg-launcher/src/lib.rs`: the public library contract.
 
 Respect these boundaries. If a change seems to require crossing them, first
 consider whether a model, option, report, or event should be extended instead.
@@ -298,10 +317,10 @@ Before handing off a code change, run the checks appropriate to its scope. The
 normal full validation is:
 
 ```console
-cargo fmt --check
-cargo test --locked
-cargo clippy --all-targets --all-features --locked -- -D warnings
-cargo build --locked
+cargo fmt --all --check
+cargo test --workspace --locked
+cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+cargo build --workspace --locked
 git diff --check
 ```
 
@@ -309,8 +328,8 @@ After every code-editing operation or coherent editing batch, the minimum
 mandatory validation is:
 
 ```console
-cargo fmt
-cargo check --locked
+cargo fmt --all
+cargo check --workspace --locked
 ```
 
 Fix formatting and compilation errors immediately before continuing. Do not

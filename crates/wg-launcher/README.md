@@ -1,10 +1,19 @@
-# Rust library
+# wg-launcher Rust library
 
-[Back to the README](../README.md)
+[Back to the workspace README](../../README.md)
 
 `wg_launcher` exposes the launcher's workflows independently of the CLI. A GUI
 or another application can use typed options, results, and events without
 invoking a subprocess or parsing terminal output.
+
+## Package boundary
+
+Product decision: `wg-launcher` is a library-only package, separate from the
+`wg-launcher-cli` terminal application. Consumers keep using `wg_launcher` and
+the same public API without depending on argument parsers, terminal tables, or
+progress bars. The CLI depends on this public API and owns all presentation.
+The workspace root is not a package; local path dependencies must point to
+`crates/wg-launcher`. The registry dependency remains `wg-launcher = "1.2"`.
 
 ## Inspect a build
 
@@ -13,7 +22,7 @@ path to your local checkout:
 
 ```toml
 [dependencies]
-wg-launcher = { path = "../wg-launcher" }
+wg-launcher = { path = "../wg-launcher/crates/wg-launcher" }
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -219,14 +228,14 @@ denied by crate-level lints.
 Generate and open the API reference:
 
 ```console
-cargo doc --lib --no-deps --all-features --locked --open
+cargo doc -p wg-launcher --lib --no-deps --all-features --locked --open
 ```
 
 Build it with warnings treated as errors, then compile the rustdoc examples:
 
 ```console
-RUSTDOCFLAGS="-D warnings" cargo doc --lib --no-deps --all-features --locked
-cargo test --doc --all-features --locked
+RUSTDOCFLAGS="-D warnings" cargo doc -p wg-launcher --lib --no-deps --all-features --locked
+cargo test -p wg-launcher --doc --all-features --locked
 ```
 
 The environment-variable syntax above is for POSIX shells. CI runs both checks.

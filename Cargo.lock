@@ -2128,12 +2128,9 @@ dependencies = [
 name = "wg-launcher"
 version = "1.2.0"
 dependencies = [
- "clap",
- "comfy-table",
  "fast_rsync",
  "fs2",
  "futures-util",
- "indicatif",
  "memmap2",
  "oxidelta",
  "quick-xml",
@@ -2144,6 +2141,17 @@ dependencies = [
  "thiserror",
  "tokio",
  "url",
+]
+
+[[package]]
+name = "wg-launcher-cli"
+version = "1.2.0"
+dependencies = [
+ "clap",
+ "comfy-table",
+ "indicatif",
+ "tokio",
+ "wg-launcher",
 ]
 
 [[package]]

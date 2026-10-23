@@ -1,0 +1,30 @@
+[package]
+name = "wg-launcher"
+version.workspace = true
+edition.workspace = true
+description = "A reusable Rust client for the Wargaming Update Service"
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+authors.workspace = true
+readme = "README.md"
+keywords = ["wot", "WorldOfTanks", "wgus"]
+
+[dependencies]
+fs2 = "0.4"
+futures-util = "0.3"
+fast_rsync = "0.2"
+memmap2 = "0.9"
+oxidelta = { version = "0.1.4", default-features = false, features = ["adler32", "lzma-secondary", "zlib-secondary"] }
+quick-xml = { version = "0.42", features = ["serialize"] }
+reqwest = { version = "0.13", default-features = false, features = ["http2", "rustls", "stream", "query"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sevenz-rust = { version = "0.6", default-features = false }
+thiserror = "2"
+tokio = { version = "1", features = ["fs", "io-util", "rt", "sync", "time"] }
+url = { version = "2", features = ["serde"] }
+
+[dev-dependencies]
+sevenz-rust = { version = "0.6", features = ["compress"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

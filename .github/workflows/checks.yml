@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Lint
-        run: cargo fmt --check
+        run: cargo fmt --all --check
 
   tests:
     name: Tests (${{ matrix.os }})
@@ -39,8 +39,11 @@ jobs:
         with:
           cache-bin: false
 
+      - name: Check library independently
+        run: cargo check -p wg-launcher --lib --locked
+
       - name: Tests
-        run: cargo test --locked --verbose
+        run: cargo test --workspace --locked --verbose
 
   documentation:
     name: Rust documentation
@@ -57,7 +60,7 @@ jobs:
           cache-bin: false
 
       - name: Build API documentation
-        run: cargo doc --lib --no-deps --all-features --locked
+        run: cargo doc -p wg-launcher --lib --no-deps --all-features --locked
 
       - name: Check documentation examples
-        run: cargo test --doc --all-features --locked
+        run: cargo test -p wg-launcher --doc --all-features --locked

@@ -1,146 +1,81 @@
 # wg-launcher
 
-Discover, download, install, and update World of Tanks assets from your terminal.
-Supports Wargaming regions, Common Test, and Lesta RU.
+Discover, download, install, and update World of Tanks assets through Wargaming
+and Lesta's update services. Supports Windows, Linux, and macOS as a launcher;
+the game payload currently targets Windows/x64.
 
-![Installing World of Tanks: downloading, extracting, applying patches, and completing the installation](docs/assets/install.gif)
+## Packages
 
-The CLI runs on Windows, Linux, and macOS. The supported game payload is
-Windows/x64. Player authentication and launching the game are outside its
-current scope.
+| Package | Purpose | Documentation |
+| --- | --- | --- |
+| [`wg-launcher`](crates/wg-launcher) | Reusable Rust library, imported as `wg_launcher` | [Library guide](crates/wg-launcher/README.md) |
+| [`wg-launcher-cli`](crates/wg-launcher-cli) | Terminal application, installed as `wg-launcher` | [CLI guide](crates/wg-launcher-cli/README.md) |
 
-## Install the CLI
+Product decision: the library and CLI are separate Cargo packages so applications
+can use the library without depending on terminal presentation. The CLI consumes
+only the library's public API. Library progress is optional: use plain workflows
+for the result alone, or their `_with_observer` counterparts for events.
 
-Build and install from source with Rust and Cargo:
+## Install and run the CLI
 
 ```console
 git clone https://github.com/gabrielhamel/wg-launcher.git
 cd wg-launcher
-cargo install --path . --locked
-```
-
-No external archive or patching utilities are required.
-
-## Quick start
-
-Commands that select a new build (`inspect`, `download`, and `install`) default
-to EU/SD. Customize the build with `--region` and `--client-type`, or use
-`--language` to override the region's default language.
-
-Inspect a build, install it into a directory of your choice, then check its status:
-
-```console
+cargo install --path crates/wg-launcher-cli --locked
 wg-launcher inspect
-wg-launcher install --output ./world-of-tanks
-wg-launcher status --path ./world-of-tanks
 ```
 
-Run `wg-launcher update --path ./world-of-tanks` when a newer build is available.
+From a checkout, `cargo run --locked -- --help` also works at the workspace root.
+See the [CLI guide](crates/wg-launcher-cli/README.md) for all commands and examples.
 
-## Commands
+## Use the library
 
-| Command | Purpose |
-| --- | --- |
-| `list` | Compare available builds, sizes, and languages. |
-| `inspect` | Show a build's components and patch chain without changing files. |
-| `download` | Save packages for a staged or offline installation. |
-| `extract` | Install a complete local package cache. |
-| `install` | Download and install in one pipeline. |
-| `status` | Compare the installed version with the latest published build. |
-| `update` | Update an existing installation in place. |
+```toml
+[dependencies]
+wg-launcher = "1.2"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+```
 
-Use `wg-launcher <command> --help` for all options.
+For a local checkout, point the dependency at `crates/wg-launcher`, rather than
+the workspace root. See the [library guide](crates/wg-launcher/README.md) for
+examples, progress handling, and installation behavior.
 
-### Discover and inspect builds
+## Workspace layout
+
+```text
+Cargo.toml                    Workspace and shared package metadata
+Cargo.lock                    Shared dependency lockfile
+crates/
+  wg-launcher/                Library package, README, and license
+    src/                      Workflows, protocol, models, storage, transfer, extraction
+  wg-launcher-cli/            CLI package, README, and license
+    src/                      Bootstrap, argument parsing, terminal progress
+    docs/assets/              CLI demonstration assets
+```
+
+Both packages are workspace defaults, so root checks cover both. Run focused
+checks with `-p wg-launcher` or `-p wg-launcher-cli`.
 
 ```console
-wg-launcher list
-wg-launcher list --region ru
-wg-launcher inspect --region eu --client-type hd --language FR
+cargo fmt --all --check
+cargo test --workspace --locked
+cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+cargo build --workspace --locked
+cargo doc -p wg-launcher --lib --no-deps --locked --open
 ```
 
-`list` queries all regions by default: `eu`, `na`, `asia`, `cn`, `ru`, and `ct`.
-Its table shows versions, payload targets, compressed sizes, and languages;
-`*` marks each region's default language.
+## Source and release migration
 
-`inspect` shows the selected build and each patch's part,
-source version, target version, package count, and compressed size.
+The former combined package is now a virtual workspace. The library package and
+Rust import names are unchanged. Installing from this checkout now requires
+`--path crates/wg-launcher-cli`; the installed executable remains `wg-launcher`.
+The published CLI package is named `wg-launcher-cli`; `wg-launcher` contains only
+the library in releases made from this layout. Older published versions retain
+their previous contents.
 
-### Install a game build
-
-```console
-wg-launcher install
-wg-launcher install --region eu --client-type hd --language FR --output ./world-of-tanks
-```
-
-Without `--output`, the directory name includes the region, channel, initial
-version, payload platform, architecture, client type, and language. Updates keep
-that original directory name.
-
-Downloading overlaps extraction, and packages are released after their patch
-has been extracted successfully. `--concurrency` controls simultaneous package
-downloads and defaults to `3`.
-
-### Download and extract separately
-
-```console
-wg-launcher download --output ./world-of-tanks
-wg-launcher extract ./world-of-tanks
-```
-
-`download` keeps packages and a pinned manifest in the destination's `.download`
-directory. You can move the whole folder to another machine before extracting.
-`extract` reads that local manifest without querying the catalog. Its optional
-directory argument defaults to the current directory.
-
-To stage individual components, use the part names shown by `inspect`:
-
-```console
-wg-launcher download --output ./world-of-tanks --part client --part locale
-```
-
-Without `--part`, every required package is downloaded. Extraction requires the
-complete package set, so rerun `download` without a filter before extracting a
-partially downloaded build.
-
-### Check and apply updates
-
-From the game directory:
-
-```console
-wg-launcher status
-wg-launcher update
-```
-
-Or specify its location:
-
-```console
-wg-launcher status --path ./world-of-tanks
-wg-launcher update --path ./world-of-tanks
-```
-
-Both commands use the installation's recorded region, client type, and language.
-Updates follow the publisher's installation chain and may download more than
-only the changed components.
-
-## Resume or move an installation
-
-Retry an interrupted command with the same destination. Complete packages are
-reused, and partial downloads resume when the server supports it. Packages
-already released after extraction may need to be downloaded again during a
-retry.
-
-Successful installation or extraction cleans up `.download` and `.installing`.
-Keep `.wg-launcher.json` alongside the game files: it records the installed
-build for `status` and `update`. Moving the whole folder preserves its identity
-and any remaining download cache. A per-installation lock prevents concurrent
-changes to the same directory.
-
-## Rust library
-
-The same workflows are available through the `wg_launcher` crate, with typed
-options, reports, and progress events for applications embedding the launcher.
-See the [library guide](docs/library.md) for API examples, event handling, and
-installation internals. Generate the full API reference locally with
-`cargo doc --lib --no-deps --locked --open`; its landing page includes checked
-examples for embedding the library.
+The release workflow publishes both packages with
+`cargo publish --workspace --locked`, allowing Cargo to publish the library
+before its CLI dependent.
+Before a release, update the shared workspace version and the CLI's versioned
+library dependency together. A source-tree reorganization does not itself
+publish a release.
