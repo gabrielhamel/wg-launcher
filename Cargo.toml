@@ -1,6 +1,6 @@
 [package]
 name = "wg-launcher"
-version = "1.1.0"
+version = "1.2.0"
 edition = "2024"
 description = "A reusable Rust client and CLI for the Wargaming Update Service"
 license = "MIT"
