@@ -90,6 +90,12 @@ is retained or safely reconstructed so the command can be retried. Moving the
 whole installation folder preserves its installed-version metadata and any
 resumable package cache without depending on user-home storage.
 
+During `install` and `update`, downloading continues in parallel with ordered
+extraction. Downloads pause once at least 8 GiB of later patches is queued,
+then resume as extraction advances. A patch may exceed this threshold because
+all of its volumes are needed for extraction. The current patch is excluded
+from that buffer; its volumes are deleted only after successful extraction.
+
 ## Lower-level protocol example
 
 ```rust,no_run

@@ -18,6 +18,10 @@ pub const DOWNLOAD_MANIFEST_FILE: &str = ".wg-manifest.json";
 pub const STAGING_DIRECTORY: &str = ".installing";
 pub const INSTALL_MARKER_FILE: &str = ".wg-launcher.json";
 const INSTALL_LOCK_FILE: &str = ".wg-launcher.lock";
+// Stop starting patches once this much data is queued ahead of the current
+// extraction. One patch may cross the threshold: it must be downloaded in full
+// before it can be extracted, even when it is larger than the buffer.
+const DOWNLOAD_PREFETCH_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 
 pub fn installation_assets(manifest: &PatchManifest) -> Result<Vec<Asset>> {
     let patches = ordered_patches(manifest)?
@@ -219,10 +223,9 @@ impl PackageExtractor {
             .cloned()
             .collect::<Vec<_>>();
         let assets = assets_for_patches(&manifest, &patches)?;
-        let first_assets = assets
-            .first()
-            .cloned()
-            .ok_or_else(|| Error::MissingPatchChain(manifest.game_id.clone()))?;
+        if assets.is_empty() {
+            return Err(Error::MissingPatchChain(manifest.game_id.clone()));
+        }
         let observer: Arc<dyn Fn(InstallationEvent) + Send + Sync> = Arc::new(observer);
         let extraction_observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = {
             let observer = Arc::clone(&observer);
@@ -239,79 +242,58 @@ impl PackageExtractor {
 
         let total = patches.len();
         let mut report = InstallationReport::default();
-        let mut pending = Some(spawn_patch_download(
-            downloader.clone(),
-            first_assets,
+        let mut downloads = PatchDownloads::start(
+            downloader,
+            assets,
             cache.clone(),
-            download_options.clone(),
+            download_options,
             Arc::clone(&observer),
-        ));
+            DOWNLOAD_PREFETCH_BYTES,
+        );
 
-        for (index, patch) in patches.into_iter().enumerate() {
-            let downloaded = pending
-                .take()
-                .expect("one pending patch download")
-                .await
-                .map_err(|error| Error::ExtractionTask(error.to_string()))??;
-            merge_download_report(&mut report.download, downloaded);
+        let result = async {
+            for (index, patch) in patches.into_iter().enumerate() {
+                let downloaded = downloads.next(index).await?;
+                merge_download_report(&mut report.download, downloaded);
 
-            if index + 1 < assets.len() {
-                pending = Some(spawn_patch_download(
-                    downloader.clone(),
-                    assets[index + 1].clone(),
-                    cache.clone(),
-                    download_options.clone(),
-                    Arc::clone(&observer),
-                ));
-            }
-
-            let cache_for_patch = cache.clone();
-            let game_for_patch = game.clone();
-            let work_for_patch = work.clone();
-            let patch_observer = Arc::clone(&extraction_observer);
-            let extraction = tokio::task::spawn_blocking(move || {
-                let paths = InstallationPaths {
-                    cache: &cache_for_patch,
-                    game: &game_for_patch,
-                    work: &work_for_patch,
-                };
-                let deltas = extract_patch_sync(&patch, paths, index, total, &patch_observer)?;
-                let released = if extraction_options.clean_download_cache {
-                    remove_patch_volumes(&cache_for_patch, &patch)?
-                } else {
-                    0
-                };
-                Ok::<_, Error>((patch, deltas, released))
-            });
-            let result = match extraction.await {
-                Ok(result) => result,
-                Err(error) => {
-                    if let Some(download) = pending.take() {
-                        download.abort();
-                    }
-                    return Err(Error::ExtractionTask(error.to_string()));
-                }
-            };
-
-            let (patch, deltas, released) = match result {
-                Ok(result) => result,
-                Err(error) => {
-                    if let Some(download) = pending.take() {
-                        download.abort();
-                    }
-                    return Err(error);
-                }
-            };
-            report.extraction.applied_deltas += deltas;
-            report.released_package_bytes += released;
-            if released > 0 {
-                observer(InstallationEvent::ReleasedPackages {
-                    part: patch.part,
-                    files: patch.files.len(),
-                    bytes: released,
+                let cache_for_patch = cache.clone();
+                let game_for_patch = game.clone();
+                let work_for_patch = work.clone();
+                let patch_observer = Arc::clone(&extraction_observer);
+                let extraction = tokio::task::spawn_blocking(move || {
+                    let paths = InstallationPaths {
+                        cache: &cache_for_patch,
+                        game: &game_for_patch,
+                        work: &work_for_patch,
+                    };
+                    let deltas = extract_patch_sync(&patch, paths, index, total, &patch_observer)?;
+                    let released = if extraction_options.clean_download_cache {
+                        remove_patch_volumes(&cache_for_patch, &patch)?
+                    } else {
+                        0
+                    };
+                    Ok::<_, Error>((patch, deltas, released))
                 });
+                let (patch, deltas, released) = extraction
+                    .await
+                    .map_err(|error| Error::ExtractionTask(error.to_string()))??;
+                report.extraction.applied_deltas += deltas;
+                report.released_package_bytes += released;
+                if released > 0 {
+                    observer(InstallationEvent::ReleasedPackages {
+                        part: patch.part,
+                        files: patch.files.len(),
+                        bytes: released,
+                    });
+                }
             }
+            Ok::<(), Error>(())
         }
+        .await;
+        // Wait for cancellation before releasing the installation lock. The
+        // JoinSet also aborts the producer if this entire future is dropped.
+        downloads.stop().await;
+        result?;
 
         let finalize_root = install_root.clone();
         let finalize_manifest = manifest.clone();
@@ -357,20 +339,83 @@ fn assets_for_patches(manifest: &PatchManifest, patches: &[Patch]) -> Result<Vec
         .collect()
 }
 
-fn spawn_patch_download(
-    downloader: AssetDownloader,
-    assets: Vec<Asset>,
-    cache: PathBuf,
-    options: DownloadOptions,
-    observer: Arc<dyn Fn(InstallationEvent) + Send + Sync>,
-) -> tokio::task::JoinHandle<Result<DownloadReport>> {
-    tokio::spawn(async move {
-        downloader
-            .download(assets, cache, options, move |event| {
-                observer(InstallationEvent::Download(event));
-            })
-            .await
-    })
+struct PatchDownloads {
+    tasks: tokio::task::JoinSet<()>,
+    reports: tokio::sync::mpsc::UnboundedReceiver<Result<DownloadReport>>,
+    current: tokio::sync::watch::Sender<usize>,
+}
+
+impl PatchDownloads {
+    fn start(
+        downloader: AssetDownloader,
+        patches: Vec<Vec<Asset>>,
+        cache: PathBuf,
+        options: DownloadOptions,
+        observer: Arc<dyn Fn(InstallationEvent) + Send + Sync>,
+        prefetch_bytes: u64,
+    ) -> Self {
+        let (reports_tx, reports) = tokio::sync::mpsc::unbounded_channel();
+        let (current, mut current_rx) = tokio::sync::watch::channel(0_usize);
+        let mut tasks = tokio::task::JoinSet::new();
+        tasks.spawn(async move {
+            let sizes = patches
+                .iter()
+                .map(|assets| {
+                    assets
+                        .iter()
+                        .map(|asset| u128::from(asset.size))
+                        .sum::<u128>()
+                })
+                .collect::<Vec<_>>();
+            for (index, assets) in patches.into_iter().enumerate() {
+                loop {
+                    let current = *current_rx.borrow_and_update();
+                    let queued_bytes = sizes[current.saturating_add(1).min(index)..index]
+                        .iter()
+                        .sum::<u128>();
+                    if index <= current || queued_bytes < u128::from(prefetch_bytes) {
+                        break;
+                    }
+                    if current_rx.changed().await.is_err() {
+                        return;
+                    }
+                }
+                let progress = Arc::clone(&observer);
+                let result = downloader
+                    .download(assets, cache.clone(), options.clone(), move |event| {
+                        progress(InstallationEvent::Download(event));
+                    })
+                    .await;
+                let failed = result.is_err();
+                if reports_tx.send(result).is_err() || failed {
+                    return;
+                }
+            }
+        });
+        Self {
+            tasks,
+            reports,
+            current,
+        }
+    }
+
+    async fn next(&mut self, index: usize) -> Result<DownloadReport> {
+        self.current.send_replace(index);
+        match self.reports.recv().await {
+            Some(result) => result,
+            None => {
+                let detail = match self.tasks.join_next().await {
+                    Some(Err(error)) => error.to_string(),
+                    _ => "Package downloads stopped before all packages were ready".to_owned(),
+                };
+                Err(Error::ExtractionTask(detail))
+            }
+        }
+    }
+
+    async fn stop(&mut self) {
+        self.tasks.shutdown().await;
+    }
 }
 
 fn merge_download_report(total: &mut DownloadReport, patch: DownloadReport) {
@@ -1128,7 +1173,183 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn streaming_install_downloads_extracts_and_releases_the_patch() {
+    async fn prefetch_crosses_tiny_patches_then_waits_for_buffer_space() {
+        let root = test_directory("prefetch-budget");
+        fs::create_dir_all(&root).unwrap();
+        let patches = [20_usize, 1, 1, 20, 1]
+            .into_iter()
+            .enumerate()
+            .map(|(index, size)| {
+                let name = format!("patch-{index}.wgpkg");
+                fs::write(root.join(&name), vec![0; size]).unwrap();
+                vec![Asset {
+                    part: "client".to_owned(),
+                    version_from: Some(index.to_string()),
+                    version_to: (index + 1).to_string(),
+                    name,
+                    url: "http://127.0.0.1:0/unused".parse().unwrap(),
+                    size: size as u64,
+                    unpacked_size: None,
+                    diffs_size: None,
+                }]
+            })
+            .collect();
+        let (events_tx, mut events_rx) = tokio::sync::mpsc::unbounded_channel();
+        let observer = Arc::new(move |event| {
+            if let InstallationEvent::Download(DownloadEvent::Skipped { name, .. }) = event {
+                events_tx.send(name).unwrap();
+            }
+        });
+        let mut queue = PatchDownloads::start(
+            AssetDownloader::new().unwrap(),
+            patches,
+            root.clone(),
+            DownloadOptions::default(),
+            observer,
+            10,
+        );
+        queue.next(0).await.unwrap();
+        // Tiny patches must not occupy the entire lookahead, and an oversized
+        // patch must still be admitted so it can eventually be extracted.
+        for index in 0..4 {
+            assert_eq!(
+                tokio::time::timeout(Duration::from_secs(5), events_rx.recv())
+                    .await
+                    .unwrap(),
+                Some(format!("patch-{index}.wgpkg"))
+            );
+        }
+        assert!(
+            tokio::time::timeout(Duration::from_millis(50), events_rx.recv())
+                .await
+                .is_err()
+        );
+        queue.next(1).await.unwrap();
+        queue.next(2).await.unwrap();
+        assert!(
+            tokio::time::timeout(Duration::from_millis(50), events_rx.recv())
+                .await
+                .is_err()
+        );
+        queue.next(3).await.unwrap();
+        assert_eq!(
+            tokio::time::timeout(Duration::from_secs(5), events_rx.recv())
+                .await
+                .unwrap(),
+            Some("patch-4.wgpkg".to_owned())
+        );
+        queue.next(4).await.unwrap();
+        queue.stop().await;
+        // Prefetching itself must never delete transport packages.
+        assert_eq!(fs::read_dir(&root).unwrap().count(), 5);
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn extraction_failure_cancels_active_prefetch_and_preserves_cache() {
+        use std::{net::TcpListener, thread};
+        let root = test_directory("prefetch-cancel");
+        let storage = installation_storage(&root).unwrap();
+        fs::create_dir_all(&storage.cache).unwrap();
+        fs::write(root.join("existing.pkg"), b"existing game data").unwrap();
+        let corrupt = b"not a valid archive";
+        fs::write(storage.cache.join("corrupt.wgpkg"), corrupt).unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        let (requested_tx, requested_rx) = std::sync::mpsc::channel();
+        let requested_rx = std::sync::Mutex::new(requested_rx);
+        let server = thread::spawn(move || {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            let mut request = [0; 4096];
+            assert!(stream.read(&mut request).unwrap() > 0);
+            requested_tx.send(()).unwrap();
+            // Leave the request pending. Cancellation must close the connection.
+            loop {
+                match stream.read(&mut request) {
+                    Ok(0) => break,
+                    Ok(_) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::ConnectionReset => break,
+                    Err(error) => panic!("prefetch connection was not cancelled: {error}"),
+                }
+            }
+        });
+        let mut patches = vec![patch("0", "1"), patch("1", "2")];
+        let mut assets = Vec::new();
+        for (index, (name, size)) in [
+            ("corrupt.wgpkg", corrupt.len() as u64),
+            ("pending.wgpkg", 100),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            patches[index].files = vec![PatchFile {
+                name: name.to_owned(),
+                size,
+                unpacked_size: None,
+                diffs_size: None,
+            }];
+            assets.push(Asset {
+                part: "client".to_owned(),
+                version_from: Some(index.to_string()),
+                version_to: (index + 1).to_string(),
+                name: name.to_owned(),
+                url: format!("http://{address}/{name}").parse().unwrap(),
+                size,
+                unpacked_size: None,
+                diffs_size: None,
+            });
+        }
+        let mut manifest = manifest(patches);
+        manifest.assets = assets;
+        let result = tokio::time::timeout(
+            Duration::from_secs(10),
+            PackageExtractor::new().download_and_extract(
+                AssetDownloader::new().unwrap(),
+                manifest,
+                &root,
+                DownloadOptions {
+                    concurrency: 1,
+                    attempts: 1,
+                },
+                ExtractionOptions::default(),
+                move |event| {
+                    if let InstallationEvent::Extraction(ExtractionEvent::ExtractingPatch {
+                        index: 1,
+                        ..
+                    }) = event
+                    {
+                        requested_rx
+                            .lock()
+                            .unwrap()
+                            .recv_timeout(Duration::from_secs(5))
+                            .unwrap();
+                    }
+                },
+            ),
+        )
+        .await
+        .unwrap();
+        assert!(matches!(result, Err(Error::ArchiveExtraction(_))));
+        server.join().unwrap();
+        assert_eq!(
+            fs::read(storage.cache.join("corrupt.wgpkg")).unwrap(),
+            corrupt
+        );
+        assert_eq!(
+            fs::read(root.join("existing.pkg")).unwrap(),
+            b"existing game data"
+        );
+        assert!(!storage.marker.exists());
+        // No background downloader may outlive the per-installation lock.
+        drop(InstallationLock::acquire(&storage, &root).unwrap());
+        fs::remove_dir_all(root).unwrap();
+    }
+
+    #[tokio::test]
+    async fn streaming_install_downloads_several_patches_during_extraction() {
         use std::{
             io::{Read, Write},
             net::TcpListener,
@@ -1152,45 +1373,62 @@ mod tests {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         let address = listener.local_addr().unwrap();
         let response_body = body.clone();
+        let (extracting_tx, extracting_rx) = std::sync::mpsc::channel();
+        let (downloaded_tx, downloaded_rx) = std::sync::mpsc::channel();
+        let downloaded_rx = std::sync::Mutex::new(downloaded_rx);
         let server = thread::spawn(move || {
-            let (mut stream, _) = listener.accept().unwrap();
-            let mut request = [0_u8; 4096];
-            let _ = stream.read(&mut request).unwrap();
-            write!(
-                stream,
-                "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-                response_body.len()
-            )
-            .unwrap();
-            stream.write_all(&response_body).unwrap();
+            for index in 0..4 {
+                if index == 1 {
+                    extracting_rx.recv_timeout(Duration::from_secs(5)).unwrap();
+                }
+                let (mut stream, _) = listener.accept().unwrap();
+                stream
+                    .set_read_timeout(Some(Duration::from_secs(5)))
+                    .unwrap();
+                let mut request = [0_u8; 4096];
+                let _ = stream.read(&mut request).unwrap();
+                write!(
+                    stream,
+                    "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                    response_body.len()
+                )
+                .unwrap();
+                stream.write_all(&response_body).unwrap();
+            }
         });
 
-        let name = "build/client.wgpkg";
-        let file = PatchFile {
-            name: name.to_owned(),
-            size: body.len() as u64,
-            unpacked_size: Some(body.len() as u64),
-            diffs_size: None,
-        };
-        let patch = Patch {
-            part: "client".to_owned(),
-            version_from: Some("0".to_owned()),
-            version_to: "1".to_owned(),
-            files: vec![file.clone()],
-            torrent_hash: None,
-            torrent_urls: vec![],
-        };
-        let mut manifest = manifest(vec![patch]);
-        manifest.assets = vec![Asset {
-            part: "client".to_owned(),
-            version_from: Some("0".to_owned()),
-            version_to: "1".to_owned(),
-            name: name.to_owned(),
-            url: format!("http://{address}/{name}").parse().unwrap(),
-            size: body.len() as u64,
-            unpacked_size: file.unpacked_size,
-            diffs_size: None,
-        }];
+        let mut patches = Vec::new();
+        let mut assets = Vec::new();
+        for index in 0..4 {
+            let name = format!("build/client-{index}.wgpkg");
+            let file = PatchFile {
+                name: name.clone(),
+                size: body.len() as u64,
+                unpacked_size: Some(body.len() as u64),
+                diffs_size: None,
+            };
+            let patch = Patch {
+                part: "client".to_owned(),
+                version_from: Some(index.to_string()),
+                version_to: (index + 1).to_string(),
+                files: vec![file.clone()],
+                torrent_hash: None,
+                torrent_urls: vec![],
+            };
+            patches.push(patch);
+            assets.push(Asset {
+                part: "client".to_owned(),
+                version_from: Some(index.to_string()),
+                version_to: (index + 1).to_string(),
+                name: name.clone(),
+                url: format!("http://{address}/{name}").parse().unwrap(),
+                size: body.len() as u64,
+                unpacked_size: file.unpacked_size,
+                diffs_size: None,
+            });
+        }
+        let mut manifest = manifest(patches);
+        manifest.assets = assets;
         let extractor = PackageExtractor::new();
         let storage = installation_storage(&root).unwrap();
 
@@ -1204,7 +1442,27 @@ mod tests {
                     attempts: 1,
                 },
                 ExtractionOptions::default(),
-                |_| {},
+                move |event| match event {
+                    InstallationEvent::Extraction(ExtractionEvent::ExtractingPatch {
+                        index: 1,
+                        ..
+                    }) => {
+                        extracting_tx.send(()).unwrap();
+                        // The final patch must arrive while the first extraction
+                        // is still running, rather than only one patch ahead.
+                        downloaded_rx
+                            .lock()
+                            .unwrap()
+                            .recv_timeout(Duration::from_secs(5))
+                            .unwrap();
+                    }
+                    InstallationEvent::Download(DownloadEvent::Completed { name, .. })
+                        if name == "build/client-3.wgpkg" =>
+                    {
+                        downloaded_tx.send(()).unwrap();
+                    }
+                    _ => {}
+                },
             )
             .await
             .unwrap();
@@ -1216,7 +1474,8 @@ mod tests {
         assert!(!storage.cache.exists());
         assert!(!root.join(DOWNLOAD_CACHE_DIRECTORY).exists());
         assert!(!root.join(STAGING_DIRECTORY).exists());
-        assert_eq!(report.released_package_bytes, file.size);
+        assert_eq!(report.released_package_bytes, body.len() as u64 * 4);
+        assert_eq!(report.download.downloaded_files, 4);
         assert!(report.extraction.cache_removed);
 
         fs::remove_dir_all(&root).unwrap();
