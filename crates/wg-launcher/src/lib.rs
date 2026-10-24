@@ -125,7 +125,7 @@
 //! # Staged and offline installation
 //!
 //! [`download()`] pins the complete manifest and saves transport volumes in
-//! `.wg-launcher/.download`. An empty [`DownloadAssetsOptions::parts`] selects all required
+//! `.wg-launcher/download`. An empty [`DownloadAssetsOptions::parts`] selects all required
 //! packages. A filter downloads only matching components; complete the package
 //! set before extracting. Move the entire installation directory to transfer
 //! the cache to another machine.
@@ -168,15 +168,18 @@
 //!
 //! # Storage, retries, and updates
 //!
-//! All CLI- and library-owned installation files live under `.wg-launcher/`:
+//! All CLI- and library-owned installation files live under `.wg-launcher/`.
+//! Contents use ordinary names because the parent already groups launcher-owned
+//! files. `state.json` records the installed build and `download/manifest.json`
+//! pins the pending selection. Older layouts are not read or migrated automatically:
 //!
 //! | Path within installation | Purpose |
 //! | --- | --- |
-//! | `.wg-launcher/.download/.wg-manifest.json` | Pinned [`PatchManifest`] |
-//! | `.wg-launcher/.download/` | Complete and partial transport volumes |
-//! | `.wg-launcher/.installing/` | Temporary archive and delta work |
-//! | `.wg-launcher/.wg-launcher.json` | Serialized [`InstalledBuild`] identity |
-//! | `.wg-launcher/.wg-launcher.lock` | Extraction and integrated installation mutation lock |
+//! | `.wg-launcher/download/manifest.json` | Pinned [`PatchManifest`] |
+//! | `.wg-launcher/download/` | Complete and partial transport volumes |
+//! | `.wg-launcher/installing/` | Temporary archive and delta work |
+//! | `.wg-launcher/state.json` | Serialized [`InstalledBuild`] identity |
+//! | `.wg-launcher/wg-launcher.lock` | Extraction and integrated installation mutation lock |
 //!
 //! All files created by the CLI or library for an installation, including future
 //! metadata, logs, caches, locks, temporary outputs, and replacement backups, belong

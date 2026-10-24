@@ -99,7 +99,7 @@ wg-launcher download --output ./world-of-tanks
 wg-launcher extract ./world-of-tanks
 ```
 
-`download` keeps packages and a pinned manifest in the destination's `.wg-launcher/.download`
+`download` keeps packages and a pinned manifest in the destination's `.wg-launcher/download`
 directory. You can move the whole folder to another machine before extracting.
 `extract` reads that local manifest without querying the catalog. Its optional
 directory argument defaults to the current directory.
@@ -141,7 +141,7 @@ reused, and partial downloads resume when the server supports it. Packages
 already released after extraction may need to be downloaded again during a
 retry.
 
-Successful installation or extraction cleans up `.wg-launcher/.download` and `.wg-launcher/.installing`.
+Successful installation or extraction cleans up `.wg-launcher/download` and `.wg-launcher/installing`.
 Keep the `.wg-launcher` folder inside the game directory: it records the installed
 build for `status` and `update`. Moving the whole folder preserves its identity
 and any remaining download cache. A per-installation lock prevents concurrent

@@ -14,14 +14,14 @@ use std::{
 };
 
 /// Installation-relative directory containing transport volumes and the pinned manifest.
-pub const DOWNLOAD_CACHE_DIRECTORY: &str = ".wg-launcher/.download";
+pub const DOWNLOAD_CACHE_DIRECTORY: &str = ".wg-launcher/download";
 /// Pinned manifest filename inside [`DOWNLOAD_CACHE_DIRECTORY`].
-pub const DOWNLOAD_MANIFEST_FILE: &str = ".wg-manifest.json";
+pub const DOWNLOAD_MANIFEST_FILE: &str = "manifest.json";
 /// Directory beneath an installation root used for temporary extraction and delta work.
-pub const STAGING_DIRECTORY: &str = ".wg-launcher/.installing";
+pub const STAGING_DIRECTORY: &str = ".wg-launcher/installing";
 /// Installed-build JSON path relative to an installation root.
-pub const INSTALL_MARKER_FILE: &str = ".wg-launcher/.wg-launcher.json";
-const INSTALL_LOCK_FILE: &str = ".wg-launcher/.wg-launcher.lock";
+pub const INSTALL_MARKER_FILE: &str = ".wg-launcher/state.json";
+const INSTALL_LOCK_FILE: &str = ".wg-launcher/wg-launcher.lock";
 // Stop starting patches once this much data is queued ahead of the current
 // extraction. One patch may cross the threshold: it must be downloaded in full
 // before it can be extracted, even when it is larger than the buffer.
@@ -205,7 +205,7 @@ pub struct InstallationReport {
 pub struct ExtractionOptions {
     /// Remove the cache on successful finalization and release each patch's volumes
     /// after successful extraction. When `false`, retain
-    /// packages; temporary `.wg-launcher/.installing` work is still removed after success.
+    /// packages; temporary `.wg-launcher/installing` work is still removed after success.
     pub clean_download_cache: bool,
 }
 
@@ -268,7 +268,7 @@ impl PackageExtractor {
     /// Extracts an already downloaded manifest with default cache cleanup.
     ///
     /// Equivalent to [`Self::extract_with_options_and_observer`] with [`ExtractionOptions::default`].
-    /// Reads volumes from `install_root/.wg-launcher/.download` without network access and writes
+    /// Reads volumes from `install_root/.wg-launcher/download` without network access and writes
     /// the installed-build record on success.
     ///
     /// # Errors
@@ -1283,9 +1283,9 @@ mod tests {
     #[test]
     fn archives_cannot_overwrite_launcher_state() {
         for name in [
-            ".wg-launcher/.wg-launcher.json",
+            ".wg-launcher/state.json",
             ".WG-LAUNCHER/file",
-            ".wg-launcher\\.download\\package",
+            ".wg-launcher\\download\\package",
         ] {
             assert!(matches!(
                 safe_archive_path(name),

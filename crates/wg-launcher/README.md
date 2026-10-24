@@ -144,14 +144,18 @@ provide their own presentation.
 
 ## Installation storage and lifecycle
 
-All launcher state lives in `.wg-launcher` inside the installation directory:
+All launcher state lives in `.wg-launcher` inside the installation directory.
+Its contents use ordinary names because the parent already groups launcher-owned
+files. `state.json` describes the installed build; `download/manifest.json` pins
+the pending download selection. Only these paths are read; older layouts are not
+recognized or migrated automatically:
 
 | Path | Purpose |
 | --- | --- |
-| `.wg-launcher/.download/` | Transport package volumes and the pinned `.wg-manifest.json` |
-| `.wg-launcher/.installing/` | Temporary extraction and patch work |
-| `.wg-launcher/.wg-launcher.json` | Installed build identity |
-| `.wg-launcher/.wg-launcher.lock` | Per-installation mutation lock |
+| `.wg-launcher/download/` | Transport package volumes and the pinned `manifest.json` |
+| `.wg-launcher/installing/` | Temporary extraction and patch work |
+| `.wg-launcher/state.json` | Installed build identity |
+| `.wg-launcher/wg-launcher.lock` | Per-installation mutation lock |
 
 All files created by the CLI or library for an installation, including future
 metadata, logs, caches, locks, temporary outputs, and replacement backups, belong
@@ -166,7 +170,7 @@ include the `.wg-launcher/` prefix. Callers should join them directly to the
 installation root. `DOWNLOAD_MANIFEST_FILE` is a filename within the cache.
 
 The default directory name preserves the initial selection and version. Updates
-keep that directory and write the current identity to `.wg-launcher/.wg-launcher.json`.
+keep that directory and write the current identity to `.wg-launcher/state.json`.
 `InstalledBuild` records the game ID, region, channel, version, client type,
 language, payload platform, architecture, and metadata version.
 

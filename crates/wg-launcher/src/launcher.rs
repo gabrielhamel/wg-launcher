@@ -115,7 +115,7 @@ pub async fn inspect(options: InspectOptions) -> Result<PatchManifest> {
 }
 
 /// Configures a package-only download. The complete manifest is pinned inside
-/// `<root>/.wg-launcher/.download` even when `parts` limits the transferred package set.
+/// `<root>/.wg-launcher/download` even when `parts` limits the transferred package set.
 #[derive(Debug, Clone, Default)]
 pub struct DownloadAssetsOptions {
     /// Build to download; defaults to EU/SD and the publisher default language.
@@ -164,7 +164,7 @@ pub async fn download(options: DownloadAssetsOptions) -> Result<DownloadAssetsOu
     download_with_observer(options, |_| {}).await
 }
 
-/// Downloads packages into the installation's `.wg-launcher/.download` directory without extracting.
+/// Downloads packages into the installation's `.wg-launcher/download` directory without extracting.
 ///
 /// Reuses a matching pinned manifest, complete cached files, and resumable partial
 /// files. Does not write an installed-build record or clean the cache. A filtered
@@ -224,7 +224,7 @@ fn select_download_assets(assets: Vec<Asset>, parts: &[String]) -> Vec<Asset> {
 /// Configures extraction of the complete pinned package cache.
 #[derive(Debug, Clone)]
 pub struct ExtractOptions {
-    /// Installation root containing a complete `.wg-launcher/.download` cache and pinned manifest.
+    /// Installation root containing a complete `.wg-launcher/download` cache and pinned manifest.
     /// Use `".".into()` explicitly to select the current directory.
     pub path: PathBuf,
 }
@@ -265,9 +265,9 @@ pub async fn extract(options: ExtractOptions) -> Result<ExtractOutcome> {
 
 /// Installs the complete pinned package cache without contacting the live catalog.
 ///
-/// Reads `.wg-launcher/.download/.wg-manifest.json`, acquires the installation lock, extracts
+/// Reads `.wg-launcher/download/manifest.json`, acquires the installation lock, extracts
 /// packages, applies deltas, and writes the installed-build record. Success removes
-/// `.wg-launcher/.download` and `.wg-launcher/.installing`. Inner game-owned `.pkg` files remain intact.
+/// `.wg-launcher/download` and `.wg-launcher/installing`. Inner game-owned `.pkg` files remain intact.
 /// The observer receives the plan before extraction progress.
 ///
 /// # Errors
@@ -913,10 +913,10 @@ mod tests {
         let root = test_directory("standalone-storage");
         let storage = installation_storage(&root).unwrap();
 
-        assert_eq!(storage.cache, root.join(".wg-launcher/.download"));
-        assert_eq!(storage.work, root.join(".wg-launcher/.installing"));
-        assert_eq!(storage.marker, root.join(".wg-launcher/.wg-launcher.json"));
-        assert_eq!(storage.lock, root.join(".wg-launcher/.wg-launcher.lock"));
+        assert_eq!(storage.cache, root.join(".wg-launcher/download"));
+        assert_eq!(storage.work, root.join(".wg-launcher/installing"));
+        assert_eq!(storage.marker, root.join(".wg-launcher/state.json"));
+        assert_eq!(storage.lock, root.join(".wg-launcher/wg-launcher.lock"));
     }
 
     #[test]
