@@ -1,0 +1,16 @@
+[
+  {
+    "region": "eu",
+    "name": "Local EU game",
+    "host": "__EU_URL__/updates",
+    "game_id": "LOCAL.WOT",
+    "channel": "testing"
+  },
+  {
+    "region": "na",
+    "name": "Local NA game",
+    "host": "__NA_URL__/updates",
+    "game_id": "LOCAL.WOT",
+    "channel": "testing"
+  }
+]

@@ -1,0 +1,29 @@
+name: Release
+
+on:
+  release:
+    types: [ published ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Login to crates.io
+        run: cargo login ${{ secrets.CRATES_IO_TOKEN }}
+
+      - name: Publish update service
+        run: cargo publish -p wg-update-service --locked
+
+      - name: Publish update client
+        run: cargo publish -p wg-update-client --locked
+
+      - name: Publish launcher CLI
+        run: cargo publish -p wg-launcher-cli --locked

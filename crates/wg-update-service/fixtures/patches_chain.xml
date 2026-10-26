@@ -1,0 +1,14 @@
+<protocol>
+  <version_name>__VERSION__</version_name>
+  <patches_chain>
+    <patch>
+      <part>client</part><version_from>0</version_from><version_to>__VERSION__</version_to>
+      <files><file><name>client.wgpkg</name><size>__CLIENT_SIZE__</size></file></files>
+    </patch>
+    <patch>
+      <part>locale</part><version_from>0</version_from><version_to>__VERSION__</version_to>
+      <files><file><name>locale.wgpkg</name><size>__LOCALE_SIZE__</size></file></files>
+    </patch>
+  </patches_chain>
+  <web_seeds><url name="fixture" threads="1">__BASE_URL__/</url></web_seeds>
+</protocol>

@@ -1,0 +1,7 @@
+{
+  "region": "local",
+  "name": "Local test game",
+  "host": "__BASE_URL__/updates",
+  "game_id": "LOCAL.WOT",
+  "channel": "testing"
+}

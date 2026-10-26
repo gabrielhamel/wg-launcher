@@ -1,0 +1,12 @@
+[workspace]
+members = ["crates/wg-update-client", "crates/wg-launcher-cli", "crates/wg-update-service", "e2e"]
+default-members = ["crates/wg-update-client", "crates/wg-launcher-cli", "crates/wg-update-service"]
+resolver = "3"
+
+[workspace.package]
+version = "1.0.0"
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/gabrielhamel/wg-launcher"
+homepage = "https://github.com/gabrielhamel/wg-launcher"
+authors = ["Gabriel Hamel <gabriel.hamel.pro@gmail.com>"]

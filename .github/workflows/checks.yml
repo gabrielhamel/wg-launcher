@@ -1,0 +1,66 @@
+name: Checks
+
+on:
+  push:
+    branches: [ 'main' ]
+
+  pull_request:
+    branches: [ 'main' ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Lint
+        run: cargo fmt --all --check
+
+  tests:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-bin: false
+
+      - name: Check library independently
+        run: cargo check -p wg-update-client --lib --locked
+
+      - name: End-to-end tests
+        run: cargo test -p wg-launcher-e2e --locked --verbose
+
+  documentation:
+    name: Rust documentation
+    runs-on: ubuntu-latest
+    env:
+      RUSTDOCFLAGS: -D warnings
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-bin: false
+
+      - name: Check runnable library examples
+        run: cargo check -p wg-update-client --examples --locked
+
+      - name: Build API documentation
+        run: cargo doc -p wg-update-client --lib --no-deps --all-features --locked

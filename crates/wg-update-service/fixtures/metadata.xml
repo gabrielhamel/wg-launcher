@@ -1,0 +1,19 @@
+<protocol wgc_publisher_id="fixture">
+  <version>1</version>
+  <predefined_section>
+    <app_id>LOCAL.WOT</app_id>
+    <supported_languages>EN,FR</supported_languages>
+    <default_language>EN</default_language>
+    <name>Local test game</name>
+    <fs_name>LocalGame</fs_name>
+    <environment_name>testing</environment_name>
+    <client_types default="sd">
+      <client_type id="sd" arch="x64">
+        <client_parts>
+          <client_part id="client" integrity="true"/>
+          <client_part id="locale" lang="true" integrity="true"/>
+        </client_parts>
+      </client_type>
+    </client_types>
+  </predefined_section>
+</protocol>
