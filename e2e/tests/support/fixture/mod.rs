@@ -1,3 +1,6 @@
+mod delta;
+pub use delta::DeltaFixture;
+
 use std::{collections::BTreeMap, fs, path::Path};
 
 const METADATA: &str = r#"<protocol wgc_publisher_id="fixture">

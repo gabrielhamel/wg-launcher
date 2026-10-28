@@ -103,6 +103,18 @@ pub enum Error {
         /// Affected component identifier.
         part: String,
     },
+    /// The publisher's chain cannot reach the selected component target.
+    #[error(
+        "cannot update {part} from {version} to {target}: no applicable patch; obtain a complete installation chain"
+    )]
+    MissingUpdatePatch {
+        /// Affected component identifier.
+        part: String,
+        /// Component version with no successor.
+        version: String,
+        /// Required component version.
+        target: String,
+    },
     /// A patch volume name was absent from the resolved asset list.
     #[error("manifest asset is missing for patch volume: {0}")]
     MissingPatchAsset(String),

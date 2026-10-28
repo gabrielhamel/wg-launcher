@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, path::PathBuf};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::PathBuf,
+};
 use url::Url;
 
 /// Publisher metadata describing the available client variants and languages.
@@ -111,6 +114,11 @@ pub struct PatchManifest {
     pub publisher_ids: Vec<String>,
     /// Selected client component identifiers.
     pub parts: Vec<String>,
+    /// Component versions required before applying this chain; empty for a fresh install.
+    /// Successful patches advance these checkpoints in the pinned manifest.
+    pub base_versions: BTreeMap<String, String>,
+    /// Target version of every selected component, including unchanged components.
+    pub component_versions: BTreeMap<String, String>,
     /// Published patch chain, including full-install and delta patches.
     pub patches: Vec<Patch>,
     /// Published HTTP seed endpoints; asset URLs use the first seed.

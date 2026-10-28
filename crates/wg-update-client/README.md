@@ -147,6 +147,14 @@ Later, call `status` or `update` with that same path. Each installation saves ju
 the selected product, so the original catalog is not needed. Updates keep the
 installation directory's name.
 
+Updates use the installed `component_versions` map to request deltas and skip
+unchanged components. A publisher may require a full component download when no
+applicable delta remains. Completed patches are checkpointed in the pinned manifest;
+unfinished deltas retain original sources inside `.wg-launcher/installing` for retry.
+The new state and manifest fields are required; older records are not migrated.
+See the [storage and update reference](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/reference.md)
+for the persisted format and recovery behavior.
+
 ## Observers and async execution
 
 Use `_with_observer` when your app needs progress. This example logs the plan and

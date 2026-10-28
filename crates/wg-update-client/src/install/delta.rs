@@ -1,4 +1,7 @@
-use super::{ExtractionEvent, ExtractionReport, paths::walk_files, storage::replace_file};
+use super::{
+    ExtractionEvent, ExtractionReport, paths::walk_files, retry::delta_source,
+    storage::replace_file,
+};
 use crate::{Error, Result};
 use std::{
     ffi::OsStr,
@@ -39,13 +42,14 @@ pub(super) fn apply_patch_directory(
         observer(ExtractionEvent::ApplyingDelta {
             path: target_relative.to_string_lossy().into_owned(),
         });
-        apply_delta(&target, delta, work)?;
+        let original = delta_source(game, &target_relative, work)?;
+        apply_delta(&original, &target, delta, work)?;
         report.applied_deltas += 1;
     }
     Ok(())
 }
 
-pub(super) fn apply_delta(target: &Path, delta: &Path, work: &Path) -> Result<()> {
+pub(super) fn apply_delta(source: &Path, target: &Path, delta: &Path, work: &Path) -> Result<()> {
     fs::create_dir_all(work)?;
     let temporary = work.join("delta-output");
     if temporary.exists() {
@@ -53,10 +57,10 @@ pub(super) fn apply_delta(target: &Path, delta: &Path, work: &Path) -> Result<()
     }
     match delta.extension().and_then(OsStr::to_str) {
         Some(extension) if extension.eq_ignore_ascii_case("xdiff") => {
-            apply_vcdiff(target, delta, &temporary)?
+            apply_vcdiff(source, delta, &temporary)?
         }
         Some(extension) if extension.eq_ignore_ascii_case("rdiff") => {
-            apply_rsync_delta(target, delta, &temporary)?
+            apply_rsync_delta(source, delta, &temporary)?
         }
         _ => return Err(Error::InvalidDeltaPath(delta.display().to_string())),
     }

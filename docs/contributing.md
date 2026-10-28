@@ -51,7 +51,7 @@ crates/
       error.rs                Shared error types
       download.rs             Resumable package transfers
       launcher/               High-level workflows, grouped by operation
-      install/                Extraction, patch chains, deltas, storage, prefetch
+      install/                Extraction, patch chains, deltas, storage, prefetch, retry
       service/                WGUS client and private XML wire models
   wg-launcher-cli/            CLI package, README, and license
     src/
@@ -65,7 +65,9 @@ crates/
     src/server.rs             File-backed HTTP serving and byte ranges
 e2e/                          Independent black-box system test package
   tests/scenarios/            Workflow and server-process scenarios
-  tests/support/              Real-process harness and synthetic fixtures
+    updates/                  Component delta updates and recovery scenarios
+  tests/support/              Real-process harness
+    fixture/                  Independent full archives and delta fixtures
 ```
 
 Each directory's `mod.rs` is its entry point. Workflow options, events, and results

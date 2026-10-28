@@ -36,7 +36,8 @@ The default directory name preserves the initial game, selection, and version. U
 keep that directory and write the current identity to `.wg-launcher/state.json`.
 `InstalledBuild` records the complete selected product (including its game label),
 game ID, region, channel,
-version, client type, language, payload platform, architecture, and metadata version.
+version, client type, language, payload platform, architecture, metadata version,
+and a required `component_versions` map from component IDs to installed versions.
 Only that product is saved, never the input catalog array.
 
 The integrated pipeline pins a manifest, downloads each patch's volumes,
@@ -47,8 +48,10 @@ because its complete volume set is needed; the current patch is excluded
 from the buffer.
 
 Complete cached volumes are reused and partial downloads resume when possible.
-Temporary extraction work can be rebuilt. A retry may need to redownload
-volumes already released after successful extraction. Successful high-level
+Each successful patch advances `base_versions` in the pinned manifest before its
+volumes are released. Retries skip those patches. An unfinished delta patch retains
+its original source files beneath `.wg-launcher/installing/active/sources` so a
+partially applied patch can be retried safely; preserve this directory on failure. Successful high-level
 installation and extraction remove the remaining cache and temporary work.
 The lower-level `ExtractionOptions` allows callers to control cache cleanup.
 Extraction and the integrated pipeline acquire the installation lock. Package-only
@@ -62,9 +65,19 @@ Game-owned `.pkg` files inside them remain intact.
 
 `status` checks the live selection matching the installed identity. `update`
 reuses that selection and path, with a pending pinned manifest taking precedence
-during retries. Updates follow the published installation chain; per-component
-versions are not persisted, so fully minimal component-by-component delta
-updates are not implemented.
+during retries. It sends saved component versions to WGUS, requests the applicable
+delta chains, and skips unchanged components. New components start at version `0`.
+If the publisher no longer provides a delta from an installed version but publishes
+a full chain, that component is installed from the full chain instead. An incomplete
+chain fails before package downloads. Build and component versions are compared
+independently; a changed component can require an update under the same build label.
+
+Installed state requires `component_versions`. Pinned manifests require
+`base_versions` and target `component_versions`; there is no migration of older
+records. Installations created with the older format require a fresh installation.
+The final installed state changes only after all selected patches succeed.
+Lower-level `PackageExtractor` methods also pin and checkpoint manifests under the
+installation lock; retries with the original manifest reuse matching checkpoints.
 
 ## Low-level APIs
 

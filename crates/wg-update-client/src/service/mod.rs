@@ -5,7 +5,10 @@ use crate::{
     PatchManifest, Product, Region, Result, WebSeed,
 };
 use reqwest::Client;
-use std::{collections::HashMap, time::Duration};
+use std::{
+    collections::{BTreeMap, HashMap},
+    time::Duration,
+};
 use url::Url;
 use wire::{MetadataXml, PatchesXml};
 
@@ -104,6 +107,25 @@ impl WgusClient {
         client_type: &str,
         language: Option<&str>,
     ) -> Result<PatchManifest> {
+        self.manifest_from_versions(product, client_type, language, &BTreeMap::new())
+            .await
+    }
+
+    /// Resolves update packages using the installed version of each component.
+    ///
+    /// Missing components start at `0`. Unchanged components retain their installed
+    /// versions even when the publisher returns no patches for them. Original product
+    /// configuration and component versions survive protocol redirects.
+    ///
+    /// # Errors
+    /// Returns the same configuration and protocol errors as [`Self::manifest`].
+    pub async fn manifest_from_versions(
+        &self,
+        product: &Product,
+        client_type: &str,
+        language: Option<&str>,
+        component_versions: &BTreeMap<String, String>,
+    ) -> Result<PatchManifest> {
         product.validate()?;
         let mut resolved = product.clone();
 
@@ -163,7 +185,13 @@ impl WgusClient {
                 ),
             ];
             for part in &selected.parts {
-                query.push((format!("{}_current_version", part.id), "0".to_owned()));
+                query.push((
+                    format!("{}_current_version", part.id),
+                    component_versions
+                        .get(&part.id)
+                        .cloned()
+                        .unwrap_or_else(|| "0".to_owned()),
+                ));
             }
 
             let text = self
@@ -197,6 +225,7 @@ impl WgusClient {
                 &selected,
                 language,
                 response,
+                component_versions,
             );
         }
 
@@ -230,10 +259,21 @@ impl WgusClient {
         selected: &ClientType,
         language: String,
         response: PatchesXml,
+        component_versions: &BTreeMap<String, String>,
     ) -> Result<PatchManifest> {
-        let chain = response
-            .patches_chain
-            .ok_or_else(|| Error::MissingPatchChain(product.game_id.to_owned()))?;
+        let chain = match response.patches_chain {
+            Some(chain) => chain,
+            None if selected
+                .parts
+                .iter()
+                .all(|part| component_versions.contains_key(&part.id)) =>
+            {
+                wire::PatchesChainXml {
+                    patches: Vec::new(),
+                }
+            }
+            None => return Err(Error::MissingPatchChain(product.game_id.to_owned())),
+        };
         let web_seeds = response
             .web_seeds
             .urls
@@ -246,13 +286,14 @@ impl WgusClient {
                 })
             })
             .collect::<Result<Vec<_>>>()?;
-        let seed = web_seeds
-            .first()
-            .ok_or_else(|| Error::MissingWebSeed(product.game_id.to_owned()))?;
+        let seed = web_seeds.first();
 
         let mut patches = Vec::with_capacity(chain.patches.len());
         let mut assets = Vec::new();
-        let mut latest_version_by_part = HashMap::new();
+        let mut latest_version_by_part = component_versions
+            .iter()
+            .map(|(part, version)| (part.clone(), version.clone()))
+            .collect::<HashMap<_, _>>();
         for patch in chain.patches {
             let version_from = inferred_version_from(
                 patch.version_from,
@@ -277,7 +318,10 @@ impl WgusClient {
                     version_from: version_from.clone(),
                     version_to: patch.version_to.clone(),
                     name: file.name.clone(),
-                    url: seed.url.join(&file.name)?,
+                    url: seed
+                        .ok_or_else(|| Error::MissingWebSeed(product.game_id.clone()))?
+                        .url
+                        .join(&file.name)?,
                     size: file.size,
                     unpacked_size: file.unpacked_size,
                     diffs_size: file.diffs_size,
@@ -330,6 +374,20 @@ impl WgusClient {
             available_languages: metadata.supported_languages,
             publisher_ids: metadata.publisher_ids,
             parts: selected.parts.iter().map(|part| part.id.clone()).collect(),
+            base_versions: component_versions.clone(),
+            component_versions: selected
+                .parts
+                .iter()
+                .map(|part| {
+                    latest_version_by_part
+                        .get(&part.id)
+                        .cloned()
+                        .map(|version| (part.id.clone(), version))
+                        .ok_or_else(|| Error::MissingFullPatch {
+                            part: part.id.clone(),
+                        })
+                })
+                .collect::<Result<_>>()?,
             patches,
             web_seeds,
             assets,

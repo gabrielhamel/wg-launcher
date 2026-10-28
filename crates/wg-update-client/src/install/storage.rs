@@ -36,9 +36,6 @@ pub(super) fn prepare_installation(
     storage: &InstallationStorage,
 ) -> Result<()> {
     fs::create_dir_all(install_root)?;
-    if storage.work.exists() {
-        fs::remove_dir_all(&storage.work)?;
-    }
     fs::create_dir_all(&storage.work)?;
     Ok(())
 }
@@ -127,7 +124,9 @@ pub(super) fn write_marker(manifest: &PatchManifest, marker: &Path) -> Result<()
     if let Some(parent) = marker.parent() {
         fs::create_dir_all(parent)?;
     }
-    fs::write(marker, bytes)?;
+    let temporary = marker.with_extension("json.part");
+    fs::write(&temporary, bytes)?;
+    replace_file(&temporary, marker, &marker.with_extension("json.backup"))?;
     Ok(())
 }
 

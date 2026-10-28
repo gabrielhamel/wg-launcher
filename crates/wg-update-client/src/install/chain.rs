@@ -3,12 +3,12 @@ use std::collections::{HashMap, HashSet};
 
 /// Clones the transport assets required by the ordered installation chain.
 ///
-/// Orders full-install and subsequent patches for each selected component, then
+/// Starts at each component checkpoint (or `0` for a fresh install), then
 /// resolves their volumes by name. Does not read disk or contact the catalog.
 ///
 /// # Errors
 ///
-/// Returns an error for a missing full-install patch, cyclic patch chain, or a patch
+/// Returns an error for an unreachable component target, cyclic patch chain, or a patch
 /// volume absent from the manifest assets.
 pub fn installation_assets(manifest: &PatchManifest) -> Result<Vec<Asset>> {
     let patches = ordered_patches(manifest)?
@@ -51,30 +51,41 @@ pub(super) fn assets_for_patches(
 pub(super) fn ordered_patches(manifest: &PatchManifest) -> Result<Vec<&Patch>> {
     let mut ordered = Vec::new();
     for part in &manifest.parts {
-        let part_patches = manifest
+        let target = manifest
+            .component_versions
+            .get(part)
+            .ok_or_else(|| Error::MissingFullPatch { part: part.clone() })?;
+        let mut version = manifest
+            .base_versions
+            .get(part)
+            .map(String::as_str)
+            .unwrap_or("0");
+        let by_from = manifest
             .patches
             .iter()
             .filter(|patch| &patch.part == part)
-            .collect::<Vec<_>>();
-        let full = part_patches
-            .iter()
-            .copied()
-            .find(|patch| patch.version_from.as_deref() == Some("0"))
-            .ok_or_else(|| Error::MissingFullPatch { part: part.clone() })?;
-        ordered.push(full);
-        let by_from = part_patches
-            .into_iter()
             .filter_map(|patch| patch.version_from.as_deref().map(|from| (from, patch)))
             .collect::<HashMap<_, _>>();
-        let mut version = full.version_to.as_str();
+        // A publisher may replace an obsolete delta chain with a full package.
+        if version != target && !by_from.contains_key(version) && by_from.contains_key("0") {
+            version = "0";
+        }
         let mut seen = HashSet::new();
-        while let Some(next) = by_from.get(version).copied() {
-            if !seen.insert(version.to_owned()) {
+        while version != target {
+            if !seen.insert(version) {
                 return Err(Error::BrokenPatchChain {
                     part: part.clone(),
                     version: version.to_owned(),
                 });
             }
+            let next = by_from
+                .get(version)
+                .copied()
+                .ok_or_else(|| Error::MissingUpdatePatch {
+                    part: part.clone(),
+                    version: version.to_owned(),
+                    target: target.clone(),
+                })?;
             ordered.push(next);
             version = &next.version_to;
         }

@@ -59,7 +59,15 @@ WGUS metadata route, and resume a package from a byte offset.
 The entry point is [tests/e2e.rs](../e2e/tests/e2e.rs).
 Scenarios are grouped by category in
 [tests/scenarios/](../e2e/tests/scenarios/), with shared process helpers and
-fixtures in [tests/support/](../e2e/tests/support/). The harness builds missing
+fixtures in [tests/support/](../e2e/tests/support/).
+Synthetic full archives and source-dependent librsync deltas are grouped in
+[tests/support/fixture/](../e2e/tests/support/fixture/). Update scenarios are in
+[tests/scenarios/updates/](../e2e/tests/scenarios/updates/); they verify component
+versions in requests and state, delta-only transfers, unchanged components,
+publisher full-chain fallback, empty current responses, incomplete-chain rejection,
+and retries after completed and partially applied patches. The retry tests induce
+ordinary extraction failures; they do not terminate a process mid-transfer or
+claim whole-install transactional rollback. The harness builds missing
 workspace binaries before launching them. Tests are included in
 `cargo test --workspace --locked` and the existing Windows/Linux/macOS CI matrix.
 Only macOS is verified when running locally on a Mac.

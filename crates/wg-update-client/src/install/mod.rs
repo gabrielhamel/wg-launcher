@@ -6,6 +6,7 @@ mod delta;
 mod extraction;
 mod paths;
 mod prefetch;
+mod retry;
 mod storage;
 mod types;
 
@@ -30,7 +31,7 @@ use storage::{InstallationLock, prepare_installation, remove_patch_volumes};
 ///
 /// Acquires the per-installation lock and runs blocking archive/filesystem work
 /// on Tokio's blocking pool. Game-owned inner `.pkg` files remain packed. These
-/// lower-level methods accept a resolved manifest; they do not discover or pin it.
+/// lower-level methods accept and pin a resolved manifest without discovery.
 /// An error can leave partially changed game files; no whole-install rollback is provided.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct PackageExtractor;
@@ -104,10 +105,11 @@ impl PackageExtractor {
 
     /// Extracts local packages with an explicit cache-retention policy.
     ///
-    /// Acquires the installation lock, verifies required volume sizes, rebuilds staging
-    /// work, applies ordered patches, and records the installed build. Does not load
-    /// or save a pinned manifest. Callbacks run on the blocking extraction worker;
-    /// see the [observer contract](crate#observers-and-async-execution).
+    /// Acquires the installation lock, verifies required volume sizes, applies the
+    /// remaining patches, and records the installed build. Pins the supplied manifest
+    /// and preserves completed checkpoints and original delta sources on retry.
+    /// Callbacks run on the blocking extraction worker; see the
+    /// [observer contract](crate#observers-and-async-execution).
     ///
     /// # Errors
     ///
@@ -166,8 +168,8 @@ impl PackageExtractor {
     /// Downloads later patches while extracting the current patch, with bounded
     /// prefetching. A complete patch may exceed the prefetch threshold. Cache cleanup
     /// controls both early volume release after successful patches and final removal.
-    /// Writes the installed-build record on success, but does not pin the supplied
-    /// manifest; high-level [`install`](crate::install) handles manifest persistence.
+    /// Pins the manifest under the lock and checkpoints component progress before
+    /// releasing packages. Writes the installed-build record after all patches succeed.
     ///
     /// Callbacks may run concurrently on download and blocking extraction workers.
     /// Dropping the future stops pending async download work, but a started blocking
@@ -194,14 +196,13 @@ impl PackageExtractor {
         let storage = installation_storage(&install_root)?;
         let _lock = InstallationLock::acquire(&storage, &install_root)?;
         let cache = storage.cache.clone();
+        let mut manifest = retry::resume_manifest(manifest, &storage)?;
         let patches = ordered_patches(&manifest)?
             .into_iter()
             .cloned()
             .collect::<Vec<_>>();
         let assets = assets_for_patches(&manifest, &patches)?;
-        if assets.is_empty() {
-            return Err(Error::MissingPatchChain(manifest.game_id.clone()));
-        }
+        retry::save_manifest(&manifest, &storage)?;
         let observer: Arc<dyn Fn(InstallationEvent) + Send + Sync> = Arc::new(observer);
         let extraction_observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = {
             let observer = Arc::clone(&observer);
@@ -236,6 +237,8 @@ impl PackageExtractor {
                 let game_for_patch = game.clone();
                 let work_for_patch = work.clone();
                 let patch_observer = Arc::clone(&extraction_observer);
+                let mut checkpoint_manifest = manifest.clone();
+                let checkpoint_storage = storage.clone();
                 let extraction = tokio::task::spawn_blocking(move || {
                     let paths = InstallationPaths {
                         cache: &cache_for_patch,
@@ -243,16 +246,18 @@ impl PackageExtractor {
                         work: &work_for_patch,
                     };
                     let deltas = extract_patch_sync(&patch, paths, index, total, &patch_observer)?;
+                    retry::checkpoint_patch(&mut checkpoint_manifest, &patch, &checkpoint_storage)?;
                     let released = if extraction_options.clean_download_cache {
                         remove_patch_volumes(&cache_for_patch, &patch)?
                     } else {
                         0
                     };
-                    Ok::<_, Error>((deltas, released))
+                    Ok::<_, Error>((deltas, released, checkpoint_manifest))
                 });
-                let (deltas, released) = extraction
+                let (deltas, released, checkpoint_manifest) = extraction
                     .await
                     .map_err(|error| Error::ExtractionTask(error.to_string()))??;
+                manifest = checkpoint_manifest;
                 report.extraction.applied_deltas += deltas;
                 report.released_package_bytes += released;
                 if released > 0 {

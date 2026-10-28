@@ -127,8 +127,14 @@ wg-launcher update --path ./world-of-tanks
 ```
 
 Both commands use the saved product, region, client type, and language. You do not
-need to supply the build options or a custom catalog again. Updates follow the
-publisher's installation chain, which may include more than only changed files.
+need to supply the build options or a custom catalog again. Updates request patches
+from each saved component version and skip unchanged components. A component needs
+a full download only when it is new or the publisher no longer provides an
+applicable delta chain. Interrupted updates reuse their pinned chain and completed
+patch checkpoints.
+
+The current state format requires component versions. Older installations and
+pinned manifests are not migrated; create a fresh installation to use this format.
 
 <details>
 <summary>Run from inside the game directory</summary>

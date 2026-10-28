@@ -1,6 +1,6 @@
 use super::{
     BuildSelection, InstallPlan,
-    manifest::{build_plan, resolve_installation, save_cache_manifest},
+    manifest::{build_plan, resolve_installation},
 };
 use crate::{
     AssetDownloader, DownloadOptions, InstallationEvent, InstallationReport, PackageExtractor,
@@ -61,7 +61,7 @@ pub async fn install(options: InstallOptions) -> Result<InstallOutcome> {
 
 /// Downloads and installs a build with overlapping transfer and extraction.
 ///
-/// Pins the manifest, acquires the installation lock for the transfer/extraction
+/// Acquires the installation lock, pins the manifest for the transfer/extraction
 /// pipeline, and reuses cached volumes. Later downloads can overlap ordered patch
 /// extraction; packages are removed only after their patch succeeds. Success writes
 /// [`INSTALL_MARKER_FILE`](crate::INSTALL_MARKER_FILE) and removes cache and staging data.
@@ -74,7 +74,7 @@ pub async fn install(options: InstallOptions) -> Result<InstallOutcome> {
 /// Returns an error for discovery, pinned selection mismatch, invalid patch chains,
 /// lock contention, transfer, filesystem, archive, or delta failures. Pending downloads
 /// are stopped after extraction failure. There is no whole-install rollback; retries
-/// can rebuild temporary work and may redownload already released packages.
+/// preserve component checkpoints and the original sources of an unfinished delta patch.
 pub async fn install_with_observer<F>(
     options: InstallOptions,
     observer: F,
@@ -85,18 +85,29 @@ where
     let client = WgusClient::new()?;
     let (manifest, root) =
         resolve_installation(&client, &options.selection, options.output).await?;
+    install_resolved(manifest, root, options.download, observer).await
+}
+
+pub(super) async fn install_resolved<F>(
+    manifest: crate::PatchManifest,
+    root: PathBuf,
+    download: DownloadOptions,
+    observer: F,
+) -> Result<InstallOutcome>
+where
+    F: Fn(InstallEvent) + Send + Sync + 'static,
+{
     let assets = installation_assets(&manifest)?;
     let plan = build_plan(manifest, root, assets)?;
     observer(InstallEvent::Planned(Box::new(plan.clone())));
 
     let extractor = PackageExtractor::new();
-    save_cache_manifest(&plan.manifest, &plan.cache).await?;
     let report = extractor
         .download_and_extract_with_observer(
             AssetDownloader::new()?,
             plan.manifest.clone(),
             &plan.root,
-            options.download,
+            download,
             Default::default(),
             move |event| observer(InstallEvent::Progress(event)),
         )

@@ -1,5 +1,6 @@
 use super::{
-    BuildSelection, InstallEvent, InstallOptions, InstallOutcome, install_with_observer,
+    BuildSelection, InstallEvent, InstallOutcome,
+    install::install_resolved,
     manifest::{load_cache_manifest, load_installed_build, validate_cached_selection},
 };
 use crate::{DownloadOptions, InstalledBuild, Result, WgusClient, install::installation_storage};
@@ -26,8 +27,8 @@ pub struct StatusReport {
     pub installed: InstalledBuild,
     /// Live catalog version, or pending pinned version during update retries.
     pub latest_version: String,
-    /// Whether recorded and compared versions differ; versions are not ordered
-    /// semantically and game files are not scanned for integrity.
+    /// Whether the build or any component version differs. Versions are compared
+    /// for equality; game files are not scanned for integrity.
     pub update_available: bool,
 }
 
@@ -66,7 +67,8 @@ pub async fn status(options: StatusOptions) -> Result<StatusReport> {
         super::manifest::resolve(&WgusClient::new()?, &recorded_selection(&installed)).await?;
     Ok(StatusReport {
         path,
-        update_available: installed.version != latest.version,
+        update_available: installed.version != latest.version
+            || installed.component_versions != latest.component_versions,
         latest_version: latest.version,
         installed,
     })
@@ -87,18 +89,18 @@ pub async fn update(options: UpdateOptions) -> Result<UpdateOutcome> {
 
 /// Updates an existing installation in place using its recorded build selection.
 ///
-/// A pending pinned manifest takes precedence over the live catalog. If its version
-/// (or the live version when no manifest is pinned) equals the installed version,
-/// returns without installation or observer events. Otherwise delegates to [`install_with_observer`]
-/// using the same directory, preserving the original directory name.
+/// A pending pinned manifest takes precedence over the live catalog. When both the
+/// build and component versions match, returns without installation or observer
+/// events. Otherwise installs in the same directory, preserving its original name.
 ///
-/// Updates follow the publisher's installation chain. Per-component installed
-/// versions are not stored, so this is not a fully minimal component delta update.
+/// Requests component chains from their saved installed versions, skips unchanged
+/// components, and checkpoints successful patches for resumable updates. A full
+/// package is used when the publisher supplies no chain from the installed version.
 ///
 /// # Errors
 ///
 /// Returns an error for missing or invalid state, a pending selection mismatch,
-/// failed catalog resolution, or any error from [`install_with_observer`].
+/// failed catalog resolution, or any error from [`super::install`].
 pub async fn update_with_observer<F>(options: UpdateOptions, observer: F) -> Result<UpdateOutcome>
 where
     F: Fn(InstallEvent) + Send + Sync + 'static,
@@ -106,16 +108,33 @@ where
     let path = std::path::absolute(options.path)?;
     let storage = installation_storage(&path)?;
     let installed = load_installed_build(&path).await?;
-    let status = if let Some(pending) = load_cache_manifest(&storage.cache).await? {
+    let mut manifest = if let Some(pending) = load_cache_manifest(&storage.cache).await? {
         validate_cached_selection(&pending, &recorded_selection(&installed))?;
-        StatusReport {
-            path,
-            update_available: installed.version != pending.version,
-            latest_version: pending.version,
-            installed,
-        }
+        pending
     } else {
-        status(StatusOptions { path }).await?
+        WgusClient::new()?
+            .manifest_from_versions(
+                &installed.product,
+                &installed.client_type,
+                Some(&installed.language),
+                &installed.component_versions,
+            )
+            .await?
+    };
+    // A package-only download may have pinned a full installation chain. Start
+    // that chain at the installed versions, retaining any completed checkpoints.
+    for (part, version) in &installed.component_versions {
+        manifest
+            .base_versions
+            .entry(part.clone())
+            .or_insert_with(|| version.clone());
+    }
+    let status = StatusReport {
+        path,
+        update_available: installed.version != manifest.version
+            || installed.component_versions != manifest.component_versions,
+        latest_version: manifest.version.clone(),
+        installed,
     };
     if !status.update_available {
         return Ok(UpdateOutcome {
@@ -123,15 +142,8 @@ where
             installation: None,
         });
     }
-    let installation = install_with_observer(
-        InstallOptions {
-            selection: recorded_selection(&status.installed),
-            output: Some(status.path.clone()),
-            download: options.download,
-        },
-        observer,
-    )
-    .await?;
+    let installation =
+        install_resolved(manifest, status.path.clone(), options.download, observer).await?;
     Ok(UpdateOutcome {
         status,
         installation: Some(installation),

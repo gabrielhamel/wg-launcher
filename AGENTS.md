@@ -232,12 +232,12 @@ On interruption:
 
 - complete cached files should be reused;
 - partial downloads should resume when possible;
-- temporary work may be safely rebuilt;
-- a package already removed after successful extraction may need to be
-  downloaded again if rebuilding requires it.
+- completed patches advance the pinned manifest's `base_versions` before package removal;
+- temporary archives may be rebuilt, but original delta sources under
+  `.wg-launcher/installing/active/sources` must survive failure until their patch is checkpointed;
+- retries skip checkpointed patches instead of downloading or applying them again.
 
-That last case is lost bandwidth/work, not loss of user game data. Never
-delete cached package volumes before their extraction succeeds. Clean the
+Never delete cached package volumes before their extraction succeeds. Clean the
 remaining download cache after a successful installation by default.
 
 Use the per-installation `fs2` lock. Concurrent launchers must not mutate the
@@ -247,8 +247,8 @@ same installation.
 
 `.wg-launcher/state.json` is launcher state stored inside the game directory. It
 records exactly one complete product object, plus the game ID, region, channel,
-installed version, client type, language, payload platform, architecture, and
-metadata version. The input catalog array is not stored.
+installed version, client type, language, payload platform, architecture, metadata
+version, and a required `component_versions` map. The input catalog array is not stored.
 
 `status` loads that record and queries the saved product endpoint using the
 recorded selection.
@@ -256,10 +256,14 @@ recorded selection.
 manifest takes precedence during retry so an interrupted update remains
 internally consistent.
 
-The current update implementation follows the service's published installation
-chain. It does not persist per-component versions and therefore does not yet
-implement a fully minimal component-by-component delta update. Do not claim
-otherwise. Adding that capability requires a deliberate state-schema design.
+Updates send installed component versions through WGUS `<part>_current_version`
+parameters and skip unchanged components. New components start at `0`; a publisher
+may require a full component chain when its old version has no remaining delta.
+Pinned manifests require target `component_versions` and resumable `base_versions`.
+Checkpoints advance after successful patches, before removing their packages; the
+final installed state is written only after all patches succeed. Original delta
+sources survive partial patch failure. These fields are required, with no legacy
+record migration.
 
 ## Catalog and protocol rules
 
@@ -328,7 +332,8 @@ the CLI.
   and coordinates the pipeline; `chain.rs` orders patches; `prefetch.rs` queues downloads;
   `extraction.rs` applies ordered patches; `archive.rs` reads transport volumes;
   `delta.rs` applies deltas; `storage.rs` handles locks, state, and cleanup;
-  `paths.rs` validates paths; `types.rs` defines options, reports, and events.
+  `paths.rs` validates paths; `retry.rs` pins component checkpoints and preserves delta
+  sources; `types.rs` defines options, reports, and events.
 - `crates/wg-update-client/src/launcher/`: high-level workflows, with options and reports
   beside each workflow; `manifest.rs` owns shared plans and pinned manifest persistence.
 - `crates/wg-update-client/src/service/wire.rs`: private XML representations of WGUS responses.
@@ -414,8 +419,9 @@ and its category modules in `e2e/tests/scenarios/`.
   partial-file resumption, corrupt-archive retry, pending updates, locking,
   missing-state errors, moving installations, and rejection of another product's
   cache. Check that pinned retries avoid catalog queries even after the service
-  publishes another version. Do not claim actual mid-transfer process termination,
-  delta-update coverage, or whole-install transactional rollback.
+  publishes another version. Delta-update coverage uses source-dependent synthetic
+  librsync patches. Do not claim actual mid-transfer process termination or
+  whole-install transactional rollback.
 - Use the public `Product` configuration for custom service URLs in tests rather
   than adding a test-only endpoint switch. Cover the dedicated
   `tests/scenarios/service/` path from launcher CLI parsing through file-backed

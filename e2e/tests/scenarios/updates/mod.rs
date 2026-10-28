@@ -1,3 +1,5 @@
+mod delta;
+
 use crate::support::{Sandbox, assert_installed, success};
 use crate::{fixture::Release, server::WgUpdateService};
 use std::fs;

@@ -4,6 +4,7 @@ use super::{
     chain::ordered_patches,
     delta::apply_patch_directory,
     paths::walk_files,
+    retry::{checkpoint_patch, prepare_patch, resume_manifest, save_manifest},
     storage::{
         InstallationStorage, prepare_installation, remove_patch_volumes, verify_cache, write_marker,
     },
@@ -37,11 +38,11 @@ pub(super) fn extract_patch_sync(
         return Ok(0);
     }
 
-    let patch_dir = paths.work.join(format!("patch-{index}"));
-    fs::create_dir_all(&patch_dir)?;
+    let active = prepare_patch(patch, paths.work)?;
+    let patch_dir = active.join("archive");
     extract_archive(patch, paths.cache, &patch_dir, observer)?;
     let mut report = ExtractionReport::default();
-    apply_patch_directory(&patch_dir, paths.game, paths.work, observer, &mut report)?;
+    apply_patch_directory(&patch_dir, paths.game, &active, observer, &mut report)?;
     fs::remove_dir_all(&patch_dir)?;
     Ok(report.applied_deltas)
 }
@@ -90,8 +91,13 @@ pub(super) fn extract_sync(
     observer(ExtractionEvent::CheckingCache {
         assets: manifest.assets.len(),
     });
-    let patches = ordered_patches(manifest)?;
-    verify_cache(&patches, cache)?;
+    let mut manifest = resume_manifest(manifest.clone(), storage)?;
+    let patches = ordered_patches(&manifest)?
+        .into_iter()
+        .cloned()
+        .collect::<Vec<_>>();
+    verify_cache(&patches.iter().collect::<Vec<_>>(), cache)?;
+    save_manifest(&manifest, storage)?;
     prepare_installation(install_root, storage)?;
 
     let total = patches.len();
@@ -102,13 +108,14 @@ pub(super) fn extract_sync(
         work: &storage.work,
     };
     for (index, patch) in patches.into_iter().enumerate() {
-        report.applied_deltas += extract_patch_sync(patch, paths, index, total, &observer)?;
+        report.applied_deltas += extract_patch_sync(&patch, paths, index, total, &observer)?;
+        checkpoint_patch(&mut manifest, &patch, storage)?;
         if options.clean_download_cache {
-            remove_patch_volumes(cache, patch)?;
+            remove_patch_volumes(cache, &patch)?;
         }
     }
     finalize_installation(
-        manifest,
+        &manifest,
         install_root,
         storage,
         options,

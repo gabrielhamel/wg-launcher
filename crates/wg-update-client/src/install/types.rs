@@ -81,7 +81,7 @@ pub struct ExtractionReport {
 ///
 /// Created from a manifest only after extraction succeeds. Records the current
 /// installed build, while the installation directory may retain its original version
-/// name. Does not track individual component versions.
+/// name. Component versions select subsequent update chains.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InstalledBuild {
     /// Publisher application identifier.
@@ -103,6 +103,8 @@ pub struct InstalledBuild {
     pub platform: String,
     /// Game payload architecture, or `None` when not published.
     pub architecture: Option<String>,
+    /// Successfully installed version of each selected component.
+    pub component_versions: std::collections::BTreeMap<String, String>,
     /// Publisher metadata revision, distinct from the game version.
     pub metadata_version: String,
 }
@@ -120,6 +122,7 @@ impl From<&PatchManifest> for InstalledBuild {
             platform: manifest.platform.clone(),
             architecture: manifest.architecture.clone(),
             metadata_version: manifest.metadata_version.clone(),
+            component_versions: manifest.component_versions.clone(),
         }
     }
 }
