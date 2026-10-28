@@ -8,6 +8,8 @@ end-to-end test harness.
 
 ## Start a release
 
+Building the service requires Rust 1.88 or newer.
+
 Prepare `metadata.xml`, `patches_chain.xml`, and a `packages/` directory, then:
 
 ```console
