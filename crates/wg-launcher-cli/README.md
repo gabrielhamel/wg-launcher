@@ -120,6 +120,11 @@ Check the installed and available versions:
 wg-launcher status --path ./world-of-tanks
 ```
 
+Status highlights an available update and the latest version in green, with the
+installed version in yellow. It also shows an approximate compressed update size
+based on the applicable component patches. Cached packages may reduce the actual
+download. Redirected output remains plain text.
+
 Apply an update when one is available:
 
 ```console

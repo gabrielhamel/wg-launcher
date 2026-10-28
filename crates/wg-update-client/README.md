@@ -147,6 +147,10 @@ Later, call `status` or `update` with that same path. Each installation saves ju
 the selected product, so the original catalog is not needed. Updates keep the
 installation directory's name.
 
+`status` also reports `update_download_bytes`, the compressed size of the applicable
+update packages before subtracting cached data. It resolves metadata without
+transferring packages or modifying the installation.
+
 Updates use the installed `component_versions` map to request deltas and skip
 unchanged components. A publisher may require a full component download when no
 applicable delta remains. Completed patches are checkpointed in the pinned manifest;

@@ -1,3 +1,6 @@
+mod status;
+pub(super) use status::print_status;
+
 use comfy_table::{
     Attribute, Cell, CellAlignment, Color, ContentArrangement, Table, presets::UTF8_FULL,
 };

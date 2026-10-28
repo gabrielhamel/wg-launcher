@@ -3,7 +3,10 @@ use super::{
     install::install_resolved,
     manifest::{load_cache_manifest, load_installed_build, validate_cached_selection},
 };
-use crate::{DownloadOptions, InstalledBuild, Result, WgusClient, install::installation_storage};
+use crate::{
+    DownloadOptions, InstalledBuild, PatchManifest, Result, WgusClient,
+    install::installation_storage, installation_assets,
+};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -30,6 +33,9 @@ pub struct StatusReport {
     /// Whether the build or any component version differs. Versions are compared
     /// for equality; game files are not scanned for integrity.
     pub update_available: bool,
+    /// Compressed bytes in the applicable remaining patch chain, before subtracting
+    /// cached packages or partial downloads. Zero when no packages are needed.
+    pub update_download_bytes: u64,
 }
 
 /// Configures an in-place update using the installation's recorded selection.
@@ -54,7 +60,9 @@ pub struct UpdateOutcome {
 /// Loads the installed-build record and compares it with the live catalog.
 ///
 /// Uses the recorded region, client type, and language. Does not modify files,
-/// consult pending manifests, or verify installed file integrity.
+/// consult pending manifests, or verify installed file integrity. Resolves the live
+/// component update chain to estimate compressed download bytes without transferring
+/// packages; cached data is not subtracted from that estimate.
 ///
 /// # Errors
 ///
@@ -63,15 +71,15 @@ pub struct UpdateOutcome {
 pub async fn status(options: StatusOptions) -> Result<StatusReport> {
     let path = std::path::absolute(options.path)?;
     let installed = load_installed_build(&path).await?;
-    let latest =
-        super::manifest::resolve(&WgusClient::new()?, &recorded_selection(&installed)).await?;
-    Ok(StatusReport {
-        path,
-        update_available: installed.version != latest.version
-            || installed.component_versions != latest.component_versions,
-        latest_version: latest.version,
-        installed,
-    })
+    let latest = WgusClient::new()?
+        .manifest_from_versions(
+            &installed.product,
+            &installed.client_type,
+            Some(&installed.language),
+            &installed.component_versions,
+        )
+        .await?;
+    build_status(path, installed, &latest)
 }
 
 /// Runs [`update_with_observer`] without progress notifications.
@@ -129,13 +137,7 @@ where
             .entry(part.clone())
             .or_insert_with(|| version.clone());
     }
-    let status = StatusReport {
-        path,
-        update_available: installed.version != manifest.version
-            || installed.component_versions != manifest.component_versions,
-        latest_version: manifest.version.clone(),
-        installed,
-    };
+    let status = build_status(path, installed, &manifest)?;
     if !status.update_available {
         return Ok(UpdateOutcome {
             status,
@@ -147,6 +149,30 @@ where
     Ok(UpdateOutcome {
         status,
         installation: Some(installation),
+    })
+}
+
+fn build_status(
+    path: PathBuf,
+    installed: InstalledBuild,
+    manifest: &PatchManifest,
+) -> Result<StatusReport> {
+    let update_available = installed.version != manifest.version
+        || installed.component_versions != manifest.component_versions;
+    let update_download_bytes = if update_available {
+        installation_assets(manifest)?
+            .iter()
+            .map(|asset| asset.size)
+            .sum()
+    } else {
+        0
+    };
+    Ok(StatusReport {
+        path,
+        installed,
+        latest_version: manifest.version.clone(),
+        update_available,
+        update_download_bytes,
     })
 }
 

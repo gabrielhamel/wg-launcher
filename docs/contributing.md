@@ -57,6 +57,7 @@ crates/
     src/
       main.rs                 Runtime bootstrap
       cli/                    Dispatch, arguments, output, observer adapters
+        output/status.rs      Status colors and update size presentation
       progress/               Shared progress bars, discovery spinner, styles
     docs/assets/              CLI demonstration assets
   wg-update-service/          File-backed server binary

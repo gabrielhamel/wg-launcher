@@ -14,7 +14,7 @@ use observers::{
     fail_install_progress, finish_install_progress, observe_download, observe_extract,
     observe_install,
 };
-use output::{build_table, human_bytes, print_install_summary, print_manifest};
+use output::{build_table, human_bytes, print_install_summary, print_manifest, print_status};
 use std::{path::PathBuf, process::ExitCode, sync::Arc};
 use wg_update_client::{
     DownloadAssetsOptions, DownloadOptions, ExtractOptions, InspectOptions, InstallOptions,
@@ -135,24 +135,8 @@ async fn run_status(args: PathArgs) -> Result<(), Box<dyn std::error::Error>> {
     .await;
     loader.finish();
     let report = result?;
-    println!("Installation: {}", report.path.display());
-    println!("Game:         {}", report.installed.product.name);
-    println!("Region:       {}", report.installed.region);
-    println!("Installed:    {}", report.installed.version);
-    println!("Latest:       {}", report.latest_version);
-    if report.update_available {
-        let current = std::path::absolute(std::env::current_dir()?)?;
-        if current == report.path {
-            println!("Update available. Run: wg-launcher update");
-        } else {
-            println!(
-                "Update available. Run: wg-launcher update --path \"{}\"",
-                report.path.display()
-            );
-        }
-    } else {
-        println!("Up to date.");
-    }
+    let current = std::path::absolute(std::env::current_dir()?)?;
+    print_status(&report, &current);
     Ok(())
 }
 

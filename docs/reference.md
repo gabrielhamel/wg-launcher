@@ -63,7 +63,14 @@ can leave partially changed game files; there is no whole-install rollback.
 Transport `.wgpkg` and `.dspkg` archives are extracted into the game tree.
 Game-owned `.pkg` files inside them remain intact.
 
-`status` checks the live selection matching the installed identity. `update`
+`status` checks the live component update chain matching the installed identity.
+Its `StatusReport.update_download_bytes` estimates the compressed size of applicable
+packages, excluding unchanged components. The CLI shows this as `Update size`
+when an update is available. This is the complete patch transfer size; cached
+packages and partial downloads may reduce the actual download. Status does not
+transfer packages, modify files, or use a pending pinned manifest.
+
+`update`
 reuses that selection and path, with a pending pinned manifest taking precedence
 during retries. It sends saved component versions to WGUS, requests the applicable
 delta chains, and skips unchanged components. New components start at version `0`.

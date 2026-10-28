@@ -45,6 +45,39 @@ fn update_downloads_only_delta_and_preserves_unchanged_component() {
     let (game, initial, server) = installed(&sandbox);
     let delta = DeltaFixture::build(&initial, &sandbox.path.join("delta"), false);
     server.replace_resources(delta.resources.clone());
+    let state_before = fs::read(game.join(".wg-launcher/state.json")).unwrap();
+    let before_status = server.requests().len();
+    let output = success(sandbox.run(&game, &["status"]));
+    assert!(output.contains("Installed:    1.0"));
+    assert!(output.contains("Latest:       2.0"));
+    assert!(output.contains(&format!(
+        "Update size:  ~{} B",
+        delta.resources["delta.wgpkg"].len()
+    )));
+    assert!(
+        !output.contains('\u{1b}'),
+        "redirected output should remain plain text"
+    );
+    assert_eq!(
+        fs::read(game.join(".wg-launcher/state.json")).unwrap(),
+        state_before
+    );
+    let status_requests = server.requests();
+    let status_requests = &status_requests[before_status..];
+    assert!(
+        status_requests
+            .iter()
+            .all(|request| !request.path.ends_with(".wgpkg"))
+    );
+    let query = status_requests
+        .iter()
+        .find(|request| request.path.ends_with("patches_chain/"))
+        .unwrap()
+        .query
+        .as_deref()
+        .unwrap();
+    assert!(query.contains("client_current_version=1.0"));
+    assert!(!game.join(".wg-launcher/download").exists());
     let before = server.requests().len();
     success(sandbox.run(&game, &["update"]));
     assert_eq!(fs::read(game.join("payload.pkg")).unwrap(), delta.payload);
@@ -84,6 +117,9 @@ fn update_downloads_only_delta_and_preserves_unchanged_component() {
     server.replace_resources(current);
     let output = success(sandbox.run(&game, &["update"]));
     assert!(output.contains("Already up to date (2.0)"));
+    let output = success(sandbox.run(&game, &["status"]));
+    assert!(output.contains("Up to date."));
+    assert!(!output.contains("Update size:"));
     assert_eq!(fs::read(game.join("payload.pkg")).unwrap(), delta.payload);
 }
 
