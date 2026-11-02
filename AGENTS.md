@@ -54,7 +54,11 @@ uses cargo-dist to build launcher archives and shell/PowerShell installers on
 version-tag pushes, then calls `publish-crates.yml` to publish only
 `wg-update-client` to crates.io. The parallel `publish-homebrew.yml` publishes the
 generated `wg-launcher.rb` to `gabrielhamel/homebrew-tap` using the tap-scoped
-`HOMEBREW_TAP_SSH_KEY` deploy key. The CLI and service have `publish = false`;
+`HOMEBREW_TAP_SSH_KEY` deploy key. `publish-apt.yml` builds an APT-owned package,
+signs the repository with `APT_SIGNING_KEY`, and deploys it through GitHub Pages.
+`publish-winget.yml` tests generated manifests on Windows and submits them to
+`microsoft/winget-pkgs` with `WINGET_TOKEN`. Microsoft review controls publication;
+never describe a pending submission as an available WinGet package. The CLI and service have `publish = false`;
 keep the CLI's explicit `package.metadata.dist.dist = true` so binary releases
 remain enabled. Creating a GitHub Release does not trigger publication. Pushes
 to `main` and pull requests run checks without publication. The root
@@ -369,6 +373,8 @@ the CLI.
 - `crates/wg-update-client/src/lib.rs`: the public library contract.
 - `crates/wg-update-service/src/main.rs`: file-service CLI arguments and process lifetime.
 - `crates/wg-update-service/src/server.rs`: file-backed HTTP serving, ranges, and safe path mapping.
+- `packaging/`: release-only Debian package/index signing and WinGet manifest
+  generation; generated versions derive from the tagged source or release manifest.
 - `e2e/tests/scenarios/`: independent black-box workflow and service-process scenarios.
 - `e2e/tests/support/`: process helpers, synthetic archives, and test-only HTTP server.
 

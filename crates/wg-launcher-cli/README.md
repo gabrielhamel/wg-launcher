@@ -37,9 +37,44 @@ remove the older standalone copy from your `PATH` so the Homebrew executable is
 used. Homebrew owns this installation; `wg-launcher self-update` directs you to
 `brew upgrade` and does not replace the managed executable.
 
+### apt (Debian and Ubuntu)
+
+For Debian 12+ and Ubuntu 22.04+ on x64, add the signed repository once:
+
+```sh
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://gabrielhamel.github.io/wg-launcher/apt/wg-launcher.asc | sudo tee /etc/apt/keyrings/wg-launcher.asc > /dev/null
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/wg-launcher.asc] https://gabrielhamel.github.io/wg-launcher/apt stable main" | sudo tee /etc/apt/sources.list.d/wg-launcher.list > /dev/null
+sudo apt update
+sudo apt install wg-launcher
+```
+
+To upgrade:
+
+```sh
+sudo apt update
+sudo apt install --only-upgrade wg-launcher
+```
+
+APT verifies the signed repository and package checksums. This package disables
+built-in self-update; use apt to manage its executable.
+
 ### Windows
 
-For Windows x64, run this in PowerShell:
+The WinGet package has been [submitted to Microsoft](https://github.com/microsoft/winget-pkgs/pull/468869).
+After Microsoft approves and indexes it, install with:
+
+```powershell
+winget install --id GabrielHamel.WgLauncher --exact --source winget
+```
+
+Upgrade WinGet installations with:
+
+```powershell
+winget upgrade --id GabrielHamel.WgLauncher --exact --source winget
+```
+
+You can install Windows x64 immediately with this PowerShell installer:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
@@ -130,11 +165,12 @@ Game files and installed game state are not changed.
 If the latest release cannot be checked, it shows `latest: unavailable` and
 still exits successfully.
 
-For installations managed by Homebrew, WinGet, Scoop, Nix, or a package manager
+For installations managed by Homebrew, APT, WinGet, Scoop, Nix, or a package manager
 marked by the distributor, the CLI reports **Self-update not supported** and
 explains how to use that manager to update it. `self-update` refuses to replace
-a managed executable. Homebrew is available through the tap above. WinGet
-distribution is not available yet.
+a managed executable. Homebrew and apt are available through the repositories
+above. WinGet submissions pass through Microsoft's validation and review before
+appearing in its community source.
 
 To skip startup checks for offline use or scripts, set the environment variable
 `WG_LAUNCHER_NO_UPDATE_CHECK=1`. Explicit `self-update` still checks for a release.

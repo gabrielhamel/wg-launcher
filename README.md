@@ -20,7 +20,20 @@ Upgrade Homebrew installations with `brew update`, then
 
 ### Windows
 
-For Windows x64, run this in PowerShell:
+The WinGet package has been [submitted to Microsoft](https://github.com/microsoft/winget-pkgs/pull/468869).
+After Microsoft approves and indexes it, install with:
+
+```powershell
+winget install --id GabrielHamel.WgLauncher --exact --source winget
+```
+
+Upgrade WinGet installations with:
+
+```powershell
+winget upgrade --id GabrielHamel.WgLauncher --exact --source winget
+```
+
+You can install Windows x64 immediately with this PowerShell installer:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
@@ -36,7 +49,9 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launche
 
 ### Linux
 
-For Linux x64, run:
+Debian 12+ and Ubuntu 22.04+ users on x64 can use the
+[signed apt repository](crates/wg-launcher-cli/README.md#apt-debian-and-ubuntu).
+For a standalone Linux x64 installation, run:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh

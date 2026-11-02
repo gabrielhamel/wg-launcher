@@ -39,6 +39,7 @@ install a game. Keep those programs and their guide snippets synchronized.
 Cargo.toml                    Workspace and shared package metadata
 Cargo.lock                    Shared dependency lockfile
 docs/                         User guides and contributor reference
+packaging/                    Signed apt packaging and generated WinGet manifests
 crates/
   wg-update-client/           Reusable update client, README, and license
     examples/                 Runnable programs matching the library guide
@@ -152,6 +153,45 @@ fails, check whether the client was published before retrying: crates.io version
 cannot be overwritten. Publishing uses the supplied token directly; it does not
 write registry credentials to disk.
 
+### apt and WinGet publishing
+
+[`publish-apt.yml`](../.github/workflows/publish-apt.yml) builds the tagged CLI on
+Ubuntu 22.04 with `WG_LAUNCHER_PACKAGE_MANAGER=apt`. The resulting amd64 Debian
+package requires glibc 2.35 or newer. [`packaging/apt.py`](../packaging/apt.py)
+generates the apt indexes, signs `Release`/`InRelease` using the `APT_SIGNING_KEY`
+Actions secret, tests installation through apt, and deploys the repository to
+GitHub Pages at `https://gabrielhamel.github.io/wg-launcher/apt`. The public key is
+served as `wg-launcher.asc`; never commit the private signing key. The public key
+fingerprint is `EC919478EC4B9D1C8E76EEB2F397D2E90A411990`.
+
+Validated `.deb` files are attached to their GitHub Release. Repository rebuilds
+reuse those immutable assets and retain earlier published packages so cached
+indexes and explicit-version installs remain usable. Changing a package's bytes
+requires a new release version.
+
+[`publish-winget.yml`](../.github/workflows/publish-winget.yml) uses
+[`packaging/winget.py`](../packaging/winget.py) to generate the three manifests for
+`GabrielHamel.WgLauncher` from a verified Windows release archive. It validates
+and installs them using the native WinGet client, checks self-update refusal,
+attaches `wg-launcher-winget.zip` to the release, and submits a pull request to
+`microsoft/winget-pkgs` using the `WINGET_TOKEN` secret. The token needs only
+`public_repo` access. Microsoft validation and review control when a submission
+becomes available through `winget install`; uploading manifests alone does not
+publish the listing. The first submission is
+[PR #468869](https://github.com/microsoft/winget-pkgs/pull/468869); its author must
+complete Microsoft's Contributor License Agreement before it can be accepted.
+
+The hosted WinGet client currently recognizes older schema headers than the
+community repository. The workflow first validates all three files against the
+actual current Microsoft JSON schemas. Native validation may then accept only
+the specific schema-header warning HRESULT, rejecting all semantic errors and
+other warnings. Installation, checksum verification, and package-manager
+ownership are still tested using WinGet itself.
+
+Both workflows run after stable tagged releases and can be retried manually
+with an existing release tag. They do not republish the Rust crate. Prereleases
+are excluded from these distribution channels.
+
 `wg-launcher self-update` reads the published cargo-dist manifest and upgrades
 the running executable in process. No standalone updater is installed. The
 existing `update` command continues to update game assets.
@@ -162,7 +202,7 @@ that receipt and canonical Homebrew Cellar paths, including the existing
 published binary's path-based protection.
 
 For other package-manager distributions built from source, build with `WG_LAUNCHER_PACKAGE_MANAGER` set
-to `homebrew`, `winget`, `scoop`, `nix`, or another manager name. This compile-time
+to `homebrew`, `apt`, `winget`, `scoop`, `nix`, or another manager name. This compile-time
 marker disables built-in replacement and points users at their package manager.
 The CLI also recognizes canonical Homebrew Cellar, WinGet, Scoop, and Nix store
 paths, including executions reached through symlinks. Future package-manager
