@@ -8,6 +8,7 @@ fn manager() -> Option<&'static str> {
         return Some(match manager {
             "brew" | "homebrew" => "Homebrew",
             "winget" => "WinGet",
+            "apt" | "deb" => "APT",
             "scoop" => "Scoop",
             "nix" => "Nix",
             _ => "the package manager",
@@ -76,6 +77,9 @@ fn instruction(manager: &str) -> &'static str {
     match manager {
         "Homebrew" => "Use `brew upgrade` to update it.",
         "WinGet" => "Use `winget upgrade` to update it.",
+        "APT" => {
+            "Use `sudo apt update` and `sudo apt install --only-upgrade wg-launcher` to update it."
+        }
         "Scoop" => "Use `scoop update` to update it.",
         "Nix" => "Update it through your Nix configuration.",
         _ => "Use your package manager to update it.",

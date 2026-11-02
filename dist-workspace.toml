@@ -18,5 +18,5 @@ pr-run-mode = "plan"
 install-path = "CARGO_HOME"
 # CLI self-update is built in; do not install a separate updater executable.
 install-updater = false
-publish-jobs = ["./publish-crates", "./publish-homebrew"]
-github-custom-job-permissions = { "publish-crates" = { contents = "read" }, "publish-homebrew" = { contents = "read" } }
+publish-jobs = ["./publish-crates", "./publish-homebrew", "./publish-apt", "./publish-winget"]
+github-custom-job-permissions = { "publish-crates" = { contents = "read" }, "publish-homebrew" = { contents = "read" }, "publish-apt" = { contents = "write", pages = "write", id-token = "write" }, "publish-winget" = { contents = "write" } }

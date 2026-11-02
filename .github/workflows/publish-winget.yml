@@ -1,0 +1,79 @@
+name: Publish WinGet package
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable release tag
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      plan:
+        required: true
+        type: string
+    secrets:
+      WINGET_TOKEN:
+        required: true
+permissions:
+  contents: write
+concurrency:
+  group: publish-winget
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: windows-latest
+    env:
+      RELEASE_TAG: ${{ inputs.tag || fromJson(inputs.plan).announcement_tag }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Generate manifests from the verified Windows archive
+        run: python packaging/winget.py --tag "$env:RELEASE_TAG" --output output
+      - name: Install WinGet tooling
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Install-PackageProvider -Name NuGet -Force | Out-Null
+          Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery -Scope AllUsers | Out-Null
+          Repair-WinGetPackageManager -AllUsers -Force
+      - name: Validate and install the package
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $version = $env:RELEASE_TAG.TrimStart('v')
+          $manifest = "output/manifests/g/GabrielHamel/WgLauncher/$version"
+          winget validate --manifest $manifest --disable-interactivity
+          if ($LASTEXITCODE -ne 0) { throw 'WinGet manifest validation failed' }
+          winget settings --enable LocalManifestFiles
+          winget install --manifest $manifest --scope user --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
+          if ($LASTEXITCODE -ne 0) { throw 'WinGet installation failed' }
+          $binary = Get-ChildItem "$env:LOCALAPPDATA/Microsoft/WinGet/Packages" -Recurse -Filter wg-launcher.exe | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $binary) { throw 'WinGet did not install the executable' }
+          $before = (Get-FileHash $binary -Algorithm SHA256).Hash
+          $env:WG_LAUNCHER_NO_UPDATE_CHECK = '1'
+          & $binary --version
+          $ErrorActionPreference = 'Continue'
+          $output = & $binary self-update 2>&1 | Out-String
+          $status = $LASTEXITCODE
+          $ErrorActionPreference = 'Stop'
+          if ($status -eq 0 -or $output -notlike '*Self-update not supported*') { throw 'WinGet ownership was not respected' }
+          if ((Get-FileHash $binary -Algorithm SHA256).Hash -ne $before) { throw 'Managed executable changed' }
+      - name: Attach manifests to the release
+        shell: bash
+        run: |
+          version="${RELEASE_TAG#v}"
+          cd output
+          7z a ../wg-launcher-winget.zip "manifests/g/GabrielHamel/WgLauncher/$version"
+          gh release upload "$RELEASE_TAG" ../wg-launcher-winget.zip --repo "$GITHUB_REPOSITORY" --clobber
+      - name: Submit to the WinGet community repository
+        env:
+          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
+          $version = $env:RELEASE_TAG.TrimStart('v')
+          & ./wingetcreate.exe submit --no-open --prtitle "New version: GabrielHamel.WgLauncher version $version" --token "$env:WINGET_TOKEN" "output/manifests/g/GabrielHamel/WgLauncher/$version"
+          if ($LASTEXITCODE -ne 0) { throw 'WinGet submission failed' }

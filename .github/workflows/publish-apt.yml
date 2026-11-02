@@ -1,0 +1,89 @@
+name: Publish apt repository
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing stable release tag
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      plan:
+        required: true
+        type: string
+    secrets:
+      APT_SIGNING_KEY:
+        required: true
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+concurrency:
+  group: publish-apt
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-22.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      RELEASE_TAG: ${{ inputs.tag || fromJson(inputs.plan).announcement_tag }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check out the release source
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+          path: source
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: source -> target
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install packaging tools
+        run: sudo apt-get update && sudo apt-get install -y apt-utils dpkg-dev gnupg
+      - name: Import repository signing key
+        env:
+          APT_SIGNING_KEY: ${{ secrets.APT_SIGNING_KEY }}
+        run: |
+          install -d -m 700 "$RUNNER_TEMP/apt-gnupg"
+          printf '%s' "$APT_SIGNING_KEY" | gpg --homedir "$RUNNER_TEMP/apt-gnupg" --batch --import
+      - name: Build and sign the apt repository
+        id: repository
+        run: |
+          python packaging/apt.py --source source --output site --tag "$RELEASE_TAG" \
+            --repository "$GITHUB_REPOSITORY" --gnupg-home "$RUNNER_TEMP/apt-gnupg"
+      - name: Test installation through apt
+        run: |
+          sudo install -m 644 site/apt/wg-launcher.asc /etc/apt/keyrings/wg-launcher-test.asc
+          echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/wg-launcher-test.asc] file:$GITHUB_WORKSPACE/site/apt stable main" | sudo tee /etc/apt/sources.list.d/wg-launcher-test.list
+          sudo chmod -R a+rX site
+          sudo apt-get update
+          sudo apt-get install -y wg-launcher
+          WG_LAUNCHER_NO_UPDATE_CHECK=1 /usr/bin/wg-launcher --version
+          sha256sum /usr/bin/wg-launcher > "$RUNNER_TEMP/launcher.sha256"
+          if /usr/bin/wg-launcher self-update > "$RUNNER_TEMP/self-update.log" 2>&1; then
+            echo 'apt-managed executable unexpectedly allowed self-update'
+            exit 1
+          fi
+          grep -F 'Self-update not supported' "$RUNNER_TEMP/self-update.log"
+          sha256sum -c "$RUNNER_TEMP/launcher.sha256"
+      - name: Publish the tested Debian package
+        if: steps.repository.outputs.new_package == 'true'
+        env:
+          PACKAGE_PATH: ${{ steps.repository.outputs.asset_path }}
+        run: gh release upload "$RELEASE_TAG" "$PACKAGE_PATH" --repo "$GITHUB_REPOSITORY"
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - name: Deploy the apt repository
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - name: Remove temporary signing keys
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/apt-gnupg"
