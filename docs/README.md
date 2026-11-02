@@ -18,7 +18,7 @@ Choose the path that matches what you want to build or install.
 <summary>I'm using the terminal. What's the quickest starting point?</summary>
 
 ```console
-cargo install wg-launcher-cli --version 1.2.0 --locked
+cargo install --git https://github.com/gabrielhamel/wg-launcher --tag 1.2.0 --locked wg-launcher-cli
 wg-launcher inspect --game wot --region eu
 ```
 

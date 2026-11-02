@@ -4,7 +4,7 @@ File-backed WGUS-compatible update server. It streams package files from disk
 and supports resumed downloads without depending on the launcher client or its
 end-to-end test harness.
 
-[Server guide](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/update-service.md) · [Documentation home](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/README.md) · [API documentation](https://docs.rs/wg-update-service) · [Testing](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/testing.md)
+[Server guide](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/update-service.md) · [Documentation home](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/README.md) · [Testing](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/testing.md)
 
 ## Start a release
 

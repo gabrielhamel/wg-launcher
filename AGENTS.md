@@ -29,7 +29,7 @@ The root is a virtual Cargo workspace with two launcher packages:
 - `crates/wg-update-client`: library-only package `wg-update-client`, imported as `wg_update_client`.
 - `crates/wg-launcher-cli`: binary package `wg-launcher-cli`, executable `wg-launcher`.
 
-`crates/wg-update-service` is an additional published production package. Its
+`crates/wg-update-service` is an additional production package. Its
 `wg-update-service` binary serves a file-backed WGUS-compatible release and does
 not depend on the client or launcher. The unpublished `e2e/` workspace package
 owns all synthetic payloads, archive builders, process harnesses, and test-only
@@ -51,9 +51,12 @@ The two launcher packages are workspace defaults. Use `--workspace` for full val
 `-p wg-update-client` for library-only documentation. Install from source with
 `cargo install --path crates/wg-launcher-cli --locked`. The release workflow
 uses cargo-dist to build launcher archives and shell/PowerShell installers on
-version-tag pushes, then calls `publish-crates.yml` to publish the service, client,
-and CLI explicitly. Keep the shared package version and the CLI's versioned path
-dependency synchronized before releasing. Configure distribution in
+version-tag pushes, then calls `publish-crates.yml` to publish only
+`wg-update-client` to crates.io. The CLI and service have `publish = false`;
+keep the CLI's explicit `package.metadata.dist.dist = true` so binary releases
+remain enabled. Creating a GitHub Release does not trigger publication. Pushes
+to `main` and pull requests run checks without publication. Keep the shared
+package version and the CLI's versioned path dependency synchronized before releasing. Configure distribution in
 `dist-workspace.toml` and regenerate `release.yml` with the pinned dist version;
 do not edit generated CI directly. CLI self-updating, if added, must use
 `wg-launcher self-update`; `update` remains the game-asset workflow.

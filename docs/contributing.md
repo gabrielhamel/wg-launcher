@@ -80,7 +80,7 @@ These modules are internal implementation details. Library consumers use the
 public exports from `wg_update_client`.
 
 The two launcher packages are workspace defaults. Commands using `--workspace`
-also include the published service package and unpublished E2E package. Run focused checks with
+also include the service package and unpublished E2E package. Run focused checks with
 `-p wg-update-client`, `-p wg-launcher-cli`, `-p wg-update-service`, or
 `-p wg-launcher-e2e`.
 
@@ -88,15 +88,19 @@ also include the published service package and unpublished E2E package. Run focu
 
 Keep the shared workspace version and the CLI's versioned `wg-update-client`
 dependency and versioned documentation synchronized. The current release version
-is 1.2.0. The E2E package remains unpublished.
+is 1.2.0. Only `wg-update-client` is published to crates.io. The CLI, service,
+and E2E packages have `publish = false`.
 
 [`dist-workspace.toml`](../dist-workspace.toml) configures cargo-dist, pinned to
 0.33.1. It distributes `wg-launcher-cli` for Windows x64, Linux x64, and macOS
 Apple Silicon and Intel, with ZIP/tar.gz archives, SHA-256 checksums, and shell
-and PowerShell installers. The service remains available through crates.io.
+and PowerShell installers. Build the service from source using the
+[service guide](update-service.md#start-the-server).
 The generated [release workflow](../.github/workflows/release.yml) runs a release
 plan on pull requests and builds and publishes binaries when a version tag is
-pushed. Creating a release manually no longer triggers publishing.
+pushed. Creating a GitHub Release does not trigger this workflow. Pushes to
+`main` run the separate checks workflow, without building or publishing a release.
+Pull requests also run checks and a release plan, without publishing.
 
 Install the pinned release tool and regenerate CI after configuration changes:
 
@@ -112,7 +116,7 @@ invalid local reusable-workflow references for custom publishing jobs.
 
 Before releasing, run the validation commands above and review the release plan.
 Ensure the repository has a `CRATES_IO_TOKEN` Actions secret authorized to publish
-all three production crates. Once the release commit is on the remote, push its
+`wg-update-client`. Once the release commit is on the remote, push its
 matching tag (for the current version):
 
 ```console
@@ -122,9 +126,10 @@ git push origin 1.2.0
 
 The workflow builds all four targets, creates a GitHub Release with the archives
 and installers, then calls [`publish-crates.yml`](../.github/workflows/publish-crates.yml)
-to publish the independent service, client, and CLI in that order. Prerelease
-tags create GitHub prereleases and skip crates.io publication. If publication
-fails, inspect which crates were published before retrying: crates.io versions
+to publish only `wg-update-client`. The CLI and service are never published to
+crates.io by this workflow. Prerelease tags create GitHub prereleases and skip
+crates.io publication. If publication
+fails, check whether the client was published before retrying: crates.io versions
 cannot be overwritten. Publishing uses the supplied token directly; it does not
 write registry credentials to disk.
 

@@ -12,7 +12,7 @@ or use the [command-line installers](crates/wg-launcher-cli/README.md#install-th
 With Rust and Cargo, you can also install from source and preview a build:
 
 ```console
-cargo install wg-launcher-cli --version 1.2.0 --locked
+cargo install --git https://github.com/gabrielhamel/wg-launcher --tag 1.2.0 --locked wg-launcher-cli
 wg-launcher list --region eu
 wg-launcher inspect --game wot --region eu
 wg-launcher inspect --game wows --region ww

@@ -15,7 +15,7 @@ executables. Download an archive from [Releases](https://github.com/gabrielhamel
 and put the extracted `wg-launcher` executable on your `PATH`. Windows uses ZIP;
 Linux and macOS use tar.gz. Each release includes SHA-256 checksums.
 
-Once the first binary release is published, you can also use these installers.
+You can also use these installers.
 They download the appropriate executable without requiring Rust or Cargo.
 
 <details>
@@ -43,7 +43,7 @@ when Cargo isn't installed. Follow the installer's instructions to refresh your
 If you already have Rust and Cargo, install from source with:
 
 ```console
-cargo install wg-launcher-cli --version 1.2.0 --locked
+cargo install --git https://github.com/gabrielhamel/wg-launcher --tag 1.2.0 --locked wg-launcher-cli
 wg-launcher --help
 ```
 
