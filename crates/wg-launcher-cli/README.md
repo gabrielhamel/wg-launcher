@@ -10,9 +10,32 @@ Windows/x64. Player login and launching the game are outside its scope.
 
 ## Install the CLI
 
-Use the installer for your platform to download the latest release. Rust and
-Cargo are not required. The CLI is distributed through GitHub Releases;
+Install with Homebrew or use the installer for your platform to download the
+latest release. Rust and Cargo are not required. The CLI is distributed through GitHub Releases;
 only the `wg-update-client` Rust library is published to crates.io.
+
+### Homebrew
+
+On macOS (Apple Silicon or Intel) and Linux x64:
+
+```sh
+brew install gabrielhamel/tap/wg-launcher
+```
+
+The [Homebrew tap](https://github.com/gabrielhamel/homebrew-tap) downloads the
+published binary for your platform and verifies its checksum.
+
+To upgrade:
+
+```sh
+brew update
+brew upgrade gabrielhamel/tap/wg-launcher
+```
+
+If you previously used the shell installer, check `which -a wg-launcher` and
+remove the older standalone copy from your `PATH` so the Homebrew executable is
+used. Homebrew owns this installation; `wg-launcher self-update` directs you to
+`brew upgrade` and does not replace the managed executable.
 
 ### Windows
 
@@ -110,8 +133,8 @@ still exits successfully.
 For installations managed by Homebrew, WinGet, Scoop, Nix, or a package manager
 marked by the distributor, the CLI reports **Self-update not supported** and
 explains how to use that manager to update it. `self-update` refuses to replace
-a managed executable. Homebrew and WinGet distributions are not available yet;
-this behavior prepares for those channels.
+a managed executable. Homebrew is available through the tap above. WinGet
+distribution is not available yet.
 
 To skip startup checks for offline use or scripts, set the environment variable
 `WG_LAUNCHER_NO_UPDATE_CHECK=1`. Explicit `self-update` still checks for a release.

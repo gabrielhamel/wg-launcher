@@ -39,3 +39,4 @@ self-replace = "1.5"
 # Keep binary releases enabled independently of crates.io publication.
 [package.metadata.dist]
 dist = true
+formula = "wg-launcher"

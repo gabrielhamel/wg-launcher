@@ -5,7 +5,8 @@ members = ["cargo:."]
 [dist]
 cargo-dist-version = "0.33.1"
 ci = "github"
-installers = ["shell", "powershell"]
+installers = ["shell", "powershell", "homebrew"]
+tap = "gabrielhamel/homebrew-tap"
 targets = [
     "aarch64-apple-darwin",
     "x86_64-apple-darwin",
@@ -17,5 +18,5 @@ pr-run-mode = "plan"
 install-path = "CARGO_HOME"
 # CLI self-update is built in; do not install a separate updater executable.
 install-updater = false
-publish-jobs = ["./publish-crates"]
-github-custom-job-permissions = { "publish-crates" = { contents = "read" } }
+publish-jobs = ["./publish-crates", "./publish-homebrew"]
+github-custom-job-permissions = { "publish-crates" = { contents = "read" }, "publish-homebrew" = { contents = "read" } }

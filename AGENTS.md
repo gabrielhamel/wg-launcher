@@ -52,7 +52,9 @@ The two launcher packages are workspace defaults. Use `--workspace` for full val
 `cargo install --path crates/wg-launcher-cli --locked`. The release workflow
 uses cargo-dist to build launcher archives and shell/PowerShell installers on
 version-tag pushes, then calls `publish-crates.yml` to publish only
-`wg-update-client` to crates.io. The CLI and service have `publish = false`;
+`wg-update-client` to crates.io. The parallel `publish-homebrew.yml` publishes the
+generated `wg-launcher.rb` to `gabrielhamel/homebrew-tap` using the tap-scoped
+`HOMEBREW_TAP_SSH_KEY` deploy key. The CLI and service have `publish = false`;
 keep the CLI's explicit `package.metadata.dist.dist = true` so binary releases
 remain enabled. Creating a GitHub Release does not trigger publication. Pushes
 to `main` and pull requests run checks without publication. The root
@@ -66,8 +68,8 @@ do not edit generated CI directly. CLI self-updating uses `wg-launcher self-upda
 `update` remains the game-asset workflow. CLI release discovery, package-manager
 ownership, and executable replacement belong in `cli/self_update/`, independent
 of library/game update behavior. Startup checks must fail open with a short
-HTTP timeout. Respect the compile-time `WG_LAUNCHER_PACKAGE_MANAGER` marker and
-recognized package-manager paths. Verify checksums and the candidate executable
+HTTP timeout. Respect Homebrew's `INSTALL_RECEIPT.json`, the compile-time
+`WG_LAUNCHER_PACKAGE_MANAGER` marker, and recognized package-manager paths. Verify checksums and the candidate executable
 before replacing a direct installation; never replace a managed binary. CLI
 self-update staging belongs beside the CLI executable and is independent of
 game installation-owned files. Do not add a home-directory release cache.

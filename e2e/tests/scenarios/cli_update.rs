@@ -160,6 +160,23 @@ fn package_manager_installations_refuse_replacement_even_when_newer_is_available
         );
         assert_eq!(fs::read(launcher).unwrap(), before);
     }
+    let prefix = sandbox.path.join("custom-homebrew-prefix");
+    let launcher = prefix.join("bin").join(executable_name());
+    copy_launcher(&launcher);
+    fs::write(
+        prefix.join("INSTALL_RECEIPT.json"),
+        br#"{"homebrew_version":"test"}"#,
+    )
+    .unwrap();
+    failure(
+        sandbox.run_cli(
+            &launcher,
+            &sandbox.path,
+            &["self-update"],
+            &[("WG_LAUNCHER_UPDATE_MANIFEST", &manifest)],
+        ),
+        "Homebrew",
+    );
     assert!(
         !server
             .requests()

@@ -52,7 +52,8 @@ manifest, checksums, and replacement archives through the supported release-mirr
 setting. They run a copied launcher, never the shared build executable, and
 replace it with the independent `cli-update-fixture` executable from `e2e/src/bin`.
 Coverage includes startup/help warnings, current/latest version output, offline
-checks, skipped checks, equal/older releases, package-manager refusal, checksum
+checks, skipped checks, equal/older releases, package-manager refusal (including
+Homebrew receipts in custom prefixes), checksum
 and embedded-version failures, successful replacement, staging cleanup, and
 preservation of unrelated files. The synthetic replacement has its own test
 version, independent of the workspace release. These scenarios share the
@@ -61,6 +62,10 @@ Windows/Linux/macOS CI matrix; a local run verifies only the host platform.
 ```console
 cargo test -p wg-launcher-e2e --locked scenarios::cli_update
 ```
+
+The tap's separate workflow installs the published formula on Apple Silicon
+macOS, Intel macOS, and Linux x64, then verifies that self-update refuses the
+Homebrew-owned executable.
 
 Server-only CLI and HTTP contract tests belong to the service package:
 

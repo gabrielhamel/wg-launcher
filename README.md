@@ -9,6 +9,15 @@ Works with Wargaming, Lesta, and your own WGUS-compatible update services.
 
 Install a prebuilt executable for your platform. Rust and Cargo are not required.
 
+### Homebrew (macOS and Linux x64)
+
+```sh
+brew install gabrielhamel/tap/wg-launcher
+```
+
+Upgrade Homebrew installations with `brew update`, then
+`brew upgrade gabrielhamel/tap/wg-launcher`.
+
 ### Windows
 
 For Windows x64, run this in PowerShell:

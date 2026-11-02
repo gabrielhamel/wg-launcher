@@ -14,6 +14,16 @@ fn manager() -> Option<&'static str> {
         });
     }
     let executable = std::env::current_exe().ok()?.canonicalize().ok()?;
+    if let Some(prefix) = executable.parent().and_then(Path::parent) {
+        let receipt = prefix.join("INSTALL_RECEIPT.json");
+        if std::fs::read(receipt)
+            .ok()
+            .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+            .is_some_and(|receipt| receipt["homebrew_version"].is_string())
+        {
+            return Some("Homebrew");
+        }
+    }
     manager_for_path(&executable)
 }
 

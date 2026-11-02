@@ -102,7 +102,7 @@ packages have `publish = false`.
 [`dist-workspace.toml`](../dist-workspace.toml) configures cargo-dist, pinned to
 0.33.1. It distributes `wg-launcher-cli` for Windows x64, Linux x64, and macOS
 Apple Silicon and Intel, with ZIP/tar.gz archives, SHA-256 checksums, and shell
-and PowerShell installers. Build the service from source using the
+and PowerShell installers, plus a Homebrew formula. Build the service from source using the
 [service guide](update-service.md#start-the-server).
 The generated [release workflow](../.github/workflows/release.yml) runs a release
 plan on pull requests and builds and publishes binaries when a version tag is
@@ -135,8 +135,18 @@ git push origin <version>
 
 The workflow builds all four targets, creates a GitHub Release with the archives
 and installers, then calls [`publish-crates.yml`](../.github/workflows/publish-crates.yml)
-to publish only `wg-update-client`. The CLI and service are never published to
-crates.io by this workflow. Prerelease tags create GitHub prereleases and skip
+to publish only `wg-update-client`. The parallel
+[`publish-homebrew.yml`](../.github/workflows/publish-homebrew.yml) job downloads
+the generated `wg-launcher.rb` from that release and pushes it to
+[`gabrielhamel/homebrew-tap`](https://github.com/gabrielhamel/homebrew-tap).
+The `HOMEBREW_TAP_SSH_KEY` Actions secret is a deploy key with write access only
+to that tap; it does not need a personal access token. Keep the matching deploy
+key enabled in the tap repository. This custom job replaces cargo-dist's built-in
+Homebrew publisher, so dist's warning that the built-in job is disabled is
+expected. To retry only Homebrew publishing, run that workflow manually with an
+existing release tag that contains `wg-launcher.rb`; it does not create a release
+or republish the Rust crate. The CLI and service are never published to crates.io
+by this workflow. Prerelease tags create GitHub prereleases and skip
 crates.io publication. If publication
 fails, check whether the client was published before retrying: crates.io versions
 cannot be overwritten. Publishing uses the supplied token directly; it does not
@@ -146,13 +156,18 @@ write registry credentials to disk.
 the running executable in process. No standalone updater is installed. The
 existing `update` command continues to update game assets.
 
-For a package-manager distribution, build with `WG_LAUNCHER_PACKAGE_MANAGER` set
+Homebrew formulae use the same prebuilt archives as standalone installs.
+Homebrew writes an `INSTALL_RECEIPT.json` ownership marker; the CLI recognizes
+that receipt and canonical Homebrew Cellar paths, including the existing
+published binary's path-based protection.
+
+For other package-manager distributions built from source, build with `WG_LAUNCHER_PACKAGE_MANAGER` set
 to `homebrew`, `winget`, `scoop`, `nix`, or another manager name. This compile-time
 marker disables built-in replacement and points users at their package manager.
 The CLI also recognizes canonical Homebrew Cellar, WinGet, Scoop, and Nix store
 paths, including executions reached through symlinks. Future package-manager
-integrations must preserve this ownership marker rather than relying only on
-path detection.
+integrations must preserve an ownership marker, such as Homebrew's receipt or
+the compile-time setting, rather than relying only on path detection.
 
 For a trusted release mirror, set the runtime `WG_LAUNCHER_UPDATE_MANIFEST` URL.
 It must serve the cargo-dist `dist-manifest.json` structure with the
