@@ -50,8 +50,13 @@ CLI assets live under `crates/wg-launcher-cli/docs/assets`.
 The two launcher packages are workspace defaults. Use `--workspace` for full validation and
 `-p wg-update-client` for library-only documentation. Install from source with
 `cargo install --path crates/wg-launcher-cli --locked`. The release workflow
-publishes the service, client, and CLI explicitly; keep the shared package version
-and the CLI's versioned path dependency synchronized before releasing.
+uses cargo-dist to build launcher archives and shell/PowerShell installers on
+version-tag pushes, then calls `publish-crates.yml` to publish the service, client,
+and CLI explicitly. Keep the shared package version and the CLI's versioned path
+dependency synchronized before releasing. Configure distribution in
+`dist-workspace.toml` and regenerate `release.yml` with the pinned dist version;
+do not edit generated CI directly. CLI self-updating, if added, must use
+`wg-launcher self-update`; `update` remains the game-asset workflow.
 
 ### The library owns behavior; the CLI owns presentation
 

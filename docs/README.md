@@ -1,6 +1,6 @@
 # Documentation
 
-[Project home](../README.md) · [CLI](../crates/wg-launcher-cli/README.md) · [Rust](../crates/wg-update-client/README.md) · [API](https://docs.rs/wg-update-client/1.0.0/wg_update_client/)
+[Project home](../README.md) · [CLI](../crates/wg-launcher-cli/README.md) · [Rust](../crates/wg-update-client/README.md) · [API](https://docs.rs/wg-update-client/1.2.0/wg_update_client/)
 
 Choose the path that matches what you want to build or install.
 
@@ -18,7 +18,7 @@ Choose the path that matches what you want to build or install.
 <summary>I'm using the terminal. What's the quickest starting point?</summary>
 
 ```console
-cargo install wg-launcher-cli --version 1.0.0 --locked
+cargo install wg-launcher-cli --version 1.2.0 --locked
 wg-launcher inspect --game wot --region eu
 ```
 
@@ -57,7 +57,7 @@ The custom-catalog example needs your services running at its configured URLs.
 - [Built-in regions and custom product fields](catalogs.md)
 - [File-backed update service](update-service.md)
 - [Installation behavior and low-level APIs](reference.md)
-- [Generated Rust API reference](https://docs.rs/wg-update-client/1.0.0/wg_update_client/)
+- [Generated Rust API reference](https://docs.rs/wg-update-client/1.2.0/wg_update_client/)
 
 ## Work on the project
 

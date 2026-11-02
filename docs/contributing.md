@@ -87,7 +87,49 @@ also include the published service package and unpublished E2E package. Run focu
 ## Release packages
 
 Keep the shared workspace version and the CLI's versioned `wg-update-client`
-dependency synchronized. The release workflow publishes the independent update
-service, then the update client, then the CLI. The E2E package remains unpublished.
+dependency and versioned documentation synchronized. The current release version
+is 1.2.0. The E2E package remains unpublished.
+
+[`dist-workspace.toml`](../dist-workspace.toml) configures cargo-dist, pinned to
+0.33.1. It distributes `wg-launcher-cli` for Windows x64, Linux x64, and macOS
+Apple Silicon and Intel, with ZIP/tar.gz archives, SHA-256 checksums, and shell
+and PowerShell installers. The service remains available through crates.io.
+The generated [release workflow](../.github/workflows/release.yml) runs a release
+plan on pull requests and builds and publishes binaries when a version tag is
+pushed. Creating a release manually no longer triggers publishing.
+
+Install the pinned release tool and regenerate CI after configuration changes:
+
+```console
+cargo install cargo-dist --version 0.33.1 --locked
+dist generate
+dist generate --check
+dist plan --tag 1.2.0
+```
+
+Keep 0.33.1 pinned until a newer version has been checked: 0.34.0 generates
+invalid local reusable-workflow references for custom publishing jobs.
+
+Before releasing, run the validation commands above and review the release plan.
+Ensure the repository has a `CRATES_IO_TOKEN` Actions secret authorized to publish
+all three production crates. Once the release commit is on the remote, push its
+matching tag (for the current version):
+
+```console
+git tag 1.2.0
+git push origin 1.2.0
+```
+
+The workflow builds all four targets, creates a GitHub Release with the archives
+and installers, then calls [`publish-crates.yml`](../.github/workflows/publish-crates.yml)
+to publish the independent service, client, and CLI in that order. Prerelease
+tags create GitHub prereleases and skip crates.io publication. If publication
+fails, inspect which crates were published before retrying: crates.io versions
+cannot be overwritten. Publishing uses the supplied token directly; it does not
+write registry credentials to disk.
+
+Rerun the appropriate installer to upgrade the CLI. No standalone updater is
+installed; a future built-in updater must be named `wg-launcher self-update`.
+The existing `update` command continues to update game assets.
 
 [Back to documentation](README.md)

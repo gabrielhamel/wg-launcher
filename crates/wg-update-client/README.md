@@ -4,7 +4,7 @@ Bring game-asset discovery, downloads, installation, and updates into your Rust 
 The library works on Windows, Linux, and macOS and stays silent unless your app
 chooses to display progress. Supported game catalogs publish Windows/x64 payloads.
 
-[Documentation home](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/README.md) · [CLI guide](https://github.com/gabrielhamel/wg-launcher/blob/main/crates/wg-launcher-cli/README.md) · [API reference](https://docs.rs/wg-update-client/1.0.0/wg_update_client/)
+[Documentation home](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/README.md) · [CLI guide](https://github.com/gabrielhamel/wg-launcher/blob/main/crates/wg-launcher-cli/README.md) · [API reference](https://docs.rs/wg-update-client/1.2.0/wg_update_client/)
 
 **On this page:** [Set up](#set-up) · [Discover builds](#discover-builds) · [Install and update](#install-and-update) · [Progress](#observers-and-async-execution) · [Offline installation](#download-now-extract-later) · [Custom catalogs](#use-your-own-catalog)
 
@@ -14,7 +14,7 @@ Add the client and an async runtime to your application:
 
 ```toml
 [dependencies]
-wg-update-client = "1.0"
+wg-update-client = "1.2.0"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
@@ -323,4 +323,4 @@ Every operation is async and returns `wg_update_client::Result<T>`. Match the
 public `Error` variants for application-specific recovery. Discovery can return
 warnings alongside valid builds; a failed metadata request stops discovery.
 
-**Next:** [API reference](https://docs.rs/wg-update-client/1.0.0/wg_update_client/) · [Installation details](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/reference.md) · [Troubleshooting](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/troubleshooting.md) · [Contributing](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/contributing.md)
+**Next:** [API reference](https://docs.rs/wg-update-client/1.2.0/wg_update_client/) · [Installation details](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/reference.md) · [Troubleshooting](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/troubleshooting.md) · [Contributing](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/contributing.md)

@@ -89,7 +89,7 @@ installation lock; retries with the original manifest reuse matching checkpoints
 ## Low-level APIs
 
 Prefer the high-level workflows for complete installation management. Use
-[`WgusClient`](https://docs.rs/wg-update-client/1.0.0/wg_update_client/struct.WgusClient.html)
+[`WgusClient`](https://docs.rs/wg-update-client/1.2.0/wg_update_client/struct.WgusClient.html)
 for direct metadata and manifest access. Its region-based methods select built-in
 catalogs; `metadata_for_product` and `manifest_for_product` take a `&Product`.
 

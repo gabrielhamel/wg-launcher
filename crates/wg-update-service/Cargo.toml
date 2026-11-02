@@ -22,3 +22,7 @@ doctest = false
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 url = "2"
+
+# Distribute launcher binaries with dist; publish this service through crates.io.
+[package.metadata.dist]
+dist = false

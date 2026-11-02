@@ -3,14 +3,16 @@
 Download, install, and update Wargaming game assets from your terminal or Rust app.
 Works with Wargaming, Lesta, and your own WGUS-compatible update services.
 
-[Documentation](docs/README.md) · [CLI guide](crates/wg-launcher-cli/README.md) · [Rust guide](crates/wg-update-client/README.md) · [API reference](https://docs.rs/wg-update-client/1.0.0/wg_update_client/) · [Releases](https://github.com/gabrielhamel/wg-launcher/releases)
+[Documentation](docs/README.md) · [CLI guide](crates/wg-launcher-cli/README.md) · [Rust guide](crates/wg-update-client/README.md) · [API reference](https://docs.rs/wg-update-client/1.2.0/wg_update_client/) · [Releases](https://github.com/gabrielhamel/wg-launcher/releases)
 
 ## Try the CLI
 
-Install with Rust and Cargo, then preview a build:
+Download a prebuilt executable from [Releases](https://github.com/gabrielhamel/wg-launcher/releases),
+or use the [command-line installers](crates/wg-launcher-cli/README.md#install-the-cli).
+With Rust and Cargo, you can also install from source and preview a build:
 
 ```console
-cargo install wg-launcher-cli --version 1.0.0 --locked
+cargo install wg-launcher-cli --version 1.2.0 --locked
 wg-launcher list --region eu
 wg-launcher inspect --game wot --region eu
 wg-launcher inspect --game wows --region ww
@@ -45,7 +47,7 @@ Add the client and Tokio to your application:
 
 ```toml
 [dependencies]
-wg-update-client = "1.0"
+wg-update-client = "1.2.0"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
