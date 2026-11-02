@@ -10,34 +10,26 @@ Windows/x64. Player login and launching the game are outside its scope.
 
 ## Install the CLI
 
-Install with Homebrew, apt, or WinGet, or expand the manual installation
-section below to download the latest release. Rust and Cargo are not required. The CLI is distributed through GitHub Releases;
+Install with WinGet, apt, or Homebrew, or expand the manual installation
+section below to download the latest release. Rust and Cargo are not required.
+The CLI is distributed through GitHub Releases;
 only the `wg-update-client` Rust library is published to crates.io.
 
-### Homebrew
+### Windows x64 — WinGet
 
-On macOS (Apple Silicon or Intel) and Linux x64:
+Install with WinGet:
 
-```sh
-brew install gabrielhamel/tap/wg-launcher
+```powershell
+winget install --id GabrielHamel.WgLauncher --exact --source winget
 ```
 
-The [Homebrew tap](https://github.com/gabrielhamel/homebrew-tap) downloads the
-published binary for your platform and verifies its checksum.
+Upgrade WinGet installations with:
 
-To upgrade:
-
-```sh
-brew update
-brew upgrade gabrielhamel/tap/wg-launcher
+```powershell
+winget upgrade --id GabrielHamel.WgLauncher --exact --source winget
 ```
 
-If you previously used the shell installer, check `which -a wg-launcher` and
-remove the older standalone copy from your `PATH` so the Homebrew executable is
-used. Homebrew owns this installation; `wg-launcher self-update` directs you to
-`brew upgrade` and does not replace the managed executable.
-
-### apt (Debian and Ubuntu)
+### Debian and Ubuntu x64 — apt
 
 For Debian 12+ and Ubuntu 22.04+ on x64, add the signed repository once:
 
@@ -59,22 +51,35 @@ sudo apt install --only-upgrade wg-launcher
 APT verifies the signed repository and package checksums. This package disables
 built-in self-update; use apt to manage its executable.
 
-### WinGet (Windows x64)
+### Other Linux distributions (x64) — Homebrew
 
-The WinGet package has been [submitted to Microsoft](https://github.com/microsoft/winget-pkgs/pull/468869).
-After Microsoft approves and indexes it, install with:
+If you use Homebrew on Linux:
 
-```powershell
-winget install --id GabrielHamel.WgLauncher --exact --source winget
+```sh
+brew install gabrielhamel/tap/wg-launcher
 ```
 
-Upgrade WinGet installations with:
+To upgrade, run `brew update`, then `brew upgrade gabrielhamel/tap/wg-launcher`.
 
-```powershell
-winget upgrade --id GabrielHamel.WgLauncher --exact --source winget
+For a standalone installation, expand the manual installation section below.
+
+### macOS — Homebrew
+
+On Apple Silicon or Intel:
+
+```sh
+brew install gabrielhamel/tap/wg-launcher
 ```
 
-Until Microsoft publishes the package, use the manual Windows installer below.
+To upgrade, run `brew update`, then `brew upgrade gabrielhamel/tap/wg-launcher`.
+
+The [Homebrew tap](https://github.com/gabrielhamel/homebrew-tap) downloads the
+published binary for your platform and verifies its checksum.
+
+If you previously used the shell installer, check `which -a wg-launcher` and
+remove the older standalone copy from your `PATH` so the Homebrew executable is
+used. Homebrew owns this installation; `wg-launcher self-update` directs you to
+`brew upgrade` and does not replace the managed executable.
 
 ### Manual installation
 
@@ -89,17 +94,17 @@ Run this in PowerShell:
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
 ```
 
-#### macOS
+#### Linux
 
-Run this in Terminal. The installer selects Apple Silicon or Intel automatically:
+For Linux x64, run:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
 ```
 
-#### Linux
+#### macOS
 
-For Linux x64, run:
+Run this in Terminal. The installer selects Apple Silicon or Intel automatically:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
@@ -126,9 +131,9 @@ Choose the archive matching the computer running the launcher:
 | Platform | Download |
 | --- | --- |
 | Windows x64 | [ZIP](https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-x86_64-pc-windows-msvc.zip) |
+| Linux x64 | [tar.gz](https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-x86_64-unknown-linux-gnu.tar.gz) |
 | macOS Apple Silicon | [tar.gz](https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-aarch64-apple-darwin.tar.gz) |
 | macOS Intel | [tar.gz](https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-x86_64-apple-darwin.tar.gz) |
-| Linux x64 | [tar.gz](https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-x86_64-unknown-linux-gnu.tar.gz) |
 
 Extract the archive and put `wg-launcher.exe` (Windows) or `wg-launcher`
 (macOS/Linux) in a directory on your `PATH`. Each archive has a matching
@@ -176,9 +181,7 @@ still exits successfully.
 For installations managed by Homebrew, APT, WinGet, Scoop, Nix, or a package manager
 marked by the distributor, the CLI reports **Self-update not supported** and
 explains how to use that manager to update it. `self-update` refuses to replace
-a managed executable. Homebrew and apt are available through the repositories
-above. WinGet submissions pass through Microsoft's validation and review before
-appearing in its community source.
+a managed executable. Use the package-manager upgrade commands above.
 
 To skip startup checks for offline use or scripts, set the environment variable
 `WG_LAUNCHER_NO_UPDATE_CHECK=1`. Explicit `self-update` still checks for a release.

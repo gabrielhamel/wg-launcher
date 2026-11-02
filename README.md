@@ -10,18 +10,9 @@ Works with Wargaming, Lesta, and your own WGUS-compatible update services.
 Use your package manager to install a prebuilt executable. Rust and Cargo are
 not required.
 
-### Homebrew (macOS and Linux x64)
+### Windows x64 — WinGet
 
-```sh
-brew install gabrielhamel/tap/wg-launcher
-```
-
-To upgrade, run `brew update`, then `brew upgrade gabrielhamel/tap/wg-launcher`.
-
-### WinGet (Windows x64)
-
-The package is [awaiting Microsoft's approval](https://github.com/microsoft/winget-pkgs/pull/468869).
-Once approved and indexed, install with:
+Install with WinGet:
 
 ```powershell
 winget install --id GabrielHamel.WgLauncher --exact --source winget
@@ -33,9 +24,7 @@ To upgrade:
 winget upgrade --id GabrielHamel.WgLauncher --exact --source winget
 ```
 
-Until then, use the manual Windows installer below.
-
-### apt (Debian and Ubuntu x64)
+### Debian and Ubuntu x64 — apt
 
 On Debian 12+ or Ubuntu 22.04+, add the signed repository and install:
 
@@ -49,19 +38,41 @@ sudo apt install wg-launcher
 
 To upgrade, run `sudo apt update`, then `sudo apt install --only-upgrade wg-launcher`.
 
-<details>
-<summary>Manual installation: shell, PowerShell, archives, or source</summary>
+### Other Linux distributions (x64) — Homebrew
 
-**macOS (Apple Silicon or Intel) and Linux x64:**
+If you use Homebrew on Linux:
 
 ```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
+brew install gabrielhamel/tap/wg-launcher
 ```
+
+To upgrade, run `brew update`, then `brew upgrade gabrielhamel/tap/wg-launcher`.
+
+For a standalone installation, expand the manual installation section below.
+
+### macOS — Homebrew
+
+On Apple Silicon or Intel:
+
+```sh
+brew install gabrielhamel/tap/wg-launcher
+```
+
+To upgrade, run `brew update`, then `brew upgrade gabrielhamel/tap/wg-launcher`.
+
+<details>
+<summary>Manual installation: shell, PowerShell, archives, or source</summary>
 
 **Windows x64 — PowerShell:**
 
 ```powershell
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
+```
+
+**macOS (Apple Silicon or Intel) and Linux x64:**
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
 ```
 
 Follow the installer's instructions to add `wg-launcher` to your `PATH`, then
