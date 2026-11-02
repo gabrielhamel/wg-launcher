@@ -47,6 +47,21 @@ a version rewrite the release files and restart the service on the same address.
 The optional access log proves request selection, cache reuse, and range
 resumption without a test-only endpoint or in-process server.
 
+CLI self-update scenarios use the same real service to host a cargo-dist
+manifest, checksums, and replacement archives through the supported release-mirror
+setting. They run a copied launcher, never the shared build executable, and
+replace it with the independent `cli-update-fixture` executable from `e2e/src/bin`.
+Coverage includes startup/help warnings, current/latest version output, offline
+checks, skipped checks, equal/older releases, package-manager refusal, checksum
+and embedded-version failures, successful replacement, staging cleanup, and
+preservation of unrelated files. The synthetic replacement has its own test
+version, independent of the workspace release. These scenarios share the
+Windows/Linux/macOS CI matrix; a local run verifies only the host platform.
+
+```console
+cargo test -p wg-launcher-e2e --locked scenarios::cli_update
+```
+
 Server-only CLI and HTTP contract tests belong to the service package:
 
 ```console

@@ -3,6 +3,7 @@
 mod args;
 mod observers;
 mod output;
+mod self_update;
 
 use crate::progress::DiscoveryProgress;
 use args::{
@@ -23,7 +24,21 @@ use wg_update_client::{
 };
 
 pub async fn run() -> ExitCode {
-    match execute(Cli::parse()).await {
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(error) => {
+            if error.kind() == clap::error::ErrorKind::DisplayVersion {
+                self_update::print_version().await;
+                return ExitCode::SUCCESS;
+            }
+            if error.kind() == clap::error::ErrorKind::DisplayHelp {
+                self_update::warn_if_newer(self_update::check().await.as_ref());
+            }
+            let _ = error.print();
+            return ExitCode::from(error.exit_code() as u8);
+        }
+    };
+    match execute(cli).await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             eprintln!("error: {error}");
@@ -33,6 +48,9 @@ pub async fn run() -> ExitCode {
 }
 
 async fn execute(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
+    if !matches!(cli.command, Command::SelfUpdate) {
+        self_update::warn_if_newer(self_update::check().await.as_ref());
+    }
     match cli.command {
         Command::List(args) => run_list(args).await?,
         Command::Inspect(args) => run_inspect(args).await?,
@@ -41,6 +59,7 @@ async fn execute(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
         Command::Install(args) => run_install(args).await?,
         Command::Status(args) => run_status(args).await?,
         Command::Update(args) => run_update(args).await?,
+        Command::SelfUpdate => self_update::run().await?,
     }
     Ok(())
 }

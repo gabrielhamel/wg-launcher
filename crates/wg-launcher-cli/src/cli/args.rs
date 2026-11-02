@@ -29,6 +29,8 @@ pub(super) enum Command {
     Status(PathArgs),
     /// Update an existing installation in place.
     Update(UpdateArgs),
+    /// Update the launcher executable to the latest stable release.
+    SelfUpdate,
 }
 
 #[derive(Debug, Args)]

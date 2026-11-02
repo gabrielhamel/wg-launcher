@@ -52,10 +52,20 @@ impl Sandbox {
     }
 
     pub fn run(&self, cwd: &Path, args: &[&str]) -> Output {
+        self.run_cli(&binary("wg-launcher"), cwd, args, &[])
+    }
+
+    pub fn run_cli(
+        &self,
+        launcher: &Path,
+        cwd: &Path,
+        args: &[&str],
+        env: &[(&str, &str)],
+    ) -> Output {
         // Files avoid pipe-buffer deadlocks; polling bounds every child execution.
         let stdout = self.path.join("stdout.log");
         let stderr = self.path.join("stderr.log");
-        let mut child = Command::new(crate::support::binary("wg-launcher"))
+        let mut child = Command::new(launcher)
             .args(args)
             .current_dir(cwd)
             // Unexpected live discovery fails locally instead of using the internet.
@@ -67,6 +77,9 @@ impl Sandbox {
             .env("all_proxy", "http://127.0.0.1:0")
             .env("NO_PROXY", "127.0.0.1,localhost")
             .env("no_proxy", "127.0.0.1,localhost")
+            .env_remove("WG_LAUNCHER_UPDATE_MANIFEST")
+            .env_remove("WG_LAUNCHER_NO_UPDATE_CHECK")
+            .envs(env.iter().copied())
             .stdin(Stdio::null())
             .stdout(fs::File::create(&stdout).unwrap())
             .stderr(fs::File::create(&stderr).unwrap())

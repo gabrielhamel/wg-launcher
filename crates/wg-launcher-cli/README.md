@@ -86,8 +86,40 @@ For a local checkout, follow the
 
 ### Upgrade the CLI
 
-Rerun the installer for your platform. It downloads the latest release and
-replaces the installed CLI executable.
+Before running a command, the CLI checks the latest stable release and prints a
+warning if a newer CLI is available. This check takes at most two seconds;
+network failures never prevent game commands from running. No update is installed
+automatically.
+
+For an installer, archive, or source installation, run:
+
+```console
+wg-launcher self-update
+```
+
+The updater downloads the archive for your platform, verifies its SHA-256
+checksum, and checks that the new executable runs and reports the expected
+version before replacing the current executable. You need write access to the
+CLI's directory. Temporary update files are cleaned after success or failure.
+Game files and installed game state are not changed.
+
+`wg-launcher --version` shows both the installed and latest stable CLI versions.
+If the latest release cannot be checked, it shows `latest: unavailable` and
+still exits successfully.
+
+For installations managed by Homebrew, WinGet, Scoop, Nix, or a package manager
+marked by the distributor, the CLI reports **Self-update not supported** and
+explains how to use that manager to update it. `self-update` refuses to replace
+a managed executable. Homebrew and WinGet distributions are not available yet;
+this behavior prepares for those channels.
+
+To skip startup checks for offline use or scripts, set the environment variable
+`WG_LAUNCHER_NO_UPDATE_CHECK=1`. Explicit `self-update` still checks for a release.
+
+<details>
+<summary>Upgrade by rerunning the installer instead</summary>
+
+The installers also download the latest release and replace the CLI executable.
 
 **Windows — PowerShell:**
 
@@ -107,12 +139,11 @@ Check the installed version afterwards:
 wg-launcher --version
 ```
 
-For manual archive installs, [download the latest archive](#download-an-archive-manually)
-and replace the executable. For source installs, download the new release
-source code and repeat the build command above.
+</details>
 
-`wg-launcher self-update` is not implemented yet. `wg-launcher update` updates
-game assets only.
+You can also [download the latest archive](#download-an-archive-manually) and
+replace the executable manually, or rebuild from the latest release source.
+`wg-launcher update` updates game assets only.
 No additional archive or patching utilities are required to manage game assets.
 
 ## Choose your build
@@ -318,6 +349,7 @@ If something fails, use the [troubleshooting guide](../../docs/troubleshooting.m
 | `update` | Update an installation in place | Yes |
 | `download` | Save packages for later installation | Yes |
 | `extract` | Install from a complete local cache | Yes |
+| `self-update` | Upgrade the CLI executable | CLI executable only |
 
 Use `wg-launcher <command> --help` to explore a command's options.
 

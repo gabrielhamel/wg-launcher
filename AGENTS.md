@@ -62,8 +62,15 @@ dependency. After version changes, regenerate and commit `Cargo.lock`. Use
 `latest` API/release links and supported-major Rust dependency examples in docs
 instead of duplicating the current release version. Configure distribution in
 `dist-workspace.toml` and regenerate `release.yml` with the pinned dist version;
-do not edit generated CI directly. CLI self-updating, if added, must use
-`wg-launcher self-update`; `update` remains the game-asset workflow.
+do not edit generated CI directly. CLI self-updating uses `wg-launcher self-update`;
+`update` remains the game-asset workflow. CLI release discovery, package-manager
+ownership, and executable replacement belong in `cli/self_update/`, independent
+of library/game update behavior. Startup checks must fail open with a short
+HTTP timeout. Respect the compile-time `WG_LAUNCHER_PACKAGE_MANAGER` marker and
+recognized package-manager paths. Verify checksums and the candidate executable
+before replacing a direct installation; never replace a managed binary. CLI
+self-update staging belongs beside the CLI executable and is independent of
+game installation-owned files. Do not add a home-directory release cache.
 
 ### The library owns behavior; the CLI owns presentation
 
@@ -146,6 +153,7 @@ The supported user workflows are:
 - `install`
 - `status`
 - `update`
+- `self-update` (the CLI executable only)
 
 `install` remains the convenient integrated pipeline. `download` and `extract`
 also expose its package and installation phases independently for users who
@@ -155,7 +163,8 @@ resolves a selection without changing files and requires the game to be selected
 `extract` is local-only: it takes an optional positional installation
 directory, defaults to the current directory, and reads the pinned manifest
 from `.wg-launcher/download`. It must not expose region, client type, or language options
-or query the live catalog to decide what cached packages mean.
+or query the live catalog to decide what cached packages mean. The optional CLI
+release notice is independent, bounded, and must never prevent offline extraction.
 
 `inspect` should expose enough patch detail to make component downloads
 understandable: part, source version, target version, package count, and
@@ -351,6 +360,8 @@ the CLI.
 - `crates/wg-update-client/src/service/wire.rs`: private XML representations of WGUS responses.
 - `crates/wg-launcher-cli/src/cli/`: `mod.rs` dispatches commands; `args.rs` parses
   arguments; `output.rs` renders summaries and tables; `observers.rs` adapts events.
+- `crates/wg-launcher-cli/src/cli/self_update/`: bounded release-manifest checks,
+  package-manager detection, archive verification, and CLI executable replacement.
 - `crates/wg-launcher-cli/src/progress/`: shared download/extraction bars in `mod.rs`,
   discovery spinners in `discovery.rs`, and terminal styles in `styles.rs`.
 - `crates/wg-update-client/src/lib.rs`: the public library contract.

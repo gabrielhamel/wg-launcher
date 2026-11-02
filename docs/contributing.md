@@ -58,6 +58,7 @@ crates/
       main.rs                 Runtime bootstrap
       cli/                    Dispatch, arguments, output, observer adapters
         output/status.rs      Status colors and update size presentation
+        self_update/          CLI release checks, manager detection, verified replacement
       progress/               Shared progress bars, discovery spinner, styles
     docs/assets/              CLI demonstration assets
   wg-update-service/          File-backed server binary
@@ -65,7 +66,9 @@ crates/
     src/main.rs               Server CLI bootstrap and arguments
     src/server.rs             File-backed HTTP serving and byte ranges
 e2e/                          Independent black-box system test package
+  src/bin/cli_update_fixture.rs  Independent replacement executable for CLI update tests
   tests/scenarios/            Workflow and server-process scenarios
+    cli_update.rs             Startup/version checks and executable replacement
     updates/                  Component delta updates and recovery scenarios
   tests/support/              Real-process harness
     fixture/                  Independent full archives and delta fixtures
@@ -139,8 +142,26 @@ fails, check whether the client was published before retrying: crates.io version
 cannot be overwritten. Publishing uses the supplied token directly; it does not
 write registry credentials to disk.
 
-Rerun the appropriate installer to upgrade the CLI. No standalone updater is
-installed; a future built-in updater must be named `wg-launcher self-update`.
-The existing `update` command continues to update game assets.
+`wg-launcher self-update` reads the published cargo-dist manifest and upgrades
+the running executable in process. No standalone updater is installed. The
+existing `update` command continues to update game assets.
+
+For a package-manager distribution, build with `WG_LAUNCHER_PACKAGE_MANAGER` set
+to `homebrew`, `winget`, `scoop`, `nix`, or another manager name. This compile-time
+marker disables built-in replacement and points users at their package manager.
+The CLI also recognizes canonical Homebrew Cellar, WinGet, Scoop, and Nix store
+paths, including executions reached through symlinks. Future package-manager
+integrations must preserve this ownership marker rather than relying only on
+path detection.
+
+For a trusted release mirror, set the runtime `WG_LAUNCHER_UPDATE_MANIFEST` URL.
+It must serve the cargo-dist `dist-manifest.json` structure with the
+`wg-launcher-cli` release, version, artifact names, and stable-release flag.
+Archives and their `.sha256` files must be in the same URL directory. HTTPS is
+required except for loopback HTTP mirrors. Without this setting, the CLI reads
+the latest GitHub Release manifest and fetches assets from its pinned release
+tag. This does not use the GitHub API or require a token. Startup checks have a
+two-second HTTP timeout and store no user cache; `WG_LAUNCHER_NO_UPDATE_CHECK`
+skips automatic checks only.
 
 [Back to documentation](README.md)

@@ -1,3 +1,4 @@
+pub mod cli_update;
 mod delta;
 pub use delta::DeltaFixture;
 

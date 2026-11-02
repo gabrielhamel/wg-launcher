@@ -1,3 +1,4 @@
+mod cli_update;
 mod custom_products;
 mod discovery;
 mod downloads;
