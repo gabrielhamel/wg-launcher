@@ -42,7 +42,10 @@ wg-launcher --version
 
 For archive downloads or building from source, see the
 [installation guide](crates/wg-launcher-cli/README.md#install-the-cli).
-To upgrade the CLI, rerun the installer for your platform.
+To upgrade the CLI, rerun the installer for your platform, then check
+`wg-launcher --version`. See [upgrade instructions](crates/wg-launcher-cli/README.md#upgrade-the-cli)
+for the commands and manual-install options. `wg-launcher update` updates game
+assets only; `wg-launcher self-update` is not implemented yet.
 
 ## Try the CLI
 

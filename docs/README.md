@@ -9,6 +9,7 @@ Choose the path that matches what you want to build or install.
 | I want to… | Guide | What you'll learn |
 | --- | --- | --- |
 | Install a game from the terminal | [CLI walkthrough](../crates/wg-launcher-cli/README.md) | Preview, install, check, and update |
+| Upgrade the launcher executable | [Upgrade the CLI](../crates/wg-launcher-cli/README.md#upgrade-the-cli) | Install the latest CLI release and check its version |
 | Add updates to a Rust app | [Rust walkthrough](../crates/wg-update-client/README.md) | Complete programs and typed results |
 | Connect my own update service | [Custom catalogs](catalogs.md) | Product arrays, multiple regions, and selection |
 | Host my own update service | [Update service](update-service.md) | Release files, server CLI, routes, and deployment |

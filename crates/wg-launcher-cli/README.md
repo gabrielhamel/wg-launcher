@@ -6,7 +6,7 @@ Windows/x64. Player login and launching the game are outside its scope.
 
 [Documentation home](../../docs/README.md) · [Rust guide](../wg-update-client/README.md) · [Custom catalogs](../../docs/catalogs.md) · [Help with errors](../../docs/troubleshooting.md)
 
-**On this page:** [Install the CLI](#install-the-cli) · [Choose a build](#choose-your-build) · [Install the game](#install-the-game) · [Update](#check-and-apply-updates) · [Offline installation](#download-now-install-later) · [Commands](#command-overview)
+**On this page:** [Install the CLI](#install-the-cli) · [Upgrade the CLI](#upgrade-the-cli) · [Choose a build](#choose-your-build) · [Install the game](#install-the-game) · [Update](#check-and-apply-updates) · [Offline installation](#download-now-install-later) · [Commands](#command-overview)
 
 ## Install the CLI
 
@@ -85,11 +85,33 @@ For a local checkout, follow the
 
 ### Upgrade the CLI
 
-Rerun the installer for your platform to install the latest release. For manual
-archive installs, replace the executable with the new release. For source
-installs, run the Cargo command with the new release tag.
+Rerun the installer for your platform. It downloads the latest release and
+replaces the installed CLI executable.
 
-`wg-launcher update` updates game assets. CLI self-updating is not implemented.
+**Windows — PowerShell:**
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
+```
+
+**macOS and Linux:**
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
+```
+
+Check the installed version afterwards:
+
+```console
+wg-launcher --version
+```
+
+For manual archive installs, [download the latest archive](#download-an-archive-manually)
+and replace the executable. For source installs, run the Cargo installation
+command with the new release tag.
+
+`wg-launcher self-update` is not implemented yet. `wg-launcher update` updates
+game assets only.
 No additional archive or patching utilities are required to manage game assets.
 
 ## Choose your build
