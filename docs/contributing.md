@@ -86,10 +86,15 @@ also include the service package and unpublished E2E package. Run focused checks
 
 ## Release packages
 
-Keep the shared workspace version and the CLI's versioned `wg-update-client`
-dependency and versioned documentation synchronized. The current release version
-is 1.2.0. Only `wg-update-client` is published to crates.io. The CLI, service,
-and E2E packages have `publish = false`.
+Set the release version once in `workspace.package.version` in the root
+[`Cargo.toml`](../Cargo.toml). All packages inherit it; the CLI uses a local path
+dependency on the client. Run `cargo check --workspace` after changing the version
+to refresh the generated `Cargo.lock`, and commit both files together.
+Documentation links use `latest`, Rust dependency examples use the supported
+major version, and source installation instructions use release source archives.
+
+Only `wg-update-client` is published to crates.io. The CLI, service, and E2E
+packages have `publish = false`.
 
 [`dist-workspace.toml`](../dist-workspace.toml) configures cargo-dist, pinned to
 0.33.1. It distributes `wg-launcher-cli` for Windows x64, Linux x64, and macOS
@@ -108,7 +113,7 @@ Install the pinned release tool and regenerate CI after configuration changes:
 cargo install cargo-dist --version 0.33.1 --locked
 dist generate
 dist generate --check
-dist plan --tag 1.2.0
+dist plan
 ```
 
 Keep 0.33.1 pinned until a newer version has been checked: 0.34.0 generates
@@ -117,11 +122,12 @@ invalid local reusable-workflow references for custom publishing jobs.
 Before releasing, run the validation commands above and review the release plan.
 Ensure the repository has a `CRATES_IO_TOKEN` Actions secret authorized to publish
 `wg-update-client`. Once the release commit is on the remote, push its
-matching tag (for the current version):
+matching tag. Replace `<version>` below with `workspace.package.version`
+from the root manifest (without a `v` prefix):
 
 ```console
-git tag 1.2.0
-git push origin 1.2.0
+git tag <version>
+git push origin <version>
 ```
 
 The workflow builds all four targets, creates a GitHub Release with the archives

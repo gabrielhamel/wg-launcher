@@ -72,10 +72,11 @@ which currently targets Windows/x64.
 <details>
 <summary>Build from source with Rust and Cargo</summary>
 
-Install the tagged release directly from GitHub:
+Download the source code from the [latest release](https://github.com/gabrielhamel/wg-launcher/releases/latest),
+extract it, and run this from the extracted directory:
 
 ```console
-cargo install --git https://github.com/gabrielhamel/wg-launcher --tag 1.2.0 --locked wg-launcher-cli
+cargo install --path crates/wg-launcher-cli --locked
 ```
 
 For a local checkout, follow the
@@ -107,8 +108,8 @@ wg-launcher --version
 ```
 
 For manual archive installs, [download the latest archive](#download-an-archive-manually)
-and replace the executable. For source installs, run the Cargo installation
-command with the new release tag.
+and replace the executable. For source installs, download the new release
+source code and repeat the build command above.
 
 `wg-launcher self-update` is not implemented yet. `wg-launcher update` updates
 game assets only.

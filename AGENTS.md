@@ -55,8 +55,12 @@ version-tag pushes, then calls `publish-crates.yml` to publish only
 `wg-update-client` to crates.io. The CLI and service have `publish = false`;
 keep the CLI's explicit `package.metadata.dist.dist = true` so binary releases
 remain enabled. Creating a GitHub Release does not trigger publication. Pushes
-to `main` and pull requests run checks without publication. Keep the shared
-package version and the CLI's versioned path dependency synchronized before releasing. Configure distribution in
+to `main` and pull requests run checks without publication. The root
+`workspace.package.version` is the single source of the project release version;
+all packages inherit it, and the unpublished CLI uses a path-only client
+dependency. After version changes, regenerate and commit `Cargo.lock`. Use
+`latest` API/release links and supported-major Rust dependency examples in docs
+instead of duplicating the current release version. Configure distribution in
 `dist-workspace.toml` and regenerate `release.yml` with the pinned dist version;
 do not edit generated CI directly. CLI self-updating, if added, must use
 `wg-launcher self-update`; `update` remains the game-asset workflow.

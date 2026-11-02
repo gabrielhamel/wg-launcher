@@ -3,7 +3,7 @@
 Download, install, and update Wargaming game assets from your terminal or Rust app.
 Works with Wargaming, Lesta, and your own WGUS-compatible update services.
 
-[Documentation](docs/README.md) · [CLI guide](crates/wg-launcher-cli/README.md) · [Rust guide](crates/wg-update-client/README.md) · [API reference](https://docs.rs/wg-update-client/1.2.0/wg_update_client/) · [Releases](https://github.com/gabrielhamel/wg-launcher/releases)
+[Documentation](docs/README.md) · [CLI guide](crates/wg-launcher-cli/README.md) · [Rust guide](crates/wg-update-client/README.md) · [API reference](https://docs.rs/wg-update-client/latest/wg_update_client/) · [Releases](https://github.com/gabrielhamel/wg-launcher/releases)
 
 ## Install the CLI
 
@@ -86,7 +86,7 @@ Add the client and Tokio to your application:
 
 ```toml
 [dependencies]
-wg-update-client = "1.2.0"
+wg-update-client = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 ```
 
