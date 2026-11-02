@@ -17,8 +17,11 @@ Choose the path that matches what you want to build or install.
 <details>
 <summary>I'm using the terminal. What's the quickest starting point?</summary>
 
+Install the CLI for [Windows](../crates/wg-launcher-cli/README.md#windows),
+[macOS](../crates/wg-launcher-cli/README.md#macos), or
+[Linux](../crates/wg-launcher-cli/README.md#linux), then preview a build:
+
 ```console
-cargo install --git https://github.com/gabrielhamel/wg-launcher --tag 1.2.0 --locked wg-launcher-cli
 wg-launcher inspect --game wot --region eu
 ```
 

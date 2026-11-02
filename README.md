@@ -5,14 +5,50 @@ Works with Wargaming, Lesta, and your own WGUS-compatible update services.
 
 [Documentation](docs/README.md) · [CLI guide](crates/wg-launcher-cli/README.md) · [Rust guide](crates/wg-update-client/README.md) · [API reference](https://docs.rs/wg-update-client/1.2.0/wg_update_client/) · [Releases](https://github.com/gabrielhamel/wg-launcher/releases)
 
-## Try the CLI
+## Install the CLI
 
-Download a prebuilt executable from [Releases](https://github.com/gabrielhamel/wg-launcher/releases),
-or use the [command-line installers](crates/wg-launcher-cli/README.md#install-the-cli).
-With Rust and Cargo, you can also install from source and preview a build:
+Install a prebuilt executable for your platform. Rust and Cargo are not required.
+
+### Windows
+
+For Windows x64, run this in PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
+```
+
+### macOS
+
+Run this in Terminal. The installer selects Apple Silicon or Intel automatically:
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
+```
+
+### Linux
+
+For Linux x64, run:
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
+```
+
+Follow the installer's instructions to add `wg-launcher` to your `PATH`, then
+open a new terminal and check the installation:
 
 ```console
-cargo install --git https://github.com/gabrielhamel/wg-launcher --tag 1.2.0 --locked wg-launcher-cli
+wg-launcher --version
+```
+
+For archive downloads or building from source, see the
+[installation guide](crates/wg-launcher-cli/README.md#install-the-cli).
+To upgrade the CLI, rerun the installer for your platform.
+
+## Try the CLI
+
+Preview the available builds before downloading game assets:
+
+```console
 wg-launcher list --region eu
 wg-launcher inspect --game wot --region eu
 wg-launcher inspect --game wows --region ww

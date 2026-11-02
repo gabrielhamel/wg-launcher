@@ -10,49 +10,87 @@ Windows/x64. Player login and launching the game are outside its scope.
 
 ## Install the CLI
 
-Release builds provide Windows x64, Linux x64, and macOS Apple Silicon and Intel
-executables. Download an archive from [Releases](https://github.com/gabrielhamel/wg-launcher/releases)
-and put the extracted `wg-launcher` executable on your `PATH`. Windows uses ZIP;
-Linux and macOS use tar.gz. Each release includes SHA-256 checksums.
+Use the installer for your platform to download the latest release. Rust and
+Cargo are not required. The CLI is distributed through GitHub Releases;
+only the `wg-update-client` Rust library is published to crates.io.
 
-You can also use these installers.
-They download the appropriate executable without requiring Rust or Cargo.
+### Windows
 
-<details>
-<summary>Install on Linux or macOS</summary>
+For Windows x64, run this in PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
+```
+
+### macOS
+
+Run this in Terminal. The installer selects Apple Silicon or Intel automatically:
 
 ```sh
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
 ```
 
-</details>
+### Linux
 
-<details>
-<summary>Install on Windows with PowerShell</summary>
+For Linux x64, run:
 
-```powershell
-irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
 ```
 
-</details>
+### Check the installation
 
-The installers use Cargo's binary directory (`~/.cargo/bin` by default), even
-when Cargo isn't installed. Follow the installer's instructions to refresh your
-`PATH`, or open a new terminal.
+The installers place `wg-launcher` in `$CARGO_HOME/bin` when `CARGO_HOME` is set.
+Otherwise, they use `~/.cargo/bin` on macOS and Linux or
+`%USERPROFILE%\.cargo\bin` on Windows. Rust and Cargo do not need to be installed.
 
-If you already have Rust and Cargo, install from source with:
+Follow the installer's instructions to refresh your `PATH`, then open a new
+terminal and run:
 
 ```console
-cargo install --git https://github.com/gabrielhamel/wg-launcher --tag 1.2.0 --locked wg-launcher-cli
+wg-launcher --version
 wg-launcher --help
 ```
 
-To upgrade the CLI, rerun the installer or the Cargo installation command you
-used originally. For manual archive installs, replace the executable with the
-new release. `wg-launcher update` updates game assets; it does not update the CLI.
+### Download an archive manually
 
-No additional archive or patching utilities are required.
-For a checkout build, follow the [source installation guide](../../docs/contributing.md#build-from-source).
+Choose the archive matching the computer running the launcher:
+
+| Platform | Download |
+| --- | --- |
+| Windows x64 | [ZIP](https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-x86_64-pc-windows-msvc.zip) |
+| macOS Apple Silicon | [tar.gz](https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-aarch64-apple-darwin.tar.gz) |
+| macOS Intel | [tar.gz](https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-x86_64-apple-darwin.tar.gz) |
+| Linux x64 | [tar.gz](https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-x86_64-unknown-linux-gnu.tar.gz) |
+
+Extract the archive and put `wg-launcher.exe` (Windows) or `wg-launcher`
+(macOS/Linux) in a directory on your `PATH`. Each archive has a matching
+`.sha256` file on the [release page](https://github.com/gabrielhamel/wg-launcher/releases/latest).
+The launcher's host platform is independent of the downloaded game payload,
+which currently targets Windows/x64.
+
+<details>
+<summary>Build from source with Rust and Cargo</summary>
+
+Install the tagged release directly from GitHub:
+
+```console
+cargo install --git https://github.com/gabrielhamel/wg-launcher --tag 1.2.0 --locked wg-launcher-cli
+```
+
+For a local checkout, follow the
+[source installation guide](../../docs/contributing.md#build-from-source).
+
+</details>
+
+### Upgrade the CLI
+
+Rerun the installer for your platform to install the latest release. For manual
+archive installs, replace the executable with the new release. For source
+installs, run the Cargo command with the new release tag.
+
+`wg-launcher update` updates game assets. CLI self-updating is not implemented.
+No additional archive or patching utilities are required to manage game assets.
 
 ## Choose your build
 
