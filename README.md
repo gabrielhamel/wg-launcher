@@ -1,5 +1,15 @@
 # wg-launcher
 
+[![Latest release](https://img.shields.io/github/v/release/gabrielhamel/wg-launcher?label=release)](https://github.com/gabrielhamel/wg-launcher/releases/latest)
+[![Windows tests](https://img.shields.io/github/check-runs/gabrielhamel/wg-launcher/main?nameFilter=Tests%20%28windows-latest%29&label=Windows)](https://github.com/gabrielhamel/wg-launcher/actions/workflows/checks.yml)
+[![Linux tests](https://img.shields.io/github/check-runs/gabrielhamel/wg-launcher/main?nameFilter=Tests%20%28ubuntu-latest%29&label=Linux)](https://github.com/gabrielhamel/wg-launcher/actions/workflows/checks.yml)
+[![macOS tests](https://img.shields.io/github/check-runs/gabrielhamel/wg-launcher/main?nameFilter=Tests%20%28macos-latest%29&label=macOS)](https://github.com/gabrielhamel/wg-launcher/actions/workflows/checks.yml)
+
+[![Rust library version](https://img.shields.io/crates/v/wg-update-client?label=crates.io)](https://crates.io/crates/wg-update-client)
+[![WinGet submission workflow](https://img.shields.io/github/actions/workflow/status/gabrielhamel/wg-launcher/publish-winget.yml?label=WinGet%20submission)](https://github.com/gabrielhamel/wg-launcher/actions/workflows/publish-winget.yml)
+[![apt publishing](https://img.shields.io/github/actions/workflow/status/gabrielhamel/wg-launcher/publish-apt.yml?label=apt%20publish)](https://github.com/gabrielhamel/wg-launcher/actions/workflows/publish-apt.yml)
+[![Homebrew publishing](https://img.shields.io/github/actions/workflow/status/gabrielhamel/wg-launcher/publish-homebrew.yml?label=Homebrew%20publish)](https://github.com/gabrielhamel/wg-launcher/actions/workflows/publish-homebrew.yml)
+
 Download, install, and update Wargaming game assets from your terminal or Rust app.
 Works with Wargaming, Lesta, and your own WGUS-compatible update services.
 
