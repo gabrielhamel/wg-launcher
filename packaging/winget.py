@@ -10,7 +10,7 @@ import urllib.request
 import zipfile
 
 IDENTIFIER = "GabrielHamel.WgLauncher"
-SCHEMA = "1.12.0"
+SCHEMA = "1.6.0"
 REPOSITORY = "https://github.com/gabrielhamel/wg-launcher"
 
 
@@ -53,7 +53,7 @@ def main():
             raise ValueError("Expected one safe launcher executable in the Windows archive")
         nested = binaries[0]
     common = {"PackageIdentifier": IDENTIFIER, "PackageVersion": version}
-    installer = {**common, "InstallerType": "zip", "NestedInstallerType": "portable", "Scope": "user", "UpgradeBehavior": "uninstallPrevious", "Commands": ["wg-launcher"], "Installers": [{"Architecture": "x64", "InstallerUrl": base + name, "InstallerSha256": expected.upper(), "NestedInstallerFiles": [{"RelativeFilePath": nested, "PortableCommandAlias": "wg-launcher"}]}], "ManifestType": "installer", "ManifestVersion": SCHEMA}
+    installer = {**common, "InstallerType": "zip", "NestedInstallerType": "portable", "UpgradeBehavior": "uninstallPrevious", "Commands": ["wg-launcher"], "Installers": [{"Architecture": "x64", "InstallerUrl": base + name, "InstallerSha256": expected.upper(), "NestedInstallerFiles": [{"RelativeFilePath": nested, "PortableCommandAlias": "wg-launcher"}]}], "ManifestType": "installer", "ManifestVersion": SCHEMA}
     locale = {**common, "PackageLocale": "en-US", "Publisher": "Gabriel Hamel", "PublisherUrl": "https://github.com/gabrielhamel", "PublisherSupportUrl": REPOSITORY + "/issues", "PackageName": "wg-launcher", "PackageUrl": REPOSITORY, "License": "MIT", "LicenseUrl": REPOSITORY + "/blob/main/crates/wg-launcher-cli/LICENSE", "ShortDescription": "Command-line launcher for Wargaming game assets", "Description": "Discover, download, install, and update Wargaming game assets. Player login and launching the game are outside its scope.", "Tags": ["cli", "wargaming", "launcher"], "ReleaseNotesUrl": REPOSITORY + "/releases/tag/" + urllib.parse.quote(args.tag, safe=""), "ManifestType": "defaultLocale", "ManifestVersion": SCHEMA}
     version_manifest = {**common, "DefaultLocale": "en-US", "ManifestType": "version", "ManifestVersion": SCHEMA}
     directory = args.output / "manifests/g/GabrielHamel/WgLauncher" / version
