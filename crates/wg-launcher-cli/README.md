@@ -10,8 +10,7 @@ Windows/x64. Player login and launching the game are outside its scope.
 
 ## Install the CLI
 
-Install with WinGet, apt, or Homebrew, or expand the manual installation
-section below to download the latest release. Rust and Cargo are not required.
+Install with WinGet, apt, the shell installer, or Homebrew for your platform. Rust and Cargo are not required.
 The CLI is distributed through GitHub Releases;
 only the `wg-update-client` Rust library is published to crates.io.
 
@@ -51,21 +50,20 @@ sudo apt install --only-upgrade wg-launcher
 APT verifies the signed repository and package checksums. This package disables
 built-in self-update; use apt to manage its executable.
 
-### Other Linux distributions (x64) — Homebrew
+### Other Linux (x64) — shell installer
 
-If you use Homebrew on Linux:
+Run:
 
 ```sh
-brew install gabrielhamel/tap/wg-launcher
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
 ```
 
-To upgrade, run `brew update`, then `brew upgrade gabrielhamel/tap/wg-launcher`.
+Follow the installer's instructions to add `wg-launcher` to your `PATH`, then
+open a new terminal. To upgrade, run `wg-launcher self-update`.
 
-For a standalone installation, expand the manual installation section below.
+### macOS (ARM and Intel) — Homebrew
 
-### macOS — Homebrew
-
-On Apple Silicon or Intel:
+On Apple Silicon (ARM64) or Intel (x64):
 
 ```sh
 brew install gabrielhamel/tap/wg-launcher
@@ -81,7 +79,7 @@ remove the older standalone copy from your `PATH` so the Homebrew executable is
 used. Homebrew owns this installation; `wg-launcher self-update` directs you to
 `brew upgrade` and does not replace the managed executable.
 
-### Manual installation
+<a id="manual-installation"></a>
 
 <details>
 <summary>Install with PowerShell, curl, an archive, or Rust and Cargo</summary>

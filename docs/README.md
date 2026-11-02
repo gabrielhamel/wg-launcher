@@ -20,8 +20,8 @@ Choose the path that matches what you want to build or install.
 
 Install with [WinGet on Windows](../crates/wg-launcher-cli/README.md#windows-x64--winget),
 [apt on Debian or Ubuntu](../crates/wg-launcher-cli/README.md#debian-and-ubuntu-x64--apt),
-[Homebrew on other Linux distributions](../crates/wg-launcher-cli/README.md#other-linux-distributions-x64--homebrew), or
-[Homebrew on macOS](../crates/wg-launcher-cli/README.md#macos--homebrew).
+[the shell installer on other Linux distributions](../crates/wg-launcher-cli/README.md#other-linux-x64--shell-installer), or
+[Homebrew on macOS](../crates/wg-launcher-cli/README.md#macos-arm-and-intel--homebrew).
 You can also use the [manual installers](../crates/wg-launcher-cli/README.md#manual-installation).
 Then preview a build:
 

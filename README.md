@@ -7,8 +7,8 @@ Works with Wargaming, Lesta, and your own WGUS-compatible update services.
 
 ## Install the CLI
 
-Use your package manager to install a prebuilt executable. Rust and Cargo are
-not required.
+Install a prebuilt executable using the instructions for your platform.
+Rust and Cargo are not required.
 
 ### Windows x64 — WinGet
 
@@ -38,21 +38,20 @@ sudo apt install wg-launcher
 
 To upgrade, run `sudo apt update`, then `sudo apt install --only-upgrade wg-launcher`.
 
-### Other Linux distributions (x64) — Homebrew
+### Other Linux (x64) — shell installer
 
-If you use Homebrew on Linux:
+Run:
 
 ```sh
-brew install gabrielhamel/tap/wg-launcher
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
 ```
 
-To upgrade, run `brew update`, then `brew upgrade gabrielhamel/tap/wg-launcher`.
+Follow the installer's instructions to add `wg-launcher` to your `PATH`, then
+open a new terminal. To upgrade, run `wg-launcher self-update`.
 
-For a standalone installation, expand the manual installation section below.
+### macOS (ARM and Intel) — Homebrew
 
-### macOS — Homebrew
-
-On Apple Silicon or Intel:
+On Apple Silicon (ARM64) or Intel (x64):
 
 ```sh
 brew install gabrielhamel/tap/wg-launcher
