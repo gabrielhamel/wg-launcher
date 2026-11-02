@@ -161,7 +161,9 @@ package requires glibc 2.35 or newer. [`packaging/apt.py`](../packaging/apt.py)
 generates the apt indexes, signs `Release`/`InRelease` using the `APT_SIGNING_KEY`
 Actions secret, tests installation through apt, and deploys the repository to
 GitHub Pages at `https://gabrielhamel.github.io/wg-launcher/apt`. The public key is
-served as `wg-launcher.asc`; never commit the private signing key. The public key
+served as `wg-launcher.asc`; never commit the private signing key. The
+`github-pages` environment must allow `main` for manual retries and the tag
+pattern `[0-9]*.[0-9]*.[0-9]*` for tagged-release deployments. The public key
 fingerprint is `EC919478EC4B9D1C8E76EEB2F397D2E90A411990`.
 
 Validated `.deb` files are attached to their GitHub Release. Repository rebuilds
