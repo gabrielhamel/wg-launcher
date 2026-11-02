@@ -7,7 +7,8 @@ Works with Wargaming, Lesta, and your own WGUS-compatible update services.
 
 ## Install the CLI
 
-Install a prebuilt executable for your platform. Rust and Cargo are not required.
+Use your package manager to install a prebuilt executable. Rust and Cargo are
+not required.
 
 ### Homebrew (macOS and Linux x64)
 
@@ -15,68 +16,77 @@ Install a prebuilt executable for your platform. Rust and Cargo are not required
 brew install gabrielhamel/tap/wg-launcher
 ```
 
-Upgrade Homebrew installations with `brew update`, then
-`brew upgrade gabrielhamel/tap/wg-launcher`.
+To upgrade, run `brew update`, then `brew upgrade gabrielhamel/tap/wg-launcher`.
 
-### Windows
+### WinGet (Windows x64)
 
-The WinGet package has been [submitted to Microsoft](https://github.com/microsoft/winget-pkgs/pull/468869).
-After Microsoft approves and indexes it, install with:
+The package is [awaiting Microsoft's approval](https://github.com/microsoft/winget-pkgs/pull/468869).
+Once approved and indexed, install with:
 
 ```powershell
 winget install --id GabrielHamel.WgLauncher --exact --source winget
 ```
 
-Upgrade WinGet installations with:
+To upgrade:
 
 ```powershell
 winget upgrade --id GabrielHamel.WgLauncher --exact --source winget
 ```
 
-You can install Windows x64 immediately with this PowerShell installer:
+Until then, use the manual Windows installer below.
+
+### apt (Debian and Ubuntu x64)
+
+On Debian 12+ or Ubuntu 22.04+, add the signed repository and install:
+
+```sh
+sudo install -d -m 0755 /etc/apt/keyrings
+curl -fsSL https://gabrielhamel.github.io/wg-launcher/apt/wg-launcher.asc | sudo tee /etc/apt/keyrings/wg-launcher.asc > /dev/null
+echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/wg-launcher.asc] https://gabrielhamel.github.io/wg-launcher/apt stable main" | sudo tee /etc/apt/sources.list.d/wg-launcher.list > /dev/null
+sudo apt update
+sudo apt install wg-launcher
+```
+
+To upgrade, run `sudo apt update`, then `sudo apt install --only-upgrade wg-launcher`.
+
+<details>
+<summary>Manual installation: shell, PowerShell, archives, or source</summary>
+
+**macOS (Apple Silicon or Intel) and Linux x64:**
+
+```sh
+curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
+```
+
+**Windows x64 — PowerShell:**
 
 ```powershell
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
 ```
 
-### macOS
-
-Run this in Terminal. The installer selects Apple Silicon or Intel automatically:
-
-```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
-```
-
-### Linux
-
-Debian 12+ and Ubuntu 22.04+ users on x64 can use the
-[signed apt repository](crates/wg-launcher-cli/README.md#apt-debian-and-ubuntu).
-For a standalone Linux x64 installation, run:
-
-```sh
-curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
-```
-
 Follow the installer's instructions to add `wg-launcher` to your `PATH`, then
-open a new terminal and check the installation:
+open a new terminal. For archive downloads or building from source, see the
+[manual installation guide](crates/wg-launcher-cli/README.md#manual-installation).
 
-```console
-wg-launcher --version
-```
-
-For archive downloads or building from source, see the
-[installation guide](crates/wg-launcher-cli/README.md#install-the-cli).
-The CLI checks for newer stable releases at startup and warns when one is
-available. `wg-launcher --version` shows the installed and latest versions.
 Upgrade a direct installation with:
 
 ```console
 wg-launcher self-update
 ```
 
-Package-manager installations must be upgraded through their package manager.
-See [upgrade instructions](crates/wg-launcher-cli/README.md#upgrade-the-cli)
-for details and installer alternatives. `wg-launcher update` updates game assets only.
+</details>
+
+Check your installation:
+
+```console
+wg-launcher --version
+```
+
+The CLI checks for newer stable releases at startup and warns when one is
+available. `--version` shows the installed and latest versions. Package-manager
+installations must be upgraded through their package manager; see the
+[upgrade instructions](crates/wg-launcher-cli/README.md#upgrade-the-cli).
+`wg-launcher update` updates game assets only.
 
 ## Try the CLI
 

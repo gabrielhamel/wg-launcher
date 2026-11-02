@@ -10,8 +10,8 @@ Windows/x64. Player login and launching the game are outside its scope.
 
 ## Install the CLI
 
-Install with Homebrew or use the installer for your platform to download the
-latest release. Rust and Cargo are not required. The CLI is distributed through GitHub Releases;
+Install with Homebrew, apt, or WinGet, or expand the manual installation
+section below to download the latest release. Rust and Cargo are not required. The CLI is distributed through GitHub Releases;
 only the `wg-update-client` Rust library is published to crates.io.
 
 ### Homebrew
@@ -59,7 +59,7 @@ sudo apt install --only-upgrade wg-launcher
 APT verifies the signed repository and package checksums. This package disables
 built-in self-update; use apt to manage its executable.
 
-### Windows
+### WinGet (Windows x64)
 
 The WinGet package has been [submitted to Microsoft](https://github.com/microsoft/winget-pkgs/pull/468869).
 After Microsoft approves and indexes it, install with:
@@ -74,13 +74,22 @@ Upgrade WinGet installations with:
 winget upgrade --id GabrielHamel.WgLauncher --exact --source winget
 ```
 
-You can install Windows x64 immediately with this PowerShell installer:
+Until Microsoft publishes the package, use the manual Windows installer below.
+
+### Manual installation
+
+<details>
+<summary>Install with PowerShell, curl, an archive, or Rust and Cargo</summary>
+
+#### Windows x64
+
+Run this in PowerShell:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
 ```
 
-### macOS
+#### macOS
 
 Run this in Terminal. The installer selects Apple Silicon or Intel automatically:
 
@@ -88,7 +97,7 @@ Run this in Terminal. The installer selects Apple Silicon or Intel automatically
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
 ```
 
-### Linux
+#### Linux
 
 For Linux x64, run:
 
@@ -96,7 +105,7 @@ For Linux x64, run:
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.sh | sh
 ```
 
-### Check the installation
+#### Check the installation
 
 The installers place `wg-launcher` in `$CARGO_HOME/bin` when `CARGO_HOME` is set.
 Otherwise, they use `~/.cargo/bin` on macOS and Linux or
@@ -110,7 +119,7 @@ wg-launcher --version
 wg-launcher --help
 ```
 
-### Download an archive manually
+#### Download an archive manually
 
 Choose the archive matching the computer running the launcher:
 
@@ -127,8 +136,7 @@ Extract the archive and put `wg-launcher.exe` (Windows) or `wg-launcher`
 The launcher's host platform is independent of the downloaded game payload,
 which currently targets Windows/x64.
 
-<details>
-<summary>Build from source with Rust and Cargo</summary>
+#### Build from source with Rust and Cargo
 
 Download the source code from the [latest release](https://github.com/gabrielhamel/wg-launcher/releases/latest),
 extract it, and run this from the extracted directory:
