@@ -189,7 +189,8 @@ other warnings. Installation, checksum verification, and package-manager
 ownership are still tested using WinGet itself.
 
 Both workflows run after stable tagged releases and can be retried manually
-with an existing release tag. They do not republish the Rust crate. Prereleases
+with an existing release tag. WinGet retries reuse an open or merged submission
+for that exact version instead of opening duplicate pull requests. They do not republish the Rust crate. Prereleases
 are excluded from these distribution channels.
 
 `wg-launcher self-update` reads the published cargo-dist manifest and upgrades

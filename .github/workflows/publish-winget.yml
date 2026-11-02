@@ -86,9 +86,19 @@ jobs:
       - name: Submit to the WinGet community repository
         env:
           WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+          GH_TOKEN: ${{ secrets.WINGET_TOKEN }}
         run: |
           $ErrorActionPreference = 'Stop'
-          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
           $version = $env:RELEASE_TAG.TrimStart('v')
+          $query = "GabrielHamel.WgLauncher $version in:title"
+          $pulls = gh pr list --repo microsoft/winget-pkgs --state all --search $query --json title,url,state,mergedAt | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot check existing WinGet submissions' }
+          $exactVersion = '(?<![0-9.])' + [regex]::Escape($version) + '(?![0-9.])'
+          $existing = @($pulls | Where-Object { $_.title -match $exactVersion -and ($_.state -eq 'OPEN' -or $_.mergedAt) })
+          if ($existing.Count -gt 0) {
+            Write-Output "WinGet submission already exists: $($existing[0].url)"
+            exit 0
+          }
+          Invoke-WebRequest https://aka.ms/wingetcreate/latest -OutFile wingetcreate.exe
           & ./wingetcreate.exe submit --no-open --prtitle "New version: GabrielHamel.WgLauncher version $version" --token "$env:WINGET_TOKEN" "output/manifests/g/GabrielHamel/WgLauncher/$version"
           if ($LASTEXITCODE -ne 0) { throw 'WinGet submission failed' }
