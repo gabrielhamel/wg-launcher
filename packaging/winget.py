@@ -10,7 +10,7 @@ import urllib.request
 import zipfile
 
 IDENTIFIER = "GabrielHamel.WgLauncher"
-SCHEMA = "1.6.0"
+SCHEMA = "1.12.0"
 REPOSITORY = "https://github.com/gabrielhamel/wg-launcher"
 
 

@@ -38,7 +38,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           Install-PackageProvider -Name NuGet -Force | Out-Null
           Install-Module -Name Microsoft.WinGet.Client -Force -Repository PSGallery -Scope AllUsers | Out-Null
-          Repair-WinGetPackageManager -AllUsers -Force
+          Repair-WinGetPackageManager -AllUsers -Force -IncludePreRelease
+          winget --version
       - name: Validate and install the package
         shell: powershell
         run: |
