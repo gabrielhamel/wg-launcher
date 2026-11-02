@@ -15,7 +15,7 @@ targets = [
 unix-archive = ".tar.gz"
 pr-run-mode = "plan"
 install-path = "CARGO_HOME"
-# Reserve CLI updates for a future `wg-launcher self-update` command.
+# CLI self-update is built in; do not install a separate updater executable.
 install-updater = false
 publish-jobs = ["./publish-crates"]
 github-custom-job-permissions = { "publish-crates" = { contents = "read" } }
