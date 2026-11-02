@@ -19,9 +19,10 @@ Choose the path that matches what you want to build or install.
 <summary>I'm using the terminal. What's the quickest starting point?</summary>
 
 Install with [Homebrew](../crates/wg-launcher-cli/README.md#homebrew),
-[apt](../crates/wg-launcher-cli/README.md#apt-debian-and-ubuntu), or the installer for [Windows](../crates/wg-launcher-cli/README.md#windows),
-[macOS](../crates/wg-launcher-cli/README.md#macos), or
-[Linux](../crates/wg-launcher-cli/README.md#linux), then preview a build:
+[apt](../crates/wg-launcher-cli/README.md#apt-debian-and-ubuntu), or
+[WinGet (pending Microsoft approval)](../crates/wg-launcher-cli/README.md#winget-windows-x64).
+You can also use the [manual installers](../crates/wg-launcher-cli/README.md#manual-installation).
+Then preview a build:
 
 ```console
 wg-launcher inspect --game wot --region eu
