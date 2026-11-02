@@ -31,6 +31,7 @@ def yaml_text(value, indent=0):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--tag", required=True)
+    parser.add_argument("--validate", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     version = args.tag.removeprefix("v")
@@ -60,7 +61,13 @@ def main():
     directory.mkdir(parents=True, exist_ok=True)
     for suffix, kind, data in [(".installer", "installer", installer), (".locale.en-US", "defaultLocale", locale), ("", "version", version_manifest)]:
         schema = f"https://aka.ms/winget-manifest.{kind}.{SCHEMA}.schema.json"
-        (directory / f"{IDENTIFIER}{suffix}.yaml").write_text(f"# yaml-language-server: $schema={schema}\n\n" + yaml_text(data) + "\n", encoding="utf-8")
+        path = directory / f"{IDENTIFIER}{suffix}.yaml"
+        path.write_text(f"# yaml-language-server: $schema={schema}\n\n" + yaml_text(data) + "\n", encoding="utf-8")
+        if args.validate:
+            import jsonschema
+            import yaml
+            official = json.load(urllib.request.urlopen(schema, timeout=30))
+            jsonschema.validate(yaml.safe_load(path.read_text(encoding="utf-8")), official)
     print(directory)
 
 

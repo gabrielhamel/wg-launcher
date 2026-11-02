@@ -31,7 +31,9 @@ jobs:
         with:
           python-version: '3.12'
       - name: Generate manifests from the verified Windows archive
-        run: python packaging/winget.py --tag "$env:RELEASE_TAG" --output output
+        run: |
+          python -m pip install --disable-pip-version-check PyYAML jsonschema
+          python packaging/winget.py --tag "$env:RELEASE_TAG" --output output --validate
       - name: Install WinGet tooling
         shell: powershell
         run: |
@@ -46,8 +48,19 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $version = $env:RELEASE_TAG.TrimStart('v')
           $manifest = "output/manifests/g/GabrielHamel/WgLauncher/$version"
-          winget validate --manifest $manifest --disable-interactivity
-          if ($LASTEXITCODE -ne 0) { throw 'WinGet manifest validation failed' }
+          $ErrorActionPreference = 'Continue'
+          $validation = winget validate --manifest $manifest --disable-interactivity 2>&1 | Out-String
+          $validationStatus = $LASTEXITCODE
+          $ErrorActionPreference = 'Stop'
+          Write-Output $validation
+          if ($validationStatus -ne 0) {
+            # WinGet 1.11 knows an older schema header than the community repository.
+            # JSON-schema validation above uses the actual current Microsoft schema.
+            # Accept only that specific header warning, never semantic/schema errors.
+            $warnings = @($validation -split "`n" | Where-Object { $_ -match '^Manifest Warning:' })
+            $otherWarnings = @($warnings | Where-Object { $_ -notmatch '^Manifest Warning: The schema header URL does not match the expected pattern\.' })
+            if ($validationStatus -ne -1978335192 -or $warnings.Count -eq 0 -or $otherWarnings.Count -gt 0) { throw 'WinGet manifest validation failed' }
+          }
           winget settings --enable LocalManifestFiles
           winget install --manifest $manifest --scope user --silent --accept-package-agreements --accept-source-agreements --disable-interactivity
           if ($LASTEXITCODE -ne 0) { throw 'WinGet installation failed' }
@@ -62,6 +75,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           if ($status -eq 0 -or $output -notlike '*Self-update not supported*') { throw 'WinGet ownership was not respected' }
           if ((Get-FileHash $binary -Algorithm SHA256).Hash -ne $before) { throw 'Managed executable changed' }
+          exit 0
       - name: Attach manifests to the release
         shell: bash
         run: |
