@@ -107,3 +107,57 @@ fn corrupt_archive_keeps_cache_and_existing_payload_and_can_be_retried() {
     assert_installed(&game, Release::V1);
     assert_eq!(server.requests(), before_extract);
 }
+
+mod downloads;
+mod extraction;
+
+use crate::fixture::Fixture;
+use std::{path::PathBuf, process::Output};
+
+struct Recovery {
+    sandbox: Sandbox,
+    fixture: Fixture,
+    server: WgUpdateService,
+    config: PathBuf,
+    game: PathBuf,
+}
+
+impl Recovery {
+    fn downloaded() -> Self {
+        let sandbox = Sandbox::new();
+        let fixture = sandbox.fixture(Release::V1);
+        let server = WgUpdateService::start(fixture.service_resources("updates"));
+        let config = sandbox.configuration(&server);
+        let game = sandbox.game();
+        let recovery = Self {
+            sandbox,
+            fixture,
+            server,
+            config,
+            game,
+        };
+        success(recovery.run("download"));
+        recovery
+    }
+
+    fn run(&self, command: &str) -> Output {
+        self.sandbox.run(
+            &self.sandbox.path,
+            &[
+                command,
+                "--game",
+                "wot",
+                "--product",
+                self.config.to_str().unwrap(),
+                "--region",
+                "local",
+                "--output",
+                self.game.to_str().unwrap(),
+            ],
+        )
+    }
+
+    fn cache(&self) -> PathBuf {
+        self.game.join(".wg-launcher/download")
+    }
+}
