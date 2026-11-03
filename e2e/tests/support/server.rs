@@ -2,7 +2,7 @@ use crate::support::binary;
 use std::{
     collections::BTreeMap,
     fs::{self, OpenOptions},
-    net::{SocketAddr, TcpListener, TcpStream},
+    net::SocketAddr,
     path::{Component, Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::{
@@ -37,8 +37,15 @@ impl WgUpdateService {
         let release = directory.join("release");
         let prefix = write_release(&release, resources);
         let access_log = directory.join("access.log");
-        let address = available_address();
-        let child = spawn_service(&directory, &release, &access_log, &prefix, address);
+        // Let the child bind port zero itself: probing and releasing a port here
+        // lets parallel scenarios accidentally connect to one another's service.
+        let (child, address) = spawn_service(
+            &directory,
+            &release,
+            &access_log,
+            &prefix,
+            "127.0.0.1:0".parse().unwrap(),
+        );
         Self {
             address,
             directory,
@@ -73,13 +80,15 @@ impl WgUpdateService {
         child.wait().unwrap();
         let prefix = write_release(&self.release, resources);
         assert_eq!(prefix, self.prefix, "replacement changed the API prefix");
-        *child = spawn_service(
+        let (replacement, address) = spawn_service(
             &self.directory,
             &self.release,
             &self.access_log,
             &self.prefix,
             self.address,
         );
+        *child = replacement;
+        assert_eq!(address, self.address, "service restart changed its address");
     }
 }
 
@@ -98,12 +107,10 @@ fn spawn_service(
     access_log: &Path,
     prefix: &str,
     address: SocketAddr,
-) -> Child {
-    let stdout = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(directory.join("stdout.log"))
-        .unwrap();
+) -> (Child, SocketAddr) {
+    // Truncate announcements from a previous process before a restart.
+    let stdout_path = directory.join("stdout.log");
+    let stdout = fs::File::create(&stdout_path).unwrap();
     let stderr_path = directory.join("stderr.log");
     let stderr = OpenOptions::new()
         .create(true)
@@ -128,15 +135,32 @@ fn spawn_service(
         .unwrap();
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
-        if TcpStream::connect(address).is_ok() {
-            return child;
+        let status = child.try_wait().unwrap();
+        // Read this child's complete startup announcement, not just a successful
+        // connection to an address that another process could already own.
+        let stdout = fs::read_to_string(&stdout_path).unwrap();
+        if status.is_none() {
+            for line in stdout.split_inclusive('\n') {
+                if !line.ends_with('\n') {
+                    continue;
+                }
+                if let Some(origin) = line
+                    .trim_end()
+                    .strip_prefix("WG update service listening on http://")
+                    && let Ok(address) = origin.parse()
+                {
+                    return (child, address);
+                }
+            }
         }
-        assert!(
-            child.try_wait().unwrap().is_none(),
-            "service exited early: {}",
-            fs::read_to_string(&stderr_path).unwrap()
-        );
-        assert!(Instant::now() < deadline, "service did not become ready");
+        if status.is_some() || Instant::now() >= deadline {
+            let _ = child.kill();
+            let _ = child.wait();
+            panic!(
+                "service did not become ready (exit: {status:?}): {}\n{stdout}",
+                fs::read_to_string(&stderr_path).unwrap()
+            );
+        }
         thread::sleep(Duration::from_millis(10));
     }
 }
@@ -201,11 +225,6 @@ fn temporary_directory() -> PathBuf {
             Err(error) => panic!("cannot create test directory: {error}"),
         }
     }
-}
-
-fn available_address() -> SocketAddr {
-    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    listener.local_addr().unwrap()
 }
 
 fn nonempty(value: Option<&str>) -> Option<String> {

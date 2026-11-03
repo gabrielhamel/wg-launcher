@@ -20,7 +20,11 @@ under test. Create pinned manifests through actual CLI `download` operations
 instead of writing them from test helpers. Keep process scenarios and helpers in
 `e2e/tests/`.
 
-Use a separate temporary directory and ephemeral server port for each scenario.
+Use a separate temporary directory for each scenario. Start each service with
+`--listen 127.0.0.1:0` and read its bound address from that child's startup
+announcement. Do not probe and release a free port before spawning the service,
+or treat a connection to an existing listener as proof that the child is ready.
+When republishing fixtures, restart on the previously announced address.
 Assert the relevant user-visible result: process status and diagnostics, exact
 payload bytes, installed identity, retained or released cache files, and observed
 HTTP requests. Preserve the bounded process execution and server shutdown when
@@ -35,7 +39,8 @@ Runnable library examples are checked for compilation separately.
 cargo test -p wg-launcher-e2e --locked
 ```
 
-The dedicated server-crossing category is:
+The dedicated server-crossing category also verifies parallel services receive
+distinct ports and preserve their address when restarted:
 
 ```console
 cargo test -p wg-launcher-e2e --locked scenarios::service
@@ -55,8 +60,9 @@ Coverage includes startup/help warnings, current/latest version output, offline
 checks, skipped checks, equal/older releases, package-manager refusal (including
 Homebrew receipts in custom prefixes), checksum
 and embedded-version failures, successful replacement, staging cleanup, and
-preservation of unrelated files. The synthetic replacement has its own test
-version, independent of the workspace release. These scenarios share the
+preservation of unrelated files, the shared build executable, and another launcher
+copy. The synthetic replacement has its own test version, independent of the
+workspace release. These scenarios share the
 Windows/Linux/macOS CI matrix; a local run verifies only the host platform.
 
 ```console

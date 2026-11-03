@@ -31,10 +31,12 @@ fn executable_name() -> &'static str {
 #[test]
 fn commands_warn_before_output_and_version_shows_installed_and_latest() {
     let sandbox = Sandbox::new();
+    let launcher = sandbox.path.join("standalone").join(executable_name());
+    copy_launcher(&launcher);
     let server = server(&sandbox, cli_update::FUTURE, false, false);
     let manifest = format!("{}/dist-manifest.json", server.url());
     let env = [("WG_LAUNCHER_UPDATE_MANIFEST", manifest.as_str())];
-    let output = sandbox.run_cli(&binary("wg-launcher"), &sandbox.path, &["--version"], &env);
+    let output = sandbox.run_cli(&launcher, &sandbox.path, &["--version"], &env);
     assert!(output.status.success());
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(
@@ -45,7 +47,7 @@ fn commands_warn_before_output_and_version_shows_installed_and_latest() {
         )),
         "{stdout}"
     );
-    let output = sandbox.run_cli(&binary("wg-launcher"), &sandbox.path, &["status"], &env);
+    let output = sandbox.run_cli(&launcher, &sandbox.path, &["status"], &env);
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
@@ -54,7 +56,7 @@ fn commands_warn_before_output_and_version_shows_installed_and_latest() {
     );
     assert!(stderr.contains("wg-launcher self-update"));
     assert!(stderr.contains("error:"));
-    let output = sandbox.run_cli(&binary("wg-launcher"), &sandbox.path, &["--help"], &env);
+    let output = sandbox.run_cli(&launcher, &sandbox.path, &["--help"], &env);
     assert!(output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("99.0.0 is available"));
     assert!(String::from_utf8_lossy(&output.stdout).contains("self-update"));
@@ -67,6 +69,13 @@ fn self_update_replaces_only_the_copied_cli_and_cleans_staging() {
     let manifest = format!("{}/dist-manifest.json", server.url());
     let launcher = sandbox.path.join("standalone").join(executable_name());
     copy_launcher(&launcher);
+    let shared_launcher = binary("wg-launcher");
+    let shared_before = fs::read(&shared_launcher).unwrap();
+    let sibling = sandbox
+        .path
+        .join("another-installation")
+        .join(executable_name());
+    copy_launcher(&sibling);
     let sentinel = launcher.parent().unwrap().join("game-owned-file");
     fs::write(&sentinel, b"keep me").unwrap();
     success(sandbox.run_cli(
@@ -101,6 +110,23 @@ fn self_update_replaces_only_the_copied_cli_and_cleans_staging() {
             .iter()
             .any(|request| request.path.ends_with(".sha256"))
     );
+    assert_eq!(fs::read(&shared_launcher).unwrap(), shared_before);
+    assert_eq!(fs::read(&sibling).unwrap(), shared_before);
+    for untouched in [&shared_launcher, &sibling] {
+        let output = success(sandbox.run_cli(
+            untouched,
+            &sandbox.path,
+            &["--version"],
+            &[("WG_LAUNCHER_NO_UPDATE_CHECK", "1")],
+        ));
+        assert_eq!(
+            output.trim(),
+            format!(
+                "wg-launcher {} (latest: unavailable)",
+                env!("CARGO_PKG_VERSION")
+            )
+        );
+    }
     assert!(!sandbox.game().exists());
 }
 
@@ -188,10 +214,12 @@ fn package_manager_installations_refuse_replacement_even_when_newer_is_available
 #[test]
 fn equal_or_older_releases_do_not_download_and_offline_checks_do_not_break_commands() {
     let sandbox = Sandbox::new();
+    let launcher = sandbox.path.join("standalone").join(executable_name());
+    copy_launcher(&launcher);
     let server = server(&sandbox, env!("CARGO_PKG_VERSION"), false, false);
     let manifest = format!("{}/dist-manifest.json", server.url());
     let output = sandbox.run_cli(
-        &binary("wg-launcher"),
+        &launcher,
         &sandbox.path,
         &["self-update"],
         &[("WG_LAUNCHER_UPDATE_MANIFEST", &manifest)],
@@ -212,13 +240,13 @@ fn equal_or_older_releases_do_not_download_and_offline_checks_do_not_break_comma
     );
     server.replace_resources(old);
     success(sandbox.run_cli(
-        &binary("wg-launcher"),
+        &launcher,
         &sandbox.path,
         &["self-update"],
         &[("WG_LAUNCHER_UPDATE_MANIFEST", &manifest)],
     ));
     let output = sandbox.run_cli(
-        &binary("wg-launcher"),
+        &launcher,
         &sandbox.path,
         &["--version"],
         &[(
@@ -230,7 +258,7 @@ fn equal_or_older_releases_do_not_download_and_offline_checks_do_not_break_comma
     assert!(String::from_utf8_lossy(&output.stdout).contains("latest: unavailable"));
     failure(
         sandbox.run_cli(
-            &binary("wg-launcher"),
+            &launcher,
             &sandbox.path,
             &["status"],
             &[(
@@ -242,7 +270,7 @@ fn equal_or_older_releases_do_not_download_and_offline_checks_do_not_break_comma
     );
     let before = server.requests();
     success(sandbox.run_cli(
-        &binary("wg-launcher"),
+        &launcher,
         &sandbox.path,
         &["--version"],
         &[
