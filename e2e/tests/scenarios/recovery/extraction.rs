@@ -102,3 +102,30 @@ fn interrupted_installation_can_move_and_finish_offline_without_configuration() 
     success(recovery.sandbox.run(&recovery.game, &["extract"]));
     assert_installed(&recovery.game, Release::V1);
 }
+
+#[test]
+fn download_refuses_an_installation_owned_by_another_process() {
+    let recovery = Recovery::downloaded();
+    let lock = fs::OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .read(true)
+        .write(true)
+        .open(recovery.game.join(".wg-launcher/wg-launcher.lock"))
+        .unwrap();
+    fs2::FileExt::try_lock_exclusive(&lock).unwrap();
+    let pinned = fs::read(recovery.cache().join("manifest.json")).unwrap();
+    let before = recovery.server.requests();
+    failure(
+        recovery.run("download"),
+        "another installation is already running",
+    );
+    assert_eq!(
+        fs::read(recovery.cache().join("manifest.json")).unwrap(),
+        pinned
+    );
+    assert_eq!(recovery.server.requests(), before);
+    drop(lock);
+    success(recovery.run("install"));
+    assert_installed(&recovery.game, Release::V1);
+}

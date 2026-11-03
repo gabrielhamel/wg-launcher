@@ -1,5 +1,6 @@
 pub mod cli_update;
 mod delta;
+pub mod recovery;
 pub use delta::DeltaFixture;
 
 use std::{collections::BTreeMap, fs, path::Path};

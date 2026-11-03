@@ -110,6 +110,7 @@ fn corrupt_archive_keeps_cache_and_existing_payload_and_can_be_retried() {
 
 mod downloads;
 mod extraction;
+mod interruption;
 
 use crate::fixture::Fixture;
 use std::{path::PathBuf, process::Output};
