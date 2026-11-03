@@ -11,6 +11,14 @@ fn fill_cleanup_directory(path: &Path) {
 fn killed_after_checkpoint_before_package_release_retries_without_reapplying() {
     let recovery = Recovery::downloaded();
     let active = recovery.game.join(".wg-launcher/installing/active");
+    // Obtain genuine active-patch identity through a failed CLI extraction.
+    let blocker = recovery.game.join("payload.pkg");
+    fs::create_dir(&blocker).unwrap();
+    crate::support::failure(
+        recovery.sandbox.run(&recovery.game, &["extract"]),
+        "archive",
+    );
+    fs::remove_dir(blocker).unwrap();
     // Slow only ordinary filesystem cleanup, without production fault hooks.
     fill_cleanup_directory(&active);
     let manifest_path = recovery.cache().join("manifest.json");

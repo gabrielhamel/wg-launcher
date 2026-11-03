@@ -60,6 +60,12 @@ The low-level `AssetDownloader` leaves coordination to its caller. File reuse an
 validation use advertised sizes rather than content hashes. An extraction failure
 can leave partially changed game files; there is no whole-install rollback.
 
+Full transport archives decode each file under `.wg-launcher/installing/active/archive`
+before replacing its game-tree destination. A decoding failure or termination while
+writing that staged file leaves the existing destination intact. Staging is reused
+within the patch and cleaned after its checkpoint; peak disk usage includes one
+additional decoded file. This is per-file protection, not whole-patch rollback.
+
 Transport `.wgpkg` and `.dspkg` archives are extracted into the game tree.
 Game-owned `.pkg` files inside them remain intact.
 

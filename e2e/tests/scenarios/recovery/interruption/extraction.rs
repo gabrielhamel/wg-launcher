@@ -101,3 +101,51 @@ fn failed_checkpoint_after_extraction_keeps_packages_for_replay() {
     }
     assert!(!cache.exists());
 }
+
+#[test]
+fn killed_while_decoding_a_full_file_preserves_the_existing_destination() {
+    let sandbox = Sandbox::new();
+    let mut fixture = sandbox.fixture(Release::V1);
+    let expected = transfer_payload();
+    fixture.packages.insert(
+        "client.wgpkg".into(),
+        archive(
+            &sandbox.path.join("large"),
+            [("payload.pkg".into(), expected.clone())],
+        ),
+    );
+    let server = WgUpdateService::start(fixture.service_resources("updates"));
+    let config = sandbox.configuration(&server);
+    let game = sandbox.game();
+    success(sandbox.run(
+        &sandbox.path,
+        &[
+            "download",
+            "--game",
+            "wot",
+            "--product",
+            config.to_str().unwrap(),
+            "--region",
+            "local",
+            "--output",
+            game.to_str().unwrap(),
+        ],
+    ));
+    fs::write(game.join("payload.pkg"), b"existing game bytes").unwrap();
+    let staged = game.join(".wg-launcher/installing/active/archive/payload.pkg");
+    let mut child = sandbox.spawn(&game, &["extract"]);
+    child.until(|| size(&staged) > 0 && size(&staged) < expected.len() as u64);
+    assert!(!child.kill().status.success());
+    assert_eq!(
+        fs::read(game.join("payload.pkg")).unwrap(),
+        b"existing game bytes"
+    );
+    assert!(!game.join(".wg-launcher/state.json").exists());
+    assert!(game.join(".wg-launcher/download/client.wgpkg").is_file());
+    server.stop();
+    success(sandbox.run(&game, &["extract"]));
+    assert_eq!(fs::read(game.join("payload.pkg")).unwrap(), expected);
+    assert_state(&game, "1.0", "1.0");
+    assert!(!game.join(".wg-launcher/download").exists());
+    assert!(!game.join(".wg-launcher/installing").exists());
+}
