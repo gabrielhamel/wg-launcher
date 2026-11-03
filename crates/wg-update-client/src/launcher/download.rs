@@ -1,9 +1,13 @@
 use super::{
     BuildSelection, InstallPlan,
-    manifest::{build_plan, resolve_installation, save_cache_manifest},
+    manifest::{
+        build_plan, load_cache_manifest, resolve_installation, save_cache_manifest,
+        validate_cached_selection,
+    },
 };
 use crate::{
     Asset, AssetDownloader, DownloadEvent, DownloadOptions, DownloadReport, Result, WgusClient,
+    install::{InstallationLock, installation_storage},
     installation_assets,
 };
 use serde::Serialize;
@@ -65,15 +69,15 @@ pub async fn download(options: DownloadAssetsOptions) -> Result<DownloadAssetsOu
 /// Reuses a matching pinned manifest, complete cached files, and resumable partial
 /// files. Does not write an installed-build record or clean the cache. A filtered
 /// download is insufficient for extraction until all required packages are present.
-/// This package-only workflow does not acquire the extraction installation lock;
-/// callers must serialize access to the same destination.
+/// Acquires the per-installation mutation lock before pinning or transferring files.
+/// Competing download, extraction, or installation workflows fail without modifying the cache.
 ///
 /// The observer receives a plan before progress. Callbacks may run concurrently;
 /// see the [crate-level observer contract](crate#observers-and-async-execution).
 ///
 /// # Errors
 ///
-/// Returns an error for discovery or cache I/O failures, a pinned selection mismatch,
+/// Returns an error for lock contention, discovery or cache I/O failures, a pinned selection mismatch,
 /// an invalid patch chain, an empty asset selection, unsafe paths, or exhausted
 /// transfer retries. Cached and partial files may remain after failure.
 pub async fn download_with_observer<F>(
@@ -86,6 +90,16 @@ where
     let client = WgusClient::new()?;
     let (manifest, root) =
         resolve_installation(&client, &options.selection, options.output).await?;
+    let storage = installation_storage(&root)?;
+    let _lock = InstallationLock::acquire(&storage, &root)?;
+    // Discovery happens before locking; another workflow could have checkpointed
+    // this installation meanwhile. Read its authoritative manifest under the lock.
+    let manifest = if let Some(pending) = load_cache_manifest(&storage.cache).await? {
+        validate_cached_selection(&pending, &options.selection)?;
+        pending
+    } else {
+        manifest
+    };
     let all_assets = installation_assets(&manifest)?;
     let assets = select_download_assets(all_assets, &options.parts);
     if assets.is_empty() {

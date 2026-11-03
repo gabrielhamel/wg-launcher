@@ -54,9 +54,9 @@ its original source files beneath `.wg-launcher/installing/active/sources` so a
 partially applied patch can be retried safely; preserve this directory on failure. Successful high-level
 installation and extraction remove the remaining cache and temporary work.
 The lower-level `ExtractionOptions` allows callers to control cache cleanup.
-Extraction and the integrated pipeline acquire the installation lock. Package-only
-downloads and direct `AssetDownloader` calls do not; embedding applications must
-serialize competing access to the same destination. File reuse and transfer
+High-level download, extraction, and integrated installation workflows acquire the
+per-installation mutation lock. Competing mutations fail with a lock diagnostic.
+The low-level `AssetDownloader` leaves coordination to its caller. File reuse and transfer
 validation use advertised sizes rather than content hashes. An extraction failure
 can leave partially changed game files; there is no whole-install rollback.
 
