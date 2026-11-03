@@ -13,16 +13,28 @@ fn service_loss_during_transfer_recovers_on_the_same_address() {
 fn interrupted_transfer(stop_service: bool) {
     let sandbox = Sandbox::new();
     let mut fixture = sandbox.fixture(Release::V1);
+    let mut expected = transfer_payload();
+    expected.truncate(256 * 1024);
     for (part, name) in [("client", "payload.pkg"), ("locale", "locale.txt")] {
         fixture.packages.insert(
             format!("{part}.wgpkg"),
-            archive(
-                &sandbox.path.join(part),
-                [(name.into(), transfer_payload())],
-            ),
+            archive(&sandbox.path.join(part), [(name.into(), expected.clone())]),
         );
     }
     let server = WgUpdateService::start(fixture.service_resources("updates"));
+    let upstream = server
+        .url()
+        .strip_prefix("http://")
+        .unwrap()
+        .parse()
+        .unwrap();
+    let gate = crate::support::transfer_gate::TransferGate::new(upstream);
+    let mut resources = fixture.service_resources("updates");
+    let chain = String::from_utf8(resources["updates/api/v1/patches_chain/"].clone())
+        .unwrap()
+        .replace("__BASE_URL__", &gate.url());
+    resources.insert("updates/api/v1/patches_chain/".into(), chain.into_bytes());
+    server.replace_resources(resources.clone());
     let config = sandbox.configuration(&server);
     let game = sandbox.game();
     let args = [
@@ -40,24 +52,23 @@ fn interrupted_transfer(stop_service: bool) {
     let partial = cache.join("client.wgpkg.part");
     let mut child = sandbox.spawn(&sandbox.path, &args);
     child.until(|| {
-        size(&partial) > 0 && size(&partial) < fixture.packages["client.wgpkg"].len() as u64
+        ["client", "locale"].iter().all(|part| {
+            let path = cache.join(format!("{part}.wgpkg.part"));
+            size(&path) > 0 && size(&path) < fixture.packages[&format!("{part}.wgpkg")].len() as u64
+        })
     });
+    // Run a competing real CLI while both responses remain gated. Even if
+    // this controller is descheduled, the first download cannot complete.
+    crate::support::failure(
+        sandbox.run(&sandbox.path, &args),
+        "another installation is already running",
+    );
     if stop_service {
         server.stop();
-    } else {
-        let lock = fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(game.join(".wg-launcher/wg-launcher.lock"))
-            .unwrap();
-        assert!(
-            fs2::FileExt::try_lock_exclusive(&lock).is_err(),
-            "download must own the installation lock"
-        );
+        gate.disconnect();
     }
     let output = if stop_service {
-        // Windows may spend the full connect timeout on each refused loopback
-        // connection. Allow the default retry budget, without changing the CLI.
+        // Keep the bounded production network retry budget for this outage case.
         child.wait_with_timeout(std::time::Duration::from_secs(150))
     } else {
         child.kill()
@@ -70,13 +81,14 @@ fn interrupted_transfer(stop_service: bool) {
     );
     assert!(!game.join(".wg-launcher/state.json").exists());
     if stop_service {
-        server.replace_resources(fixture.service_resources("updates"));
+        server.replace_resources(resources);
     }
     let cached_before = ["client.wgpkg", "locale.wgpkg"].map(|name| {
         let complete = cache.join(name).is_file();
         let partial = size(&cache.join(format!("{name}.part")));
         (name, complete, partial)
     });
+    gate.open();
     let before = server.requests().len();
     success(sandbox.run(&sandbox.path, &args));
     let requests = server.requests();
@@ -112,7 +124,7 @@ fn interrupted_transfer(stop_service: bool) {
     server.stop();
     success(sandbox.run(&game, &["extract"]));
     for name in ["payload.pkg", "locale.txt"] {
-        assert_eq!(fs::read(game.join(name)).unwrap(), transfer_payload());
+        assert_eq!(fs::read(game.join(name)).unwrap(), expected);
     }
     assert_state(&game, "1.0", "1.0");
     assert!(!cache.exists());
