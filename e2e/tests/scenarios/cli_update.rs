@@ -29,7 +29,7 @@ fn executable_name() -> &'static str {
 }
 
 #[test]
-fn commands_warn_before_output_and_version_shows_installed_and_latest() {
+fn commands_show_update_notice_before_output_and_version_shows_installed_and_latest() {
     let sandbox = Sandbox::new();
     let launcher = sandbox.path.join("standalone").join(executable_name());
     copy_launcher(&launcher);
@@ -51,14 +51,22 @@ fn commands_warn_before_output_and_version_shows_installed_and_latest() {
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
     assert!(
-        stderr.starts_with("warning: wg-launcher 99.0.0 is available"),
+        stderr.contains(&format!(
+            "CLI update available! {} → 99.0.0",
+            env!("CARGO_PKG_VERSION")
+        )),
         "{stderr}"
     );
     assert!(stderr.contains("wg-launcher self-update"));
+    assert!(
+        stderr.contains("Changelog: https://github.com/gabrielhamel/wg-launcher/releases/latest")
+    );
+    assert!(!stderr.contains("warning:"));
+    assert!(stderr.find("CLI update available!").unwrap() < stderr.find("error:").unwrap());
     assert!(stderr.contains("error:"));
     let output = sandbox.run_cli(&launcher, &sandbox.path, &["--help"], &env);
     assert!(output.status.success());
-    assert!(String::from_utf8_lossy(&output.stderr).contains("99.0.0 is available"));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("CLI update available!"));
     assert!(String::from_utf8_lossy(&output.stdout).contains("self-update"));
 }
 

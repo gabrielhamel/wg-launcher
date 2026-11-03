@@ -56,7 +56,7 @@ CLI self-update scenarios use the same real service to host a cargo-dist
 manifest, checksums, and replacement archives through the supported release-mirror
 setting. They run a copied launcher, never the shared build executable, and
 replace it with the independent `cli-update-fixture` executable from `e2e/src/bin`.
-Coverage includes startup/help warnings, current/latest version output, offline
+Coverage includes startup/help update notices, current/latest version output, offline
 checks, skipped checks, equal/older releases, package-manager refusal (including
 Homebrew receipts in custom prefixes), checksum
 and embedded-version failures, successful replacement, staging cleanup, and

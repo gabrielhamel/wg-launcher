@@ -59,6 +59,7 @@ crates/
       main.rs                 Runtime bootstrap
       cli/                    Dispatch, arguments, output, observer adapters
         output/status.rs      Status colors and update size presentation
+        output/cli_update.rs  Boxed CLI release notice and update instructions
         self_update/          CLI release checks, manager detection, verified replacement
       progress/               Shared progress bars, discovery spinner, styles
     docs/assets/              CLI demonstration assets

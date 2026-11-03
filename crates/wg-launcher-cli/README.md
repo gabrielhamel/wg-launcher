@@ -156,7 +156,8 @@ For a local checkout, follow the
 ### Upgrade the CLI
 
 Before running a command, the CLI checks the latest stable release and prints a
-warning if a newer CLI is available. This check takes at most two seconds;
+boxed update notice with the installed and latest versions, a changelog link, and
+update instructions if a newer CLI is available. This check takes at most two seconds;
 network failures never prevent game commands from running. No update is installed
 automatically.
 

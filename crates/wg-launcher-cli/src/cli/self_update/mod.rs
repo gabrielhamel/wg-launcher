@@ -18,12 +18,12 @@ pub(super) async fn check() -> Option<Release> {
     release::latest().await.ok()
 }
 
-pub(super) fn warn_if_newer(release: Option<&Release>) {
+pub(super) fn notify_if_newer(release: Option<&Release>) {
     if let Some(release) = release.filter(|release| release.is_newer()) {
-        eprintln!(
-            "warning: wg-launcher {} is available (installed: {CURRENT}). {}",
-            release.version,
-            distribution::update_instruction(),
+        super::output::print_cli_update(
+            CURRENT,
+            &release.version.to_string(),
+            &distribution::update_instruction(),
         );
     }
 }
@@ -42,7 +42,7 @@ pub(super) async fn print_version() {
 
 pub(super) async fn run() -> Result<()> {
     let release = release::latest().await;
-    warn_if_newer(release.as_ref().ok());
+    notify_if_newer(release.as_ref().ok());
     if let Some(reason) = distribution::unsupported_reason() {
         return Err(reason.into());
     }
