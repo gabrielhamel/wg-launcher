@@ -108,6 +108,7 @@ fn corrupt_archive_keeps_cache_and_existing_payload_and_can_be_retried() {
     assert_eq!(server.requests(), before_extract);
 }
 
+mod delta;
 mod downloads;
 mod extraction;
 mod interruption;

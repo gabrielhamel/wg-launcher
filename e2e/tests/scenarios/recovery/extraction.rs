@@ -129,3 +129,59 @@ fn download_refuses_an_installation_owned_by_another_process() {
     success(recovery.run("install"));
     assert_installed(&recovery.game, Release::V1);
 }
+
+#[cfg(unix)]
+#[test]
+fn cleanup_permission_failure_retains_committed_identity_and_can_be_retried() {
+    use std::os::unix::fs::PermissionsExt;
+    struct Restore(std::path::PathBuf);
+    impl Drop for Restore {
+        fn drop(&mut self) {
+            let _ = fs::set_permissions(&self.0, fs::Permissions::from_mode(0o700));
+        }
+    }
+    let recovery = Recovery::downloaded();
+    let blocked = recovery.game.join(".wg-launcher/installing/leftovers");
+    fs::create_dir_all(&blocked).unwrap();
+    fs::write(blocked.join("temporary"), b"staging data").unwrap();
+    let restore = Restore(blocked.clone());
+    fs::set_permissions(&blocked, fs::Permissions::from_mode(0o500)).unwrap();
+    let output = recovery.sandbox.run(&recovery.game, &["extract"]);
+    // Restore permissions before assertions and Sandbox cleanup, including on panic.
+    drop(restore);
+    failure(output, "Permission denied");
+    let state: serde_json::Value =
+        serde_json::from_slice(&fs::read(recovery.game.join(".wg-launcher/state.json")).unwrap())
+            .unwrap();
+    assert_eq!(state["version"], "1.0");
+    assert!(recovery.cache().join("manifest.json").is_file());
+    let before = recovery.server.requests();
+    success(recovery.sandbox.run(&recovery.game, &["extract"]));
+    assert_eq!(recovery.server.requests(), before);
+    assert_installed(&recovery.game, Release::V1);
+}
+
+#[test]
+fn damaged_archive_stream_does_not_truncate_an_existing_game_file() {
+    let recovery = Recovery::downloaded();
+    let path = recovery.cache().join("client.wgpkg");
+    let valid = fs::read(&path).unwrap();
+    let mut damaged = valid.clone();
+    // Keep the 7z signature and headers intact; damage the packed data stream.
+    damaged[40] ^= 0xff;
+    fs::write(&path, damaged).unwrap();
+    fs::write(recovery.game.join("payload.pkg"), b"existing game bytes").unwrap();
+    failure(
+        recovery.sandbox.run(&recovery.game, &["extract"]),
+        "archive",
+    );
+    assert_eq!(
+        fs::read(recovery.game.join("payload.pkg")).unwrap(),
+        b"existing game bytes"
+    );
+    assert!(path.is_file());
+    assert!(!recovery.game.join(".wg-launcher/state.json").exists());
+    fs::write(path, valid).unwrap();
+    success(recovery.sandbox.run(&recovery.game, &["extract"]));
+    assert_installed(&recovery.game, Release::V1);
+}
