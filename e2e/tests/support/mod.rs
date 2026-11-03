@@ -1,3 +1,5 @@
+pub mod transfer_gate;
+
 use crate::{
     fixture::{Fixture, Release},
     server::WgUpdateService,

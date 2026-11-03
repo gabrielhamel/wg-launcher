@@ -142,19 +142,31 @@ coverage, rather than a claim that every possible failure in that area is tested
 
 ### How interruption tests synchronize
 
-The harness polls filesystem evidence with a deadline, then kills and reaps the
-child. It asserts the intended incomplete state after termination; missing the
-phase fails the test. It does not rely on sleeping for a guessed duration before
-killing. Transfer fixtures contain two incompressible 8 MiB payloads. Extraction
-and delta fixtures contain 600 small files; leftover staging files extend the
-observable checkpoint and cleanup windows. Tests use the real service, real
-archives, CLI discovery, and CLI-created manifests throughout. No production fault
-switches or substitute HTTP server are used. Every child has distinct output logs
-and is killed/reaped on assertion failure. The service-loss case allows 150 seconds
-for the production retry policy: an interrupted read can take up to 60 seconds,
-four subsequent connection attempts up to 15 seconds each, plus 15 seconds of
-backoff. Windows can use the full connection timeout for refused loopback requests;
-the other scenarios retain the usual 20-second child deadline.
+Download interruption uses a test-owned TCP gate that forwards opaque bytes to
+and from the real service. Both package responses pause after 64 KiB; the harness
+waits for durable prefixes in both `.part` files and runs a competing CLI before
+terminating the launcher or stopping the service. Downloads cannot finish while
+the controller is descheduled. On service loss the gate disconnects established
+streams and rejects forwarding until the service restarts at its original address;
+on retry it opens fully. WGUS XML advertises the gate using ordinary web-seed URLs.
+The gate does not parse HTTP, manufacture responses, or implement ranges: those
+remain the real service's responsibility. Its threads and sockets are joined and
+closed on cleanup, including assertion failures.
+
+The two transfer payloads are 256 KiB each. Extraction and delta fixtures contain
+600 small files, with an additional 8 MiB fixture for interruption during full-file
+decoding. Those tests poll filesystem evidence with a deadline, kill/reap the child,
+and assert the incomplete state; missing the intended phase fails the test.
+Leftover staging files extend checkpoint and cleanup windows. No guessed sleep
+before termination, production fault switches, or substitute HTTP server are used.
+Every child has distinct output logs and is killed/reaped on assertion failure.
+The service-loss case retains a 150-second bound for the production network retry
+budget; other children have a 20-second deadline.
+
+The original polling-only transfer test passed the PR matrix but raced on the
+post-merge macOS run: both volumes finished before a nonempty `.part` file was
+observed. The TCP gate removes that scheduling race rather than making payloads
+larger or retrying a test that missed its phase.
 
 ### Findings and limits
 
