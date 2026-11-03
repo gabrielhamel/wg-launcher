@@ -161,6 +161,9 @@ update instructions if a newer CLI is available. This check takes at most two se
 network failures never prevent game commands from running. No update is installed
 automatically.
 
+`self-update` and `--version` omit this notice because they already report the
+CLI's update status.
+
 For an installer, archive, or source installation, run:
 
 ```console
@@ -170,11 +173,14 @@ wg-launcher self-update
 The updater downloads the archive for your platform, verifies its SHA-256
 checksum, and checks that the new executable runs and reports the expected
 version before replacing the current executable. You need write access to the
-CLI's directory. Temporary update files are cleaned after success or failure.
+CLI's directory. Download and extraction show byte progress with transfer speed
+and ETA; release checks, verification, and replacement show a spinner. Temporary
+update files are cleaned after success or failure.
 Game files and installed game state are not changed.
 
-`wg-launcher --version` shows both the installed and latest stable CLI versions.
-If the latest release cannot be checked, it shows `latest: unavailable` and
+`wg-launcher --version` (or `-V`) shows installed and latest stable CLI versions
+in the same style as `status`, followed by a changelog link and update status.
+If the latest release cannot be checked, it shows `Latest: unavailable` and
 still exits successfully.
 
 For installations managed by Homebrew, APT, WinGet, Scoop, Nix, or a package manager

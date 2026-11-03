@@ -1,6 +1,7 @@
 //! Read cargo-dist's published manifest without GitHub API authentication or rate limits.
 
 use super::{CURRENT, Result, archive};
+use crate::progress::SelfUpdateProgress;
 use reqwest::{Client, Url};
 use semver::Version;
 use serde::Deserialize;
@@ -40,7 +41,11 @@ impl Release {
         Version::parse(CURRENT).is_ok_and(|current| self.version.cmp_precedence(&current).is_gt())
     }
 
-    pub(super) async fn download(&self, directory: &Path) -> Result<PathBuf> {
+    pub(super) async fn download(
+        &self,
+        directory: &Path,
+        progress: &SelfUpdateProgress,
+    ) -> Result<PathBuf> {
         let (target, extension) = match (std::env::consts::OS, std::env::consts::ARCH) {
             ("windows", "x86_64") => ("x86_64-pc-windows-msvc", "zip"),
             ("macos", "aarch64") => ("aarch64-apple-darwin", "tar.gz"),
@@ -54,6 +59,7 @@ impl Release {
             return Err("The latest release has no archive and checksum for this platform.".into());
         }
         let client = client(Duration::from_secs(120))?;
+        progress.stage("Fetching the CLI archive checksum")?;
         let checksum = fetch(&client, self.base.join(&checksum_name)?, 4096).await?;
         let checksum = std::str::from_utf8(&checksum)?
             .split_whitespace()
@@ -74,6 +80,7 @@ impl Release {
             .error_for_status()?;
         let mut hasher = Sha256::new();
         let mut size = 0usize;
+        progress.transfer("Downloading the CLI archive", response.content_length())?;
         while let Some(chunk) = response.chunk().await? {
             size = size
                 .checked_add(chunk.len())
@@ -85,7 +92,9 @@ impl Release {
             }
             hasher.update(&chunk);
             file.write_all(&chunk)?;
+            progress.advance(chunk.len() as u64);
         }
+        progress.stage("Verifying the CLI archive checksum")?;
         file.sync_all()?;
         drop(file);
         if !format!("{:x}", hasher.finalize()).eq_ignore_ascii_case(checksum) {
@@ -93,7 +102,8 @@ impl Release {
                 "CLI archive checksum mismatch; the installed executable was preserved.".into(),
             );
         }
-        archive::extract(&archive, directory, extension == "zip")
+        progress.stage("Opening the CLI archive")?;
+        archive::extract(&archive, directory, extension == "zip", progress)
     }
 }
 

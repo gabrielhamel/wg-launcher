@@ -62,6 +62,7 @@ crates/
         output/cli_update.rs  Boxed CLI release notice and update instructions
         self_update/          CLI release checks, manager detection, verified replacement
       progress/               Shared progress bars, discovery spinner, styles
+        self_update.rs        CLI update transfer progress and stage spinners
     docs/assets/              CLI demonstration assets
   wg-update-service/          File-backed server binary
     fixtures/                 Example WGUS XML, product catalogs, and payload files

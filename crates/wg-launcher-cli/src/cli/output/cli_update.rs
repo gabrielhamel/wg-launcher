@@ -1,6 +1,49 @@
 use comfy_table::{Cell, CellAlignment, ContentArrangement, Table, presets::UTF8_FULL};
 use console::{Term, style};
 
+pub(in crate::cli) fn print_cli_version(
+    current: &str,
+    latest: Option<&str>,
+    update_available: bool,
+    instruction: &str,
+) {
+    println!("wg-launcher");
+    if update_available {
+        println!("Installed:    {}", style(current).yellow());
+        println!(
+            "Latest:       {}",
+            style(latest.unwrap_or("unavailable")).green().bold()
+        );
+    } else {
+        println!("Installed:    {current}");
+        println!("Latest:       {}", latest.unwrap_or("unavailable"));
+    }
+    println!(
+        "Changelog:    {}",
+        concat!(env!("CARGO_PKG_REPOSITORY"), "/releases/latest")
+    );
+    if update_available {
+        println!(
+            "{} {instruction}",
+            style("Update available.").green().bold()
+        );
+    } else if latest.is_some() {
+        println!("{}", style("Up to date.").green());
+    }
+}
+
+pub(in crate::cli) fn print_cli_updated(version: &str) {
+    println!(
+        "{} wg-launcher has been updated to {}.",
+        style("✓").green().bold(),
+        style(version).green().bold(),
+    );
+    println!(
+        "Changelog: {}",
+        concat!(env!("CARGO_PKG_REPOSITORY"), "/releases/latest")
+    );
+}
+
 pub(in crate::cli) fn print_cli_update(current: &str, latest: &str, instruction: &str) {
     let available = style("CLI update available!").green().bold().for_stderr();
     let current = style(current).yellow().for_stderr();

@@ -1,6 +1,6 @@
 mod cli_update;
 mod status;
-pub(super) use cli_update::print_cli_update;
+pub(super) use cli_update::{print_cli_update, print_cli_updated, print_cli_version};
 pub(super) use status::print_status;
 
 use comfy_table::{

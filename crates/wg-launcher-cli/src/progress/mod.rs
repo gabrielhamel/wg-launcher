@@ -1,8 +1,10 @@
 //! Stable, shared download and extraction bars for the terminal.
 
 mod discovery;
+mod self_update;
 mod styles;
 pub(crate) use discovery::DiscoveryProgress;
+pub(crate) use self_update::SelfUpdateProgress;
 use styles::{
     error_style, extraction_completed_style, extraction_style, file_style, overall_style,
 };

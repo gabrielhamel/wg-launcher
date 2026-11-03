@@ -4,6 +4,7 @@ mod archive;
 mod distribution;
 mod release;
 
+use crate::progress::SelfUpdateProgress;
 use std::{error::Error, time::Duration};
 
 pub(super) use release::Release;
@@ -30,19 +31,23 @@ pub(super) fn notify_if_newer(release: Option<&Release>) {
 
 pub(super) async fn print_version() {
     let latest = check().await;
-    let latest = latest
-        .as_ref()
-        .map(|release| release.version.to_string())
-        .unwrap_or_else(|| "unavailable".into());
-    println!("wg-launcher {CURRENT} (latest: {latest})");
+    let update_available = latest.as_ref().is_some_and(Release::is_newer);
+    let version = latest.as_ref().map(|release| release.version.to_string());
+    super::output::print_cli_version(
+        CURRENT,
+        version.as_deref(),
+        update_available,
+        &distribution::update_instruction(),
+    );
     if let Some(reason) = distribution::unsupported_reason() {
         println!("{reason}");
     }
 }
 
 pub(super) async fn run() -> Result<()> {
+    let progress = SelfUpdateProgress::new()?;
     let release = release::latest().await;
-    notify_if_newer(release.as_ref().ok());
+    progress.clear();
     if let Some(reason) = distribution::unsupported_reason() {
         return Err(reason.into());
     }
@@ -69,13 +74,15 @@ pub(super) async fn run() -> Result<()> {
                 parent.display()
             )
         })?;
-    println!("Updating wg-launcher {CURRENT} to {}...", release.version);
-    let binary = release.download(work.path()).await?;
+    let binary = release.download(work.path(), &progress).await?;
+    progress.stage("Verifying the CLI executable")?;
     // Check compatibility and the embedded version before touching the installed executable.
     let mut candidate = tokio::process::Command::new(&binary);
     candidate
         .arg("--version")
         .env("WG_LAUNCHER_NO_UPDATE_CHECK", "1")
+        .env("CLICOLOR", "0")
+        .env("CLICOLOR_FORCE", "0")
         .kill_on_drop(true);
     let output = tokio::time::timeout(Duration::from_secs(5), candidate.output())
         .await
@@ -83,19 +90,30 @@ pub(super) async fn run() -> Result<()> {
             |_| "The downloaded CLI did not respond; the installed executable was preserved.",
         )??;
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let mut words = stdout.split_whitespace();
-    if !output.status.success()
-        || words.next() != Some("wg-launcher")
-        || words.next() != Some(release.version.to_string().as_str())
-    {
+    let mut lines = stdout.lines();
+    let first = lines.next().unwrap_or_default();
+    // Released CLIs use the original one-line format; newer builds use status rows.
+    let version = if first == "wg-launcher" {
+        lines
+            .next()
+            .and_then(|line| line.strip_prefix("Installed:"))
+            .map(str::trim)
+    } else {
+        first
+            .strip_prefix("wg-launcher ")
+            .and_then(|line| line.split_whitespace().next())
+    };
+    if !output.status.success() || version != Some(release.version.to_string().as_str()) {
         return Err(
             "The downloaded CLI failed its version check; the installed executable was preserved."
                 .into(),
         );
     }
+    progress.stage("Replacing the CLI executable")?;
     self_replace::self_replace(&binary).map_err(|error| {
         format!("Cannot replace the CLI executable: {error}. Check directory permissions.")
     })?;
-    println!("Updated wg-launcher to {}.", release.version);
+    progress.clear();
+    super::output::print_cli_updated(&release.version.to_string());
     Ok(())
 }

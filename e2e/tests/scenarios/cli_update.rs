@@ -41,12 +41,20 @@ fn commands_show_update_notice_before_output_and_version_shows_installed_and_lat
     let stdout = String::from_utf8(output.stdout).unwrap();
     assert!(
         stdout.contains(&format!(
-            "wg-launcher {} (latest: {})",
+            "Installed:    {}\nLatest:       {}",
             env!("CARGO_PKG_VERSION"),
             cli_update::FUTURE
         )),
         "{stdout}"
     );
+    assert!(
+        stdout
+            .contains("Changelog:    https://github.com/gabrielhamel/wg-launcher/releases/latest")
+    );
+    assert!(stdout.contains("Update available."));
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("CLI update available!"));
+    let short = success(sandbox.run_cli(&launcher, &sandbox.path, &["-V"], &env));
+    assert_eq!(short, stdout);
     let output = sandbox.run_cli(&launcher, &sandbox.path, &["status"], &env);
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
@@ -86,12 +94,17 @@ fn self_update_replaces_only_the_copied_cli_and_cleans_staging() {
     copy_launcher(&sibling);
     let sentinel = launcher.parent().unwrap().join("game-owned-file");
     fs::write(&sentinel, b"keep me").unwrap();
-    success(sandbox.run_cli(
+    let output = sandbox.run_cli(
         &launcher,
         &sandbox.path,
         &["self-update"],
         &[("WG_LAUNCHER_UPDATE_MANIFEST", &manifest)],
-    ));
+    );
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("CLI update available!"));
+    assert_eq!(
+        success(output).trim(),
+        "✓ wg-launcher has been updated to 99.0.0.\nChangelog: https://github.com/gabrielhamel/wg-launcher/releases/latest"
+    );
     assert_eq!(
         fs::read(&launcher).unwrap(),
         fs::read(env!("CARGO_BIN_EXE_cli-update-fixture")).unwrap()
@@ -130,7 +143,7 @@ fn self_update_replaces_only_the_copied_cli_and_cleans_staging() {
         assert_eq!(
             output.trim(),
             format!(
-                "wg-launcher {} (latest: unavailable)",
+                "wg-launcher\nInstalled:    {}\nLatest:       unavailable\nChangelog:    https://github.com/gabrielhamel/wg-launcher/releases/latest",
                 env!("CARGO_PKG_VERSION")
             )
         );
@@ -263,7 +276,7 @@ fn equal_or_older_releases_do_not_download_and_offline_checks_do_not_break_comma
         )],
     );
     assert!(output.status.success());
-    assert!(String::from_utf8_lossy(&output.stdout).contains("latest: unavailable"));
+    assert!(String::from_utf8_lossy(&output.stdout).contains("Latest:       unavailable"));
     failure(
         sandbox.run_cli(
             &launcher,

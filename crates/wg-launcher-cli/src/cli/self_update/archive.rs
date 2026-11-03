@@ -1,6 +1,7 @@
 //! Read only the executable into a fixed staging path; never unpack archive paths.
 
 use super::Result;
+use crate::progress::SelfUpdateProgress;
 use std::{
     fs::File,
     io::{Read, Write},
@@ -9,7 +10,12 @@ use std::{
 
 const LIMIT: u64 = 256 * 1024 * 1024;
 
-pub(super) fn extract(archive: &Path, directory: &Path, zip: bool) -> Result<PathBuf> {
+pub(super) fn extract(
+    archive: &Path,
+    directory: &Path,
+    zip: bool,
+    progress: &SelfUpdateProgress,
+) -> Result<PathBuf> {
     let name = if cfg!(windows) {
         "wg-launcher.exe"
     } else {
@@ -33,7 +39,8 @@ pub(super) fn extract(archive: &Path, directory: &Path, zip: bool) -> Result<Pat
                         "The CLI archive contains a symbolic link instead of an executable.".into(),
                     );
                 }
-                write_binary(&mut entry, &output, &mut found)?;
+                progress.transfer("Extracting the CLI executable", Some(entry.size()))?;
+                write_binary(&mut entry, &output, &mut found, progress)?;
             }
         }
     } else {
@@ -50,7 +57,8 @@ pub(super) fn extract(archive: &Path, directory: &Path, zip: bool) -> Result<Pat
                 {
                     return Err("The CLI archive has an unsafe executable entry.".into());
                 }
-                write_binary(&mut entry, &output, &mut found)?;
+                progress.transfer("Extracting the CLI executable", Some(entry.size()))?;
+                write_binary(&mut entry, &output, &mut found, progress)?;
             }
         }
     }
@@ -65,12 +73,17 @@ pub(super) fn extract(archive: &Path, directory: &Path, zip: bool) -> Result<Pat
     Ok(output)
 }
 
-fn write_binary(reader: &mut impl Read, output: &Path, found: &mut bool) -> Result<()> {
+fn write_binary(
+    reader: &mut impl Read,
+    output: &Path,
+    found: &mut bool,
+    progress: &SelfUpdateProgress,
+) -> Result<()> {
     if *found {
         return Err("The CLI archive contains duplicate launcher executables.".into());
     }
     let mut file = File::create(output)?;
-    let size = std::io::copy(&mut reader.take(LIMIT + 1), &mut file)?;
+    let size = progress.copy(reader.take(LIMIT + 1), &mut file)?;
     if size == 0 || size > LIMIT {
         return Err("The CLI executable has an invalid size.".into());
     }
