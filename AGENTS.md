@@ -451,8 +451,9 @@ and its category modules in `e2e/tests/scenarios/`.
   missing-state errors, moving installations, and rejection of another product's
   cache. Check that pinned retries avoid catalog queries even after the service
   publishes another version. Delta-update coverage uses source-dependent synthetic
-  librsync patches. Do not claim actual mid-transfer process termination or
-  whole-install transactional rollback.
+  librsync patches. Distinguish actual process-termination scenarios from seeded
+  partial-file resumption. Neither establishes power-loss durability or whole-install
+  transactional rollback.
 - Use the public `Product` configuration for custom service URLs in tests rather
   than adding a test-only endpoint switch. Cover the dedicated
   `tests/scenarios/service/` path from launcher CLI parsing through file-backed
