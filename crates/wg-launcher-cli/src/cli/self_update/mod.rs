@@ -24,7 +24,7 @@ pub(super) fn notify_if_newer(release: Option<&Release>) {
         super::output::print_cli_update(
             CURRENT,
             &release.version.to_string(),
-            &distribution::update_instruction(),
+            &distribution::update_instruction(true),
         );
     }
 }
@@ -37,9 +37,9 @@ pub(super) async fn print_version() {
         CURRENT,
         version.as_deref(),
         update_available,
-        &distribution::update_instruction(),
+        &distribution::update_instruction(false),
     );
-    if let Some(reason) = distribution::unsupported_reason() {
+    if let Some(reason) = distribution::unsupported_reason(false) {
         println!("{reason}");
     }
 }
@@ -48,7 +48,7 @@ pub(super) async fn run() -> Result<()> {
     let progress = SelfUpdateProgress::new()?;
     let release = release::latest().await;
     progress.clear();
-    if let Some(reason) = distribution::unsupported_reason() {
+    if let Some(reason) = distribution::unsupported_reason(true) {
         return Err(reason.into());
     }
     let release = release.map_err(|error| {

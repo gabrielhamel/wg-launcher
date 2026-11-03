@@ -52,9 +52,19 @@ fn commands_show_update_notice_before_output_and_version_shows_installed_and_lat
             .contains("Changelog:    https://github.com/gabrielhamel/wg-launcher/releases/latest")
     );
     assert!(stdout.contains("Update available."));
+    assert!(!stdout.contains('`'));
     assert!(!String::from_utf8_lossy(&output.stderr).contains("CLI update available!"));
     let short = success(sandbox.run_cli(&launcher, &sandbox.path, &["-V"], &env));
     assert_eq!(short, stdout);
+    let color_env = [
+        ("WG_LAUNCHER_UPDATE_MANIFEST", manifest.as_str()),
+        ("CLICOLOR_FORCE", "1"),
+    ];
+    let colored_version = success(sandbox.run_cli(&launcher, &sandbox.path, &["-V"], &color_env));
+    let highlighted_command = "\u{1b}[36m\u{1b}[1mwg-launcher self-update\u{1b}[0m";
+    assert!(colored_version.contains(highlighted_command));
+    let colored_help = sandbox.run_cli(&launcher, &sandbox.path, &["--help"], &color_env);
+    assert!(String::from_utf8_lossy(&colored_help.stderr).contains(highlighted_command));
     let output = sandbox.run_cli(&launcher, &sandbox.path, &["status"], &env);
     assert!(!output.status.success());
     let stderr = String::from_utf8(output.stderr).unwrap();
@@ -70,6 +80,7 @@ fn commands_show_update_notice_before_output_and_version_shows_installed_and_lat
         stderr.contains("Changelog: https://github.com/gabrielhamel/wg-launcher/releases/latest")
     );
     assert!(!stderr.contains("warning:"));
+    assert!(!stderr.contains('`'));
     assert!(stderr.find("CLI update available!").unwrap() < stderr.find("error:").unwrap());
     assert!(stderr.contains("error:"));
     let output = sandbox.run_cli(&launcher, &sandbox.path, &["--help"], &env);

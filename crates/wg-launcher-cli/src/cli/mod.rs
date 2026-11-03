@@ -245,16 +245,7 @@ async fn run_list(args: ListArgs) -> Result<(), Box<dyn std::error::Error>> {
     println!("Available game builds\n");
     println!("{}", build_table(&report.builds));
     println!("\n* default language for the region");
-    if let Some(path) = args.product {
-        println!(
-            "Install with: wg-launcher install --product \"{}\" --game <game> --region <region> --client-type <client-type> --language <language>",
-            path.display()
-        );
-    } else {
-        println!(
-            "Install with: wg-launcher install --game <game> --region <region> --client-type <client-type> --language <language>"
-        );
-    }
+    output::print_install_hint(args.product.as_deref());
     Ok(())
 }
 

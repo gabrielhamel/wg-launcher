@@ -1,4 +1,4 @@
-use super::human_bytes;
+use super::{command, human_bytes};
 use console::style;
 use std::path::Path;
 use wg_update_client::StatusReport;
@@ -22,11 +22,14 @@ pub(in crate::cli) fn print_status(report: &StatusReport, current: &Path) {
         );
         let available = style("Update available.").green().bold();
         if current == report.path {
-            println!("{available} Run: wg-launcher update");
+            println!("{available} Run: {}", command("wg-launcher update"));
         } else {
             println!(
-                "{available} Run: wg-launcher update --path \"{}\"",
-                report.path.display()
+                "{available} Run: {}",
+                command(&format!(
+                    "wg-launcher update --path \"{}\"",
+                    report.path.display()
+                ))
             );
         }
     } else {

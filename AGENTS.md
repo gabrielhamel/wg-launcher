@@ -328,6 +328,13 @@ parsing, or web seeds. Live verification should avoid downloading packages;
 
 ## Terminal experience
 
+Render suggested commands in terminal output in bold cyan, without literal
+backticks. Apply this consistently to update notices, version/status output,
+installation hints, and package-manager instructions, including errors. Use the
+shared CLI output command style and select stdout/stderr color support to match
+the destination. When color is disabled, show the plain command without markup.
+Markdown documentation should retain normal inline-code and fenced-code syntax.
+
 `list` should be pleasant for a human terminal:
 
 - show a spinner while network discovery is running;

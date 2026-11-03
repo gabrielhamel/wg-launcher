@@ -8,6 +8,20 @@ use comfy_table::{
 };
 use wg_update_client::{BuildSummary, PatchManifest};
 
+pub(super) fn command(text: &str) -> console::StyledObject<&str> {
+    console::style(text).cyan().bold()
+}
+
+pub(super) fn print_install_hint(product: Option<&std::path::Path>) {
+    let product = product
+        .map(|path| format!(" --product \"{}\"", path.display()))
+        .unwrap_or_default();
+    let invocation = format!(
+        "wg-launcher install{product} --game <game> --region <region> --client-type <client-type> --language <language>"
+    );
+    println!("Install with: {}", command(&invocation));
+}
+
 pub(super) fn print_install_summary(report: &wg_update_client::InstallationReport) {
     println!(
         "complete: {} downloaded, {} already present, {} transferred, {} package cache released during installation",

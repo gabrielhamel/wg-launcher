@@ -33,6 +33,14 @@ The library guide is also the rustdoc landing page. Matching programs under `cra
 compilation and can be run explicitly from the checkout. Validation does not
 install a game. Keep those programs and their guide snippets synchronized.
 
+## Terminal output
+
+CLI command hints use bold cyan with no literal backticks in terminal output.
+Use the shared `cli::output::command` style for installation, update, status,
+version, and package-manager hints. Match color detection to stdout or stderr;
+without color, commands remain plain text. Keep normal Markdown code formatting
+in documentation.
+
 ## Workspace layout
 
 ```text

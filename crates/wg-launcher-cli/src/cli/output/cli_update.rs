@@ -49,17 +49,6 @@ pub(in crate::cli) fn print_cli_update(current: &str, latest: &str, instruction:
     let current = style(current).yellow().for_stderr();
     let latest = style(latest).green().bold().for_stderr();
     let changelog = concat!(env!("CARGO_PKG_REPOSITORY"), "/releases/latest");
-    let instruction = instruction
-        .split('`')
-        .enumerate()
-        .map(|(index, text)| {
-            if index % 2 == 1 {
-                style(text).cyan().bold().for_stderr().to_string()
-            } else {
-                text.to_owned()
-            }
-        })
-        .collect::<String>();
     let content =
         format!("\n{available} {current} → {latest}\n\nChangelog: {changelog}\n{instruction}\n");
     let mut table = Table::new();
