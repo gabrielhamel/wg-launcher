@@ -135,6 +135,13 @@ pub(super) fn replace_file(source: &Path, target: &Path, backup: &Path) -> Resul
         fs::create_dir_all(parent)?;
     }
     if target.exists() {
+        if !fs::symlink_metadata(target)?.file_type().is_file() {
+            return Err(std::io::Error::other(format!(
+                "cannot replace {}: destination is not a regular file; move it aside and retry",
+                target.display()
+            ))
+            .into());
+        }
         fs::rename(target, backup)?;
     }
     match fs::rename(source, target) {
