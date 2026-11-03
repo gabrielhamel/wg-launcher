@@ -56,7 +56,9 @@ fn interrupted_transfer(stop_service: bool) {
         );
     }
     let output = if stop_service {
-        child.wait()
+        // Windows may spend the full connect timeout on each refused loopback
+        // connection. Allow the default retry budget, without changing the CLI.
+        child.wait_with_timeout(std::time::Duration::from_secs(150))
     } else {
         child.kill()
     };

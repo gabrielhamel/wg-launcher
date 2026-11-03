@@ -145,7 +145,11 @@ impl RunningCli {
         }
     }
 
-    pub fn wait(mut self) -> Output {
+    pub fn wait(self) -> Output {
+        self.wait_with_timeout(Duration::from_secs(20))
+    }
+
+    pub fn wait_with_timeout(mut self, timeout: Duration) -> Output {
         loop {
             if let Some(status) = self.child.try_wait().unwrap() {
                 return Output {
@@ -155,7 +159,7 @@ impl RunningCli {
                 };
             }
             assert!(
-                self.started.elapsed() < Duration::from_secs(20),
+                self.started.elapsed() < timeout,
                 "CLI timed out: {}",
                 self.diagnostics()
             );

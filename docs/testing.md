@@ -150,7 +150,11 @@ and delta fixtures contain 600 small files; leftover staging files extend the
 observable checkpoint and cleanup windows. Tests use the real service, real
 archives, CLI discovery, and CLI-created manifests throughout. No production fault
 switches or substitute HTTP server are used. Every child has distinct output logs
-and is killed/reaped on assertion failure.
+and is killed/reaped on assertion failure. The service-loss case allows 150 seconds
+for the production retry policy: an interrupted read can take up to 60 seconds,
+four subsequent connection attempts up to 15 seconds each, plus 15 seconds of
+backoff. Windows can use the full connection timeout for refused loopback requests;
+the other scenarios retain the usual 20-second child deadline.
 
 ### Findings and limits
 
@@ -185,7 +189,7 @@ cargo test -p wg-launcher-e2e --locked scenarios::updates
 
 Each scenario runs the executable in a separate process with an isolated
 temporary installation directory, real HTTP transfers, real archive extraction,
-and a 20-second process deadline. Output is captured for failure diagnostics.
+and a 20-second process deadline (150 seconds for service-loss retry exhaustion). Output is captured for failure diagnostics.
 External HTTP(S) is directed to an unavailable local proxy; loopback transfers
 bypass it. No publisher traffic or game downloads are needed.
 
