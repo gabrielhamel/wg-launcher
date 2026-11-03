@@ -91,12 +91,95 @@ Synthetic full archives and source-dependent librsync deltas are grouped in
 [tests/scenarios/updates/](../e2e/tests/scenarios/updates/); they verify component
 versions in requests and state, delta-only transfers, unchanged components,
 publisher full-chain fallback, empty current responses, incomplete-chain rejection,
-and retries after completed and partially applied patches. The retry tests induce
-ordinary extraction failures; they do not terminate a process mid-transfer or
-claim whole-install transactional rollback. The harness builds missing
+and retries after completed and partially applied patches. Those update retry tests induce ordinary extraction failures. The recovery category
+also terminates real processes at observed transfer and extraction phases, as
+described below. Neither category claims whole-install transactional rollback. The harness builds missing
 workspace binaries before launching them. Tests are included in
 `cargo test --workspace --locked` and the existing Windows/Linux/macOS CI matrix.
 Only macOS is verified when running locally on a Mac.
+
+## Recovery coverage
+
+Run the recovery category with:
+
+```console
+cargo test -p wg-launcher-e2e --locked scenarios::recovery
+```
+
+The category lives in [`scenarios/recovery/`](../e2e/tests/scenarios/recovery/).
+`downloads.rs` covers cache repair; `extraction.rs` covers blocked destinations,
+state writes, movement, and cleanup; `delta.rs` covers a malformed delta stream.
+`interruption/` groups actual child-process termination tests by phase. Existing
+[`updates/delta.rs`](../e2e/tests/scenarios/updates/delta.rs) tests additionally
+cover missing delta sources and checkpoints across multi-component updates.
+
+The agreed recovery matrix maps to the following executable cases. Rows describe
+coverage, rather than a claim that every possible failure in that area is tested.
+
+| # | Failure or interruption | Observable check |
+|---|---|---|
+| 1 | Kill during package transfer | A nonempty incomplete `.part` file survives; retry requests its exact remaining range. |
+| 2 | Stop service during transfer | Real launcher exits unsuccessfully; restarting the service at the same address permits a ranged retry. |
+| 3 | Interrupt concurrent downloads | Each complete volume is reused and each incomplete durable prefix resumes independently. |
+| 4 | Required package returns 404 | Other volumes and pinned manifest survive; restoration permits retry without discovery. |
+| 5 | Truncated or corrupt cached volume | Wrong-size files are fetched again; invalid headers and damaged compressed streams fail extraction without truncating existing destinations. |
+| 6 | Invalid partial volume | Oversized partials restart, complete partials promote without HTTP, and corrupt prefixes fail extraction. |
+| 7 | Later archive is corrupt | Earlier component checkpoint and payload survive; failed component retries offline. |
+| 8 | Kill during full extraction | Kill both between completed files and while a large file decodes in staging; retries recreate exact bytes and preserve the previous destination during decoding. |
+| 9 | Destination is blocked | User directory contents and transport volumes survive; removing the obstruction permits offline retry. |
+| 10 | Fail after applying one delta | Original sources survive and a repeated patch produces the expected source-dependent output. |
+| 11 | Kill during delta application | First target is changed, last is untouched, installed identity stays old; pinned retry completes all targets. |
+| 12 | Invalid delta or missing source | Malformed librsync data preserves the target/source snapshot; repaired cached archive retries. Existing update tests cover missing sources. |
+| 13 | One patch completes before the next fails | Checkpointed patch is skipped despite its deleted transport volumes. |
+| 14 | Extraction/checkpoint/package-release boundary | Block the checkpoint write after extraction; separately kill after persisted checkpoint while cleanup delays package release. |
+| 15 | Final state write fails | All component checkpoints remain, installed state is absent, retry finalizes without downloads. A state-directory obstruction remains untouched. |
+| 16 | Cleanup fails or is interrupted | Kill during staging cleanup after committed state; Unix permission failure preserves identity and retries after permissions are restored. |
+| 17 | New release during pending installation | Retry uses the old pinned manifest and avoids discovery. |
+| 18 | New release during pending update | A newer advertised chain cannot replace the pending delta update; no additional HTTP requests occur. |
+| 19 | Move a pending installation | Completed checkpoint and remaining packages work at the new path, offline and without the product JSON file. |
+| 20 | Concurrent mutation and lock release | A real download owns the installation lock; a competing CLI is refused; a killed launcher's destination can be retried. |
+| 21 | Offline extraction and retry | With the real service stopped, cached full extraction and retry/finalization succeed. |
+
+### How interruption tests synchronize
+
+The harness polls filesystem evidence with a deadline, then kills and reaps the
+child. It asserts the intended incomplete state after termination; missing the
+phase fails the test. It does not rely on sleeping for a guessed duration before
+killing. Transfer fixtures contain two incompressible 8 MiB payloads. Extraction
+and delta fixtures contain 600 small files; leftover staging files extend the
+observable checkpoint and cleanup windows. Tests use the real service, real
+archives, CLI discovery, and CLI-created manifests throughout. No production fault
+switches or substitute HTTP server are used. Every child has distinct output logs
+and is killed/reaped on assertion failure. The service-loss case allows 150 seconds
+for the production retry policy: an interrupted read can take up to 60 seconds,
+four subsequent connection attempts up to 15 seconds each, plus 15 seconds of
+backoff. Windows can use the full connection timeout for refused loopback requests;
+the other scenarios retain the usual 20-second child deadline.
+
+### Findings and limits
+
+The original 29-test suite passed on macOS before this expansion. New regression
+tests exposed three failures: a directory at `state.json` was moved aside during
+replacement, package-only downloads ignored the installation lock, and damaged
+compressed data truncated an existing game file before extraction failed. The fixes
+preserve non-file destinations, acquire the mutation lock around high-level
+download cache writes/transfers while rereading pending checkpoints under that lock,
+and stage each full-archive file before replacing its game-tree destination.
+The low-level downloader still leaves coordination to its caller.
+
+Size-based reuse does not authenticate content. A same-size corrupt package or
+partial prefix may pass downloading and then fail archive/delta decoding. Tests
+model repair by replacing or removing the affected cached volume. Arbitrary
+same-size changes to a delta source are not guaranteed to be detected; these tests
+do not introduce a content-hash integrity contract.
+
+The permission-denied cleanup test is Unix-only and requires an unprivileged
+account; cross-platform blocked-destination and process-termination tests still
+run on Windows. The suite does not simulate actual disk exhaustion, power loss,
+`fsync` durability, interruption inside an individual rename, every point in
+recursive cache deletion, or whole-install transactional rollback. Process-kill
+coverage proves the observed phase boundaries, not all possible instruction-level
+crash windows. Platform results must come from the corresponding CI job.
 
 Run another category by passing its module name as a test filter:
 
@@ -106,7 +189,7 @@ cargo test -p wg-launcher-e2e --locked scenarios::updates
 
 Each scenario runs the executable in a separate process with an isolated
 temporary installation directory, real HTTP transfers, real archive extraction,
-and a 20-second process deadline. Output is captured for failure diagnostics.
+and a 20-second process deadline (150 seconds for service-loss retry exhaustion). Output is captured for failure diagnostics.
 External HTTP(S) is directed to an unavailable local proxy; loopback transfers
 bypass it. No publisher traffic or game downloads are needed.
 

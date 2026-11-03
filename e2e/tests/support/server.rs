@@ -74,9 +74,15 @@ impl WgUpdateService {
             .collect()
     }
 
+    pub fn stop(&self) {
+        let mut child = self.child.lock().unwrap();
+        let _ = child.kill();
+        child.wait().unwrap();
+    }
+
     pub fn replace_resources(&self, resources: BTreeMap<String, Vec<u8>>) {
         let mut child = self.child.lock().unwrap();
-        child.kill().unwrap();
+        let _ = child.kill();
         child.wait().unwrap();
         let prefix = write_release(&self.release, resources);
         assert_eq!(prefix, self.prefix, "replacement changed the API prefix");

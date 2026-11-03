@@ -11,10 +11,10 @@ mod storage;
 mod types;
 
 pub use chain::installation_assets;
-pub(crate) use storage::installation_storage;
 pub use storage::{
     DOWNLOAD_CACHE_DIRECTORY, DOWNLOAD_MANIFEST_FILE, INSTALL_MARKER_FILE, STAGING_DIRECTORY,
 };
+pub(crate) use storage::{InstallationLock, installation_storage};
 pub use types::{
     ExtractionEvent, ExtractionOptions, ExtractionReport, InstallationEvent, InstallationReport,
     InstalledBuild,
@@ -25,7 +25,7 @@ use chain::{assets_for_patches, ordered_patches};
 use extraction::{InstallationPaths, extract_patch_sync, extract_sync, finalize_installation};
 use prefetch::{DOWNLOAD_PREFETCH_BYTES, PatchDownloads, merge_download_report};
 use std::{path::Path, sync::Arc};
-use storage::{InstallationLock, prepare_installation, remove_patch_volumes};
+use storage::{prepare_installation, remove_patch_volumes};
 
 /// In-process transport archive extraction and delta application.
 ///

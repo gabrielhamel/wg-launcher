@@ -5,7 +5,7 @@ use crate::{
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::{Command, Output, Stdio},
+    process::{Child, Command, Output, Stdio},
     sync::{
         OnceLock,
         atomic::{AtomicUsize, Ordering},
@@ -62,13 +62,26 @@ impl Sandbox {
         args: &[&str],
         env: &[(&str, &str)],
     ) -> Output {
-        // Files avoid pipe-buffer deadlocks; polling bounds every child execution.
-        let stdout = self.path.join("stdout.log");
-        let stderr = self.path.join("stderr.log");
-        let mut child = Command::new(launcher)
+        self.spawn_cli(launcher, cwd, args, env).wait()
+    }
+
+    pub fn spawn(&self, cwd: &Path, args: &[&str]) -> RunningCli {
+        self.spawn_cli(&binary("wg-launcher"), cwd, args, &[])
+    }
+
+    fn spawn_cli(
+        &self,
+        launcher: &Path,
+        cwd: &Path,
+        args: &[&str],
+        env: &[(&str, &str)],
+    ) -> RunningCli {
+        let sequence = NEXT_DIRECTORY.fetch_add(1, Ordering::Relaxed);
+        let stdout = self.path.join(format!("stdout-{sequence}.log"));
+        let stderr = self.path.join(format!("stderr-{sequence}.log"));
+        let child = Command::new(launcher)
             .args(args)
             .current_dir(cwd)
-            // Unexpected live discovery fails locally instead of using the internet.
             .env("HTTPS_PROXY", "http://127.0.0.1:0")
             .env("https_proxy", "http://127.0.0.1:0")
             .env("HTTP_PROXY", "http://127.0.0.1:0")
@@ -85,26 +98,88 @@ impl Sandbox {
             .stderr(fs::File::create(&stderr).unwrap())
             .spawn()
             .unwrap();
-        let deadline = Instant::now() + Duration::from_secs(20);
-        let status = loop {
-            if let Some(status) = child.try_wait().unwrap() {
-                break status;
+        RunningCli {
+            child,
+            stdout,
+            stderr,
+            started: Instant::now(),
+        }
+    }
+}
+
+/// Owns and reaps a real launcher, including on assertion failure.
+pub struct RunningCli {
+    child: Child,
+    stdout: PathBuf,
+    stderr: PathBuf,
+    started: Instant,
+}
+
+impl RunningCli {
+    pub fn until(&mut self, mut reached: impl FnMut() -> bool) {
+        loop {
+            if reached() {
+                return;
             }
-            if Instant::now() >= deadline {
-                child.kill().unwrap();
-                child.wait().unwrap();
-                panic!(
-                    "CLI timed out for {args:?}: {}",
-                    fs::read_to_string(stderr).unwrap()
-                );
-            }
-            thread::sleep(Duration::from_millis(10));
-        };
+            assert!(
+                self.child.try_wait().unwrap().is_none(),
+                "CLI exited before reaching failure point: {}",
+                self.diagnostics()
+            );
+            assert!(
+                self.started.elapsed() < Duration::from_secs(20),
+                "CLI did not reach failure point: {}",
+                self.diagnostics()
+            );
+            thread::sleep(Duration::from_micros(100));
+        }
+    }
+
+    pub fn kill(&mut self) -> Output {
+        self.child.kill().unwrap();
+        let status = self.child.wait().unwrap();
         Output {
             status,
-            stdout: fs::read(stdout).unwrap(),
-            stderr: fs::read(stderr).unwrap(),
+            stdout: fs::read(&self.stdout).unwrap(),
+            stderr: fs::read(&self.stderr).unwrap(),
         }
+    }
+
+    pub fn wait(self) -> Output {
+        self.wait_with_timeout(Duration::from_secs(20))
+    }
+
+    pub fn wait_with_timeout(mut self, timeout: Duration) -> Output {
+        loop {
+            if let Some(status) = self.child.try_wait().unwrap() {
+                return Output {
+                    status,
+                    stdout: fs::read(&self.stdout).unwrap(),
+                    stderr: fs::read(&self.stderr).unwrap(),
+                };
+            }
+            assert!(
+                self.started.elapsed() < timeout,
+                "CLI timed out: {}",
+                self.diagnostics()
+            );
+            thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    fn diagnostics(&self) -> String {
+        format!(
+            "stdout: {}\nstderr: {}",
+            fs::read_to_string(&self.stdout).unwrap_or_default(),
+            fs::read_to_string(&self.stderr).unwrap_or_default()
+        )
+    }
+}
+
+impl Drop for RunningCli {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
     }
 }
 

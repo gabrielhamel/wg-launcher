@@ -33,14 +33,14 @@ pub(super) fn extract_patch_sync(
         index: index + 1,
         total,
     });
+    let active = prepare_patch(patch, paths.work)?;
     if patch.version_from.as_deref() == Some("0") {
-        extract_archive(patch, paths.cache, paths.game, observer)?;
+        extract_archive(patch, paths.cache, paths.game, Some(&active), observer)?;
         return Ok(0);
     }
 
-    let active = prepare_patch(patch, paths.work)?;
     let patch_dir = active.join("archive");
-    extract_archive(patch, paths.cache, &patch_dir, observer)?;
+    extract_archive(patch, paths.cache, &patch_dir, None, observer)?;
     let mut report = ExtractionReport::default();
     apply_patch_directory(&patch_dir, paths.game, &active, observer, &mut report)?;
     fs::remove_dir_all(&patch_dir)?;

@@ -40,12 +40,12 @@ pub(super) fn prepare_installation(
     Ok(())
 }
 
-pub(super) struct InstallationLock {
+pub(crate) struct InstallationLock {
     file: File,
 }
 
 impl InstallationLock {
-    pub(super) fn acquire(storage: &InstallationStorage, install_root: &Path) -> Result<Self> {
+    pub(crate) fn acquire(storage: &InstallationStorage, install_root: &Path) -> Result<Self> {
         fs::create_dir_all(install_root.join(".wg-launcher"))?;
         let file = OpenOptions::new()
             .create(true)
@@ -135,6 +135,13 @@ pub(super) fn replace_file(source: &Path, target: &Path, backup: &Path) -> Resul
         fs::create_dir_all(parent)?;
     }
     if target.exists() {
+        if !fs::symlink_metadata(target)?.file_type().is_file() {
+            return Err(std::io::Error::other(format!(
+                "cannot replace {}: destination is not a regular file; move it aside and retry",
+                target.display()
+            ))
+            .into());
+        }
         fs::rename(target, backup)?;
     }
     match fs::rename(source, target) {

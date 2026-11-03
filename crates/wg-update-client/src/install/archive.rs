@@ -1,6 +1,7 @@
 use super::{
     ExtractionEvent,
     paths::{safe_archive_path, safe_relative_path},
+    storage::replace_file,
 };
 use crate::{Error, Patch, Result};
 use std::{
@@ -15,6 +16,7 @@ pub(super) fn extract_archive(
     patch: &Patch,
     cache: &Path,
     destination: &Path,
+    staging: Option<&Path>,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<()> {
     let mut volumes = patch
@@ -66,7 +68,15 @@ pub(super) fn extract_archive(
                 extracted: 0,
                 last_update: Instant::now(),
             };
-            let result = sevenz_rust::default_entry_extract_fn(entry, &mut progress, &target)?;
+            // A full archive must not truncate a live game file before decoding
+            // its replacement succeeds. Delta archives already target staging.
+            let staged = staging.map(|root| root.join("archive").join(&relative));
+            let output = staged.as_ref().unwrap_or(&target);
+            let result = sevenz_rust::default_entry_extract_fn(entry, &mut progress, output)?;
+            if let Some(root) = staging {
+                replace_file(output, &target, &root.join("replacement-backup"))
+                    .map_err(|error| sevenz_rust::Error::other(error.to_string()))?;
+            }
             notify(progress.extracted);
             Ok(result)
         })
