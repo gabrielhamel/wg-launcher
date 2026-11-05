@@ -1,7 +1,7 @@
 use super::infrastructure::read_products;
 use super::presentation::{
     args::{InspectArgs, ListArgs},
-    output::{build_table, print_install_hint, print_manifest},
+    output::{build_table, print_inspection, print_install_hint},
 };
 use crate::terminal::DiscoveryProgress;
 use wg_update_client::{InspectOptions, ListOptions, inspect, list};
@@ -13,7 +13,7 @@ pub(crate) async fn run_inspect(args: InspectArgs) -> Result<(), Box<dyn std::er
     })
     .await;
     loader.finish();
-    print_manifest(&result?);
+    print_inspection(&result?);
     Ok(())
 }
 

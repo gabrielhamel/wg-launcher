@@ -1,37 +1,52 @@
 use crate::installation::infrastructure::filesystem::installation_storage;
-use crate::{Asset, PatchManifest, Result};
+use crate::{Asset, BuildInfo, PatchManifest, Result};
 use serde::Serialize;
 use std::path::PathBuf;
 
-/// Resolved build and filesystem plan emitted before transfer or extraction.
+/// A package identified in download progress, without its transport URL.
+#[derive(Debug, Clone, Serialize)]
+pub struct PackageSummary {
+    /// Relative package name, matching [`crate::DownloadEvent`] names.
+    pub name: String,
+    /// Expected compressed package size in bytes.
+    pub size: u64,
+}
+
+/// Build, destination, and transfer summary emitted before installation work.
 ///
-/// A plan event is informational; it does not guarantee the operation will succeed.
+/// Informational only; receiving this plan does not guarantee success.
 #[derive(Debug, Clone, Serialize)]
 pub struct InstallPlan {
-    /// Complete pinned build manifest, even for a filtered download.
-    pub manifest: PatchManifest,
-    /// Installation root, which can be relative to the current directory.
+    /// Selected build identity.
+    pub build: BuildInfo,
+    /// Installation root, possibly relative to the current directory.
     pub root: PathBuf,
-    /// Package cache directory beneath the root; relative when the root is relative.
+    /// Package cache directory, useful for staged installation and offline transfer.
     pub cache: PathBuf,
-    /// Selected transport volumes in installation order.
-    pub assets: Vec<Asset>,
-    /// Total compressed bytes in `assets`, before subtracting cached data.
+    /// Selected packages in installation order, usable to initialize progress displays.
+    pub packages: Vec<PackageSummary>,
+    /// Total compressed package bytes before subtracting cached data.
     pub compressed_bytes: u64,
 }
 
 pub(super) fn build_plan(
-    manifest: PatchManifest,
+    manifest: &PatchManifest,
     root: PathBuf,
-    assets: Vec<Asset>,
+    assets: &[Asset],
 ) -> Result<InstallPlan> {
     let compressed_bytes = assets.iter().map(|asset| asset.size).sum();
     let cache = installation_storage(&root)?.cache;
     Ok(InstallPlan {
-        manifest,
+        build: BuildInfo::from_manifest(manifest),
         root,
         cache,
-        assets,
+        packages: assets
+            .iter()
+            .map(|asset| PackageSummary {
+                name: asset.name.clone(),
+                size: asset.size,
+            })
+            .collect(),
         compressed_bytes,
     })
 }

@@ -111,6 +111,12 @@ download, extraction, storage, retry, or update logic in the CLI.
 The observer/event types are the UI contract. Extend those contracts when a
 GUI needs more information instead of coupling the core to a specific UI.
 
+Expose consumer reports rather than persistence or protocol models. `inspect`
+returns `InspectReport`; installation plans and status expose `BuildInfo`. Keep
+WGUS clients, transport/archive executors, manifests, installed-state records,
+and storage constants internal. Public errors expose actionable `ErrorKind`
+categories and preserve technical causes through the standard source chain.
+
 ### Keep library use simple and progress optional
 
 Product decision: the consumer decides whether to receive progress. The primary
@@ -372,8 +378,8 @@ the CLI.
   status, and update workflows with their options, events, reports, and local errors.
   `resolution.rs` owns pinned-cache reuse and calls catalog for live resolution;
   `plan.rs` builds informational plans.
-- `crates/wg-update-client/src/installation/application/pipeline/`: public
-  `PackageExtractor` façade and shared streaming/local installation orchestration.
+- `crates/wg-update-client/src/installation/application/pipeline/`: internal
+  `PackageExtractor` coordinator and shared streaming/local installation orchestration.
   Preserve locking, prefetch overlap, checkpoint-before-release ordering, and cancellation.
 - `crates/wg-update-client/src/installation/infrastructure/transfer/`: resumable HTTP transfer.
 - `crates/wg-update-client/src/installation/infrastructure/packages/`: transport archive

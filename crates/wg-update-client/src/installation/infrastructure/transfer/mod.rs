@@ -123,32 +123,6 @@ impl AssetDownloader {
         Ok(Self { http })
     }
 
-    /// Uses a caller-configured HTTP client.
-    ///
-    /// The caller controls timeouts, TLS, proxies, and user agent; default constructor
-    /// settings are not added to this client.
-    pub fn with_http_client(http: Client) -> Self {
-        Self { http }
-    }
-
-    /// Downloads volumes without progress notifications.
-    ///
-    /// Uses the same retry, resume, and cache behavior as
-    /// [`Self::download_with_observer`]. Does not print terminal output.
-    ///
-    /// # Errors
-    ///
-    /// Returns the same errors as [`Self::download_with_observer`].
-    pub async fn download(
-        &self,
-        assets: Vec<Asset>,
-        output: impl AsRef<Path>,
-        options: DownloadOptions,
-    ) -> Result<DownloadReport> {
-        self.download_with_observer(assets, output, options, |_| {})
-            .await
-    }
-
     /// Transfers `assets` beneath `output`, retaining resumable partial files.
     ///
     /// Asset names must be safe relative paths. Matching final file sizes are reused;

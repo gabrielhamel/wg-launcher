@@ -16,6 +16,6 @@ pub use download::{
 };
 pub use extract::{ExtractEvent, ExtractOptions, ExtractOutcome, extract, extract_with_observer};
 pub use install::{InstallEvent, InstallOptions, InstallOutcome, install, install_with_observer};
-pub use plan::InstallPlan;
+pub use plan::{InstallPlan, PackageSummary};
 pub use status::{StatusOptions, StatusReport, status};
 pub use update::{UpdateOptions, UpdateOutcome, update, update_with_observer};

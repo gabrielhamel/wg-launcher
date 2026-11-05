@@ -1,5 +1,5 @@
 use super::resolution::resolve;
-use crate::{BuildSelection, PatchManifest, Product, Result, WgusClient, installation_assets};
+use crate::{BuildSelection, InspectReport, Product, Result, WgusClient, installation_assets};
 use serde::Serialize;
 
 /// Configures discovery. By default every supported region is queried.
@@ -93,8 +93,9 @@ pub struct InspectOptions {
 ///
 /// Returns an error for failed network requests, invalid protocol responses,
 /// unsupported client types or languages, or missing patch chains or web seeds.
-pub async fn inspect(options: InspectOptions) -> Result<PatchManifest> {
-    resolve(&WgusClient::new()?, &options.selection).await
+pub async fn inspect(options: InspectOptions) -> Result<InspectReport> {
+    let manifest = resolve(&WgusClient::new()?, &options.selection).await?;
+    Ok(InspectReport::from_manifest(&manifest))
 }
 
 async fn list_with_client(client: &WgusClient, options: ListOptions) -> Result<ListReport> {

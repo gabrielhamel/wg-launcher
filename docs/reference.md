@@ -4,7 +4,7 @@
 
 Use this page when you need the details behind the everyday workflows.
 
-[Storage](#installation-storage-and-lifecycle) · [Low-level APIs](#low-level-apis) · [Errors](#errors)
+[Storage](#installation-storage-and-lifecycle) · [Public API](#public-api) · [Errors](#errors)
 
 ## Installation storage and lifecycle
 
@@ -27,14 +27,12 @@ The `.wg-launcher` directory is reserved and archive entries cannot write into i
 Successful cleanup removes only its cache and temporary work; identity and lock
 remain so the installation stays portable and usable by `status` and `update`.
 
-The exported `DOWNLOAD_CACHE_DIRECTORY`, `STAGING_DIRECTORY`, and
-`INSTALL_MARKER_FILE` constants are paths relative to the installation root and
-include the `.wg-launcher/` prefix. Callers should join them directly to the
-installation root. `DOWNLOAD_MANIFEST_FILE` is a filename within the cache.
+Use the cache path reported by `InstallPlan.cache` when staging or moving an
+installation. Storage-path constants and persisted record types are internal.
 
 The default directory name preserves the initial game, selection, and version. Updates
 keep that directory and write the current identity to `.wg-launcher/state.json`.
-`InstalledBuild` records the complete selected product (including its game label),
+The internal installed-state record stores the complete selected product (including its game label),
 game ID, region, channel,
 version, client type, language, payload platform, architecture, metadata version,
 and a required `component_versions` map from component IDs to installed versions.
@@ -53,11 +51,9 @@ volumes are released. Retries skip those patches. An unfinished delta patch reta
 its original source files beneath `.wg-launcher/installing/active/sources` so a
 partially applied patch can be retried safely; preserve this directory on failure. Successful high-level
 installation and extraction remove the remaining cache and temporary work.
-The lower-level `ExtractionOptions` allows callers to control cache cleanup.
 High-level download, extraction, and integrated installation workflows acquire the
 per-installation mutation lock. Competing mutations fail with a lock diagnostic.
-The low-level `AssetDownloader` leaves coordination to its caller. File reuse and transfer
-validation use advertised sizes rather than content hashes. An extraction failure
+File reuse and transfer validation use advertised sizes rather than content hashes. An extraction failure
 can leave partially changed game files; there is no whole-install rollback.
 
 Full transport archives decode each file under `.wg-launcher/installing/active/archive`
@@ -89,38 +85,68 @@ Installed state requires `component_versions`. Pinned manifests require
 `base_versions` and target `component_versions`; there is no migration of older
 records. Installations created with the older format require a fresh installation.
 The final installed state changes only after all selected patches succeed.
-Lower-level `PackageExtractor` methods also pin and checkpoint manifests under the
-installation lock; retries with the original manifest reuse matching checkpoints.
 
-## Low-level APIs
+## Public API
 
-Prefer the high-level workflows for complete installation management. Use
-[`WgusClient`](https://docs.rs/wg-update-client/latest/wg_update_client/struct.WgusClient.html)
-for direct metadata and manifest access. Its region-based methods select built-in
-catalogs; `metadata_for_product` and `manifest_for_product` take a `&Product`.
+Use `list`, `inspect`, `download`, `extract`, `install`, `status`, and `update`.
+Download, extraction, installation, and update also provide `_with_observer`
+variants for structured progress. `DownloadOptions` controls transfer concurrency
+and retries; ordinary calls do not require an observer.
 
-`AssetDownloader`, `PackageExtractor`, and `installation_assets` let applications
-compose transfer and extraction themselves. Their ordinary methods need no
-observer; `_with_observer` variants provide structured progress.
+`inspect` returns `InspectReport`: selected `BuildInfo`, available languages,
+component identifiers, patch summaries, package count, compressed bytes, and a
+suggested installation directory. Each `PatchSummary` describes its component,
+source and target versions, package count, and compressed size. Transport URLs,
+torrents, protocol metadata, and recovery checkpoints stay internal.
+
+Workflow plans contain `build: BuildInfo`, the installation root and cache path,
+compressed bytes, and `packages: Vec<PackageSummary>`. Each package exposes only
+its name and size so applications can initialize progress displays. Progress
+events use those package names. Status exposes the installed `BuildInfo` rather
+than the persisted installation record. Reports are informational snapshots;
+mutating them does not change an installation.
+
+Custom catalogs still use `Product` and `BuildSelection`. Saved endpoint
+configuration is managed by the library, so status and update need no catalog file.
 
 ## Errors
 
-High-level workflows return `wg_update_client::Result<T>` with a structured
-`Error`. Match its owner variant and then the concrete error, for example
-`Error::Status(StatusError::InstallationNotFound(path))` or
-`Error::Transfer(TransferError::DownloadRetries { attempts, source, .. })`.
-The wrapper preserves the underlying display message and error source chain.
+Workflows and `Product::validate()` return `wg_update_client::Result<T>`.
+`Error::kind()` returns a non-exhaustive `ErrorKind` for application recovery:
 
-Lower-level APIs return their owning error: `Product::validate` uses
-`CatalogError`, `installation_assets` uses `ReleaseError`, `WgusClient` uses
-`WgusError`, and `AssetDownloader` uses `TransferError`. `PackageExtractor`
-coordinates several operations and returns the workflow `Error`. These errors
-convert into `Error` with `?` in functions returning `wg_update_client::Result<T>`.
-Concrete error types are exported at the crate root.
+```rust,no_run
+use wg_update_client::{ErrorKind, StatusOptions, status};
 
-**API migration:** the former flat `Error` variants are now nested by owner;
-update pattern matches and explicit lower-level result annotations. Workflow
-options, reports, persisted JSON formats, and installation paths are unchanged.
+#[tokio::main]
+async fn main() -> wg_update_client::Result<()> {
+    match status(StatusOptions { path: "./game".into() }).await {
+        Ok(report) => println!("Installed: {}", report.installed.version),
+        Err(error) => match error.kind() {
+            ErrorKind::InstallationNotFound => println!("Install the game first"),
+            ErrorKind::Network => println!("Try again when the service is reachable"),
+            _ => return Err(error),
+        },
+    }
+    Ok(())
+}
+```
+
+Other categories distinguish missing downloads, incomplete or incompatible
+caches, lock contention, invalid selections, unsafe paths, invalid publisher
+responses or packages, filesystem errors, invalid stored data, and worker
+failures. Classification follows nested causes, including exhausted transfer
+retries. Use the display message and `std::error::Error::source()` for detailed
+diagnostics; implementation-specific error types are internal.
+
+**API migration (breaking):** replace `inspect` manifest access such as
+`manifest.version` with `report.build.version`, and `download_size()` with
+`report.compressed_bytes`. Use patch summary counts/sizes instead of raw patch
+files. Replace `outcome.plan.manifest` with `outcome.plan.build` and
+`plan.assets` with `plan.packages`; installed status identity no longer contains
+the saved product or component checkpoints. Match `error.kind()` instead of
+nested owner errors. Direct protocol, transfer, and extractor APIs and path
+constants are no longer exported. Persisted JSON, installation paths, defaults,
+and workflow behavior are unchanged.
 
 Discovery reports per-variant failures in `ListReport.warnings`; a metadata
 request failure stops discovery. Successful transfers and partial files may remain

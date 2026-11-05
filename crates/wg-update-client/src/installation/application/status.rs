@@ -1,4 +1,4 @@
-use crate::{InstalledBuild, PatchManifest, Result, WgusClient, installation_assets};
+use crate::{BuildInfo, InstalledBuild, PatchManifest, Result, WgusClient, installation_assets};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -19,7 +19,7 @@ pub struct StatusReport {
     /// Absolute installation root.
     pub path: PathBuf,
     /// Identity loaded before any update.
-    pub installed: InstalledBuild,
+    pub installed: BuildInfo,
     /// Live catalog version, or pending pinned version during update retries.
     pub latest_version: String,
     /// Whether the build or any component version differs. Versions are compared
@@ -71,7 +71,7 @@ pub(super) fn build_status(
     };
     Ok(StatusReport {
         path,
-        installed,
+        installed: installed.build_info(),
         latest_version: manifest.version.clone(),
         update_available,
         update_download_bytes,

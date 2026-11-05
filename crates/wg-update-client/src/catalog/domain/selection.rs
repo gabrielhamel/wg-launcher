@@ -28,7 +28,7 @@ pub(crate) fn select_products(
     }
     let mut selections = HashSet::new();
     for product in products {
-        product.validate()?;
+        product.validate_identity()?;
         let selection = (product.game(), product.region.to_ascii_lowercase());
         if !selections.insert(selection) {
             return Err(Error::InvalidProduct(format!(

@@ -6,7 +6,7 @@ pub use error::WgusError;
 
 use crate::{
     Asset, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile, PatchManifest,
-    Product, Region, WebSeed,
+    Product, WebSeed,
 };
 use reqwest::Client;
 use std::{
@@ -23,7 +23,7 @@ const MAX_REDIRECTS: usize = 3;
 
 /// Reusable client for live WGUS-compatible metadata and full installation chains.
 ///
-/// Supports the catalogs in [`Region`], including Lesta RU. Resolves transport URLs
+/// Supports built-in catalogs, including Lesta RU. Resolves transport URLs
 /// without downloading package contents. Use [`AssetDownloader`](crate::AssetDownloader)
 /// for transfers or the high-level workflows for installation lifecycle management.
 #[derive(Clone)]
@@ -51,24 +51,6 @@ impl WgusClient {
         Ok(Self { http })
     }
 
-    /// Uses a caller-configured HTTP client without adding default client settings.
-    ///
-    /// Useful for application-specific TLS, timeout, proxy, or user-agent policies.
-    pub fn with_http_client(http: Client) -> Self {
-        Self { http }
-    }
-
-    /// Fetches metadata for a region's configured publisher application.
-    ///
-    /// Does not fetch package contents or write local state.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error for failed HTTP requests or invalid metadata XML.
-    pub async fn metadata(&self, region: Region) -> Result<GameMetadata> {
-        self.metadata_for_product(&region.product()).await
-    }
-
     /// Fetches metadata from a caller-supplied product without writing files.
     ///
     /// # Errors
@@ -78,33 +60,11 @@ impl WgusClient {
         Ok(metadata)
     }
 
-    /// Resolves a full installation manifest for a client variant and optional language.
-    ///
-    /// Client type matching is exact. Language is normalized; `None` selects the
-    /// publisher default. Requests component chains from version `0`, follows bounded
-    /// protocol host redirects, and resolves asset URLs using the first HTTP seed.
-    /// Omitted source versions are inferred per component, starting at `0`.
-    /// No packages are downloaded and no filesystem state is changed.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error for HTTP/XML/URL failures, unknown client variants, unsupported
-    /// languages, missing patch chains or web seeds, or an exceeded redirect limit.
-    pub async fn manifest(
-        &self,
-        region: Region,
-        client_type: &str,
-        language: Option<&str>,
-    ) -> Result<PatchManifest> {
-        self.manifest_for_product(&region.product(), client_type, language)
-            .await
-    }
-
     /// Resolves a product's full installation chain without downloading assets.
     /// The original product configuration is pinned even after protocol redirects.
     ///
     /// # Errors
-    /// Returns errors for invalid configuration or the same protocol failures as [`Self::manifest`].
+    /// Returns errors for invalid configuration or the same protocol failures as [`Self::manifest_from_versions`].
     pub async fn manifest_for_product(
         &self,
         product: &Product,
@@ -122,7 +82,7 @@ impl WgusClient {
     /// configuration and component versions survive protocol redirects.
     ///
     /// # Errors
-    /// Returns the same configuration and protocol errors as [`Self::manifest`].
+    /// Returns the configuration, HTTP, XML, redirect, and patch-chain errors.
     pub async fn manifest_from_versions(
         &self,
         product: &Product,
@@ -130,7 +90,7 @@ impl WgusClient {
         language: Option<&str>,
         component_versions: &BTreeMap<String, String>,
     ) -> Result<PatchManifest> {
-        product.validate()?;
+        product.validate_identity()?;
         let mut resolved = product.clone();
 
         for hop in 0..=MAX_REDIRECTS {
@@ -192,7 +152,7 @@ impl WgusClient {
             if let Some(redirect) = response.redirect_url() {
                 let mut redirected = resolved.clone();
                 redirected.host = Url::parse(redirect)?;
-                redirected.validate()?;
+                redirected.validate_identity()?;
                 if product_endpoint(&redirected, "metadata")?
                     != product_endpoint(&resolved, "metadata")?
                 {
@@ -455,7 +415,7 @@ fn inferred_version_from(
 }
 
 fn product_endpoint(product: &Product, route: &str) -> Result<Url> {
-    product.validate()?;
+    product.validate_identity()?;
     Ok(Url::parse(&format!(
         "{}/api/v1/{route}/",
         product.host.as_str().trim_end_matches('/')

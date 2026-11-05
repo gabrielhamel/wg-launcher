@@ -6,20 +6,25 @@ mod error;
 mod installation;
 
 pub use catalog::{
-    Asset, BuildSelection, BuildSummary, CatalogError, ClientPart, ClientType, Executable, Game,
-    GameMetadata, InspectOptions, ListOptions, ListReport, ListWarning, PROTOCOL_VERSION, Patch,
-    PatchFile, PatchManifest, Product, Region, ReleaseError, WebSeed, WgusClient, WgusError,
-    inspect, installation_assets, list,
+    BuildInfo, BuildSelection, BuildSummary, Game, InspectOptions, InspectReport, ListOptions,
+    ListReport, ListWarning, PatchSummary, Product, Region, inspect, list,
 };
-pub use error::{Error, Result};
+pub use error::{Error, ErrorKind, Result};
 pub use installation::{
-    AssetDownloader, DOWNLOAD_CACHE_DIRECTORY, DOWNLOAD_MANIFEST_FILE, DownloadAssetsEvent,
-    DownloadAssetsOptions, DownloadAssetsOutcome, DownloadError, DownloadEvent, DownloadOptions,
-    DownloadReport, ExtractError, ExtractEvent, ExtractOptions, ExtractOutcome, ExtractionEvent,
-    ExtractionOptions, ExtractionReport, INSTALL_MARKER_FILE, InstallEvent, InstallOptions,
-    InstallOutcome, InstallPlan, InstallationError, InstallationEvent, InstallationReport,
-    InstalledBuild, PackageError, PackageExtractor, PipelineError, STAGING_DIRECTORY, StatusError,
-    StatusOptions, StatusReport, StorageError, TransferError, UpdateOptions, UpdateOutcome,
+    DownloadAssetsEvent, DownloadAssetsOptions, DownloadAssetsOutcome, DownloadEvent,
+    DownloadOptions, DownloadReport, ExtractEvent, ExtractOptions, ExtractOutcome, ExtractionEvent,
+    ExtractionReport, InstallEvent, InstallOptions, InstallOutcome, InstallPlan, InstallationEvent,
+    InstallationReport, PackageSummary, StatusOptions, StatusReport, UpdateOptions, UpdateOutcome,
     download, download_with_observer, extract, extract_with_observer, install,
     install_with_observer, status, update, update_with_observer,
+};
+
+pub(crate) use catalog::{
+    Asset, CatalogError, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile,
+    PatchManifest, ReleaseError, WebSeed, WgusClient, WgusError, installation_assets,
+};
+pub(crate) use installation::{
+    AssetDownloader, DOWNLOAD_MANIFEST_FILE, DownloadError, ExtractError, ExtractionOptions,
+    InstallationError, InstalledBuild, PackageError, PackageExtractor, PipelineError, StatusError,
+    StorageError, TransferError,
 };

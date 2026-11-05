@@ -57,19 +57,20 @@ crates/
         mod.rs                Context entry points and exported models
         domain/               Built-ins, products, selections, release/patch rules
         application/          list, inspect, and live build resolution
+          reports.rs          Consumer build identity and inspection/patch summaries
         infrastructure/wgus/  HTTP, XML, redirects, publisher normalization
       installation/           Local installation lifecycle context
         mod.rs                Context entry points and exported contracts
         domain/               Installed identity, compatibility, checkpoints
         application/          download, extract, install, status, update
           resolution.rs       Pinned-cache reuse and live-resolution coordination
-          plan.rs             Informational build/filesystem plan
+          plan.rs             Consumer plan and progress package summaries
           pipeline/           Shared streaming/local installation coordination
         infrastructure/
           transfer/           Resumable HTTP package downloads
           packages/           Transport archives and delta application
           filesystem/         Paths, locking, records, replacement, cleanup
-      error.rs                Public workflow error wrapper and Result alias
+      error.rs                Public Error, ErrorKind classification, and Result alias
   wg-launcher-cli/            CLI package, README, and license
     src/
       main.rs                 Runtime bootstrap
@@ -128,9 +129,9 @@ Do not create empty layer directories or additional contexts merely for symmetry
 
 Each context's `mod.rs` exposes its entry points and models. Installation calls
 catalog entry points for live resolution and patch planning; catalog has no
-knowledge of installation storage or execution. The crate root preserves the
-consumer API by re-exporting these contracts. The root `error.rs` only composes
-errors returned across contexts.
+knowledge of installation storage or execution. The crate root exposes consumer workflows and reports while keeping protocol,
+transport, persistence, and execution models internal. The root `error.rs`
+adapts local errors to actionable public categories and preserves their sources.
 
 Within each context, domain code makes decisions without network or filesystem
 operations. Application workflows coordinate rules and infrastructure, preserving
@@ -142,8 +143,8 @@ stays in the catalog adapter.
 Errors are defined beside their owning behavior: domain and infrastructure
 modules use local `error.rs` files, while small workflow errors live directly in
 the workflow file. Domain errors contain no HTTP, XML, JSON, or I/O failures.
-Lower-level APIs return their owning error type; application workflows expose
-`Error`, a transparent wrapper preserving typed causes and diagnostics. There are
+Internal operations return their owning error type; application workflows expose
+`Error` with an `ErrorKind` and a diagnostic source chain. There are
 no repository traits or additional crates solely to enforce these boundaries.
 
 These modules are internal implementation details. Library consumers use the

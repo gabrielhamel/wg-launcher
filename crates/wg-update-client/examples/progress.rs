@@ -15,7 +15,7 @@ async fn main() -> wg_update_client::Result<()> {
             InstallEvent::Planned(plan) => {
                 println!(
                     "Installing {} into {}",
-                    plan.manifest.version,
+                    plan.build.version,
                     plan.root.display()
                 );
             }
@@ -24,6 +24,6 @@ async fn main() -> wg_update_client::Result<()> {
     )
     .await?;
 
-    println!("Finished installing {}", installed.plan.manifest.version);
+    println!("Finished installing {}", installed.plan.build.version);
     Ok(())
 }

@@ -148,7 +148,7 @@ use wg_update_client::{BuildSelection, InspectOptions, inspect};
 
 #[tokio::main]
 async fn main() -> wg_update_client::Result<()> {
-    let build = inspect(InspectOptions {
+    let report = inspect(InspectOptions {
         selection: BuildSelection {
             game: Some("wot".into()),
             ..Default::default()
@@ -157,8 +157,8 @@ async fn main() -> wg_update_client::Result<()> {
     .await?;
     println!(
         "{} — {} bytes to download",
-        build.version,
-        build.download_size()
+        report.build.version,
+        report.compressed_bytes
     );
     Ok(())
 }

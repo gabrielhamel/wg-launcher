@@ -1,4 +1,4 @@
-//! Shared installation orchestration and the public extractor façade.
+//! Shared streaming and local installation orchestration.
 
 mod extraction;
 mod prefetch;
@@ -31,22 +31,6 @@ impl PackageExtractor {
         Self
     }
 
-    /// Extracts cached packages without progress notifications and with default cleanup.
-    ///
-    /// See [`Self::extract_with_observer`] for the installation lifecycle.
-    ///
-    /// # Errors
-    ///
-    /// Returns the same errors as [`Self::extract_with_observer`].
-    pub async fn extract(
-        &self,
-        manifest: PatchManifest,
-        install_root: impl AsRef<Path>,
-    ) -> Result<ExtractionReport> {
-        self.extract_with_observer(manifest, install_root, |_| {})
-            .await
-    }
-
     /// Extracts an already downloaded manifest with default cache cleanup.
     ///
     /// Equivalent to [`Self::extract_with_options_and_observer`] with [`ExtractionOptions::default`].
@@ -73,23 +57,6 @@ impl PackageExtractor {
             observer,
         )
         .await
-    }
-
-    /// Extracts cached packages with a cache-retention policy and no progress notifications.
-    ///
-    /// See [`Self::extract_with_options_and_observer`] for the installation lifecycle.
-    ///
-    /// # Errors
-    ///
-    /// Returns the same errors as [`Self::extract_with_options_and_observer`].
-    pub async fn extract_with_options(
-        &self,
-        manifest: PatchManifest,
-        install_root: impl AsRef<Path>,
-        options: ExtractionOptions,
-    ) -> Result<ExtractionReport> {
-        self.extract_with_options_and_observer(manifest, install_root, options, |_| {})
-            .await
     }
 
     /// Extracts local packages with an explicit cache-retention policy.
@@ -124,32 +91,6 @@ impl PackageExtractor {
         })
         .await
         .map_err(|error| crate::PipelineError::ExtractionTask(error.to_string()))?
-    }
-
-    /// Streams downloads and extraction without progress notifications.
-    ///
-    /// See [`Self::download_and_extract_with_observer`] for the installation lifecycle.
-    ///
-    /// # Errors
-    ///
-    /// Returns the same errors as [`Self::download_and_extract_with_observer`].
-    pub async fn download_and_extract(
-        &self,
-        downloader: AssetDownloader,
-        manifest: PatchManifest,
-        install_root: impl AsRef<Path>,
-        download_options: DownloadOptions,
-        extraction_options: ExtractionOptions,
-    ) -> Result<InstallationReport> {
-        self.download_and_extract_with_observer(
-            downloader,
-            manifest,
-            install_root,
-            download_options,
-            extraction_options,
-            |_| {},
-        )
-        .await
     }
 
     /// Streams package downloads and ordered extraction under the installation lock.

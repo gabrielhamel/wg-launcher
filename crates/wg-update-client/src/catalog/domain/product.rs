@@ -35,8 +35,12 @@ impl Product {
     /// Validates the service URL and required identity fields without network access.
     ///
     /// # Errors
-    /// Returns [`Error::InvalidProduct`] for an unsupported URL or empty identity.
-    pub fn validate(&self) -> Result<()> {
+    /// Returns [`crate::ErrorKind::InvalidSelection`] for an unsupported URL or empty identity.
+    pub fn validate(&self) -> crate::Result<()> {
+        self.validate_identity().map_err(Into::into)
+    }
+
+    pub(crate) fn validate_identity(&self) -> Result<()> {
         if !matches!(self.host.scheme(), "http" | "https")
             || self.host.host_str().is_none()
             || !self.host.username().is_empty()

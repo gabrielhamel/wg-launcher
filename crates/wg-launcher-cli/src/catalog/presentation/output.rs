@@ -2,7 +2,7 @@ use crate::terminal::{command, human_bytes};
 use comfy_table::{
     Attribute, Cell, CellAlignment, Color, ContentArrangement, Table, presets::UTF8_FULL,
 };
-use wg_update_client::{BuildSummary, PatchManifest};
+use wg_update_client::{BuildSummary, InspectReport};
 
 pub(crate) fn print_install_hint(product: Option<&std::path::Path>) {
     let product = product
@@ -14,29 +14,29 @@ pub(crate) fn print_install_hint(product: Option<&std::path::Path>) {
     println!("Install with: {}", command(&invocation));
 }
 
-pub(crate) fn print_manifest(manifest: &PatchManifest) {
-    let architecture = manifest.architecture.as_deref().unwrap_or("unknown");
-    println!("Game:          {}", manifest.product.name);
-    println!("Application:   {}", manifest.game_id);
-    println!("Region:        {}", manifest.region);
-    println!("Channel:       {}", manifest.channel);
-    println!("Version:       {}", manifest.version);
-    println!("Client:        {}", manifest.client_type);
-    println!("Language:      {}", manifest.language);
-    println!("Target:        {} / {architecture}", manifest.platform);
-    println!("Parts:         {}", manifest.parts.join(", "));
-    println!("Languages:     {}", manifest.available_languages.join(", "));
-    println!("Packages:      {}", manifest.assets.len());
-    println!("Download size: {}", human_bytes(manifest.download_size()));
+pub(crate) fn print_inspection(report: &InspectReport) {
+    let architecture = report.build.architecture.as_deref().unwrap_or("unknown");
+    println!("Game:          {}", report.build.name);
+    println!("Application:   {}", report.build.game_id);
+    println!("Region:        {}", report.build.region);
+    println!("Channel:       {}", report.build.channel);
+    println!("Version:       {}", report.build.version);
+    println!("Client:        {}", report.build.client_type);
+    println!("Language:      {}", report.build.language);
+    println!("Target:        {} / {architecture}", report.build.platform);
+    println!("Parts:         {}", report.parts.join(", "));
+    println!("Languages:     {}", report.available_languages.join(", "));
+    println!("Packages:      {}", report.package_count);
+    println!("Download size: {}", human_bytes(report.compressed_bytes));
     println!(
         "Default path:  {}",
-        manifest.default_output_directory().display()
+        report.default_output_directory.display()
     );
     println!("\nPublished patch chain\n");
-    println!("{}", patch_table(manifest));
+    println!("{}", patch_table(report));
 }
 
-pub(crate) fn patch_table(manifest: &PatchManifest) -> Table {
+pub(crate) fn patch_table(report: &InspectReport) -> Table {
     let mut table = Table::new();
     table
         .load_style(UTF8_FULL)
@@ -49,13 +49,13 @@ pub(crate) fn patch_table(manifest: &PatchManifest) -> Table {
             }),
         );
 
-    for patch in &manifest.patches {
-        let size = patch.files.iter().map(|file| file.size).sum();
+    for patch in &report.patches {
+        let size = patch.compressed_bytes;
         table.add_row(vec![
             Cell::new(&patch.part).add_attribute(Attribute::Bold),
             Cell::new(patch.version_from.as_deref().unwrap_or("unknown")),
             Cell::new(&patch.version_to),
-            Cell::new(patch.files.len()).set_alignment(CellAlignment::Right),
+            Cell::new(patch.package_count).set_alignment(CellAlignment::Right),
             Cell::new(human_bytes(size)).set_alignment(CellAlignment::Right),
         ]);
     }

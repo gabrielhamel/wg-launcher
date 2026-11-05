@@ -75,10 +75,10 @@ where
         .await?
         .ok_or_else(|| crate::ExtractError::DownloadManifestNotFound(cache.clone()))?;
     let assets = installation_assets(&manifest)?;
-    let plan = build_plan(manifest, root, assets)?;
+    let plan = build_plan(&manifest, root, &assets)?;
     observer(ExtractEvent::Planned(Box::new(plan.clone())));
     let report = PackageExtractor::new()
-        .extract_with_observer(plan.manifest.clone(), &plan.root, move |event| {
+        .extract_with_observer(manifest, &plan.root, move |event| {
             observer(ExtractEvent::Progress(event));
         })
         .await?;

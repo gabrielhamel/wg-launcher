@@ -28,18 +28,18 @@ pub(crate) fn observe_install(event: InstallEvent, progress: &std::sync::Mutex<P
             let plan = *plan;
             println!(
                 "{} {} {} {}: {} assets, {} -> {}",
-                plan.manifest.region,
-                plan.manifest.version,
-                plan.manifest.client_type,
-                plan.manifest.language,
-                plan.assets.len(),
+                plan.build.region,
+                plan.build.version,
+                plan.build.client_type,
+                plan.build.language,
+                plan.packages.len(),
                 human_bytes(plan.compressed_bytes),
                 plan.root.display(),
             );
             println!("  package cache: {}", plan.cache.display());
             match DownloadProgress::new(
                 plan.compressed_bytes,
-                plan.assets
+                plan.packages
                     .iter()
                     .map(|asset| (asset.name.as_str(), asset.size)),
             ) {
@@ -81,7 +81,7 @@ pub(crate) fn observe_download(
             print_plan(&plan);
             match DownloadProgress::new(
                 plan.compressed_bytes,
-                plan.assets
+                plan.packages
                     .iter()
                     .map(|asset| (asset.name.as_str(), asset.size)),
             ) {

@@ -14,7 +14,7 @@ async fn main() -> wg_update_client::Result<()> {
         ..Default::default()
     })
     .await?;
-    println!("Installed {}", installed.plan.manifest.version);
+    println!("Installed {}", installed.plan.build.version);
 
     let current = status(StatusOptions { path: path.clone() }).await?;
     println!(

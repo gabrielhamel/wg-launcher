@@ -52,6 +52,21 @@ impl From<&PatchManifest> for InstalledBuild {
 }
 
 impl InstalledBuild {
+    pub(crate) fn build_info(&self) -> crate::BuildInfo {
+        crate::BuildInfo {
+            game: self.product.game(),
+            name: self.product.name.clone(),
+            game_id: self.game_id.clone(),
+            region: self.region.clone(),
+            channel: self.channel.clone(),
+            version: self.version.clone(),
+            client_type: self.client_type.clone(),
+            language: self.language.clone(),
+            platform: self.platform.clone(),
+            architecture: self.architecture.clone(),
+        }
+    }
+
     pub(crate) fn selection(&self) -> crate::BuildSelection {
         crate::BuildSelection {
             game: Some(self.product.game()),

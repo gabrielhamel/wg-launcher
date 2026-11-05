@@ -61,7 +61,7 @@ pub async fn install(options: InstallOptions) -> Result<InstallOutcome> {
 /// Acquires the installation lock, pins the manifest for the transfer/extraction
 /// pipeline, and reuses cached volumes. Later downloads can overlap ordered patch
 /// extraction; packages are removed only after their patch succeeds. Success writes
-/// [`INSTALL_MARKER_FILE`](crate::INSTALL_MARKER_FILE) and removes cache and staging data.
+/// `.wg-launcher/state.json` and removes cache and staging data.
 ///
 /// The observer receives a plan, then interleaved download and extraction events.
 /// See the [observer contract](crate#observers-and-async-execution).
@@ -95,14 +95,14 @@ where
     F: Fn(InstallEvent) + Send + Sync + 'static,
 {
     let assets = installation_assets(&manifest)?;
-    let plan = build_plan(manifest, root, assets)?;
+    let plan = build_plan(&manifest, root, &assets)?;
     observer(InstallEvent::Planned(Box::new(plan.clone())));
 
     let extractor = PackageExtractor::new();
     let report = extractor
         .download_and_extract_with_observer(
             AssetDownloader::new()?,
-            plan.manifest.clone(),
+            manifest,
             &plan.root,
             download,
             Default::default(),

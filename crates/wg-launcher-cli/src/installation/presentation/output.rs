@@ -13,12 +13,12 @@ pub(crate) fn print_install_summary(report: &wg_update_client::InstallationRepor
 pub(crate) fn print_plan(plan: &wg_update_client::InstallPlan) {
     println!(
         "{} {} {} {} {}: {} assets, {} -> {}",
-        plan.manifest.product.game(),
-        plan.manifest.region,
-        plan.manifest.version,
-        plan.manifest.client_type,
-        plan.manifest.language,
-        plan.assets.len(),
+        plan.build.game,
+        plan.build.region,
+        plan.build.version,
+        plan.build.client_type,
+        plan.build.language,
+        plan.packages.len(),
         human_bytes(plan.compressed_bytes),
         plan.root.display(),
     );

@@ -1,9 +1,6 @@
 use crate::{Asset, Patch, WebSeed};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    path::PathBuf,
-};
+use std::{collections::BTreeMap, path::PathBuf};
 
 /// Resolved build identity, patch chains, and transport assets.
 ///
@@ -55,23 +52,6 @@ pub struct PatchManifest {
 }
 
 impl PatchManifest {
-    /// Clones assets whose component matches any exact identifier in `parts`.
-    ///
-    /// An empty slice selects every asset. Unknown identifiers contribute no matches.
-    /// This filters manifest order; use [`installation_assets`](crate::installation_assets)
-    /// when you need the ordered installation chain.
-    pub fn assets_for_parts(&self, parts: &[String]) -> Vec<Asset> {
-        if parts.is_empty() {
-            return self.assets.clone();
-        }
-        let selected: BTreeSet<&str> = parts.iter().map(String::as_str).collect();
-        self.assets
-            .iter()
-            .filter(|asset| selected.contains(asset.part.as_str()))
-            .cloned()
-            .collect()
-    }
-
     /// Returns the sum of all manifest asset sizes in compressed bytes.
     ///
     /// This is a transport total, not required disk space or remaining network traffic;

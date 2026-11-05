@@ -53,16 +53,16 @@ async fn main() -> wg_update_client::Result<()> {
         eprintln!("{}: {}", warning.client_type, warning.message);
     }
 
-    let build = inspect(InspectOptions {
+    let report = inspect(InspectOptions {
         selection: wg_update_client::BuildSelection {
             game: Some("wot".into()),
             ..Default::default()
         },
     })
     .await?;
-    println!("Version: {}", build.version);
-    println!("Download: {} bytes", build.download_size());
-    println!("Components: {}", build.parts.join(", "));
+    println!("Version: {}", report.build.version);
+    println!("Download: {} bytes", report.compressed_bytes);
+    println!("Components: {}", report.parts.join(", "));
     Ok(())
 }
 ```
@@ -78,7 +78,7 @@ use wg_update_client::{BuildSelection, InspectOptions, inspect};
 
 #[tokio::main]
 async fn main() -> wg_update_client::Result<()> {
-    let build = inspect(InspectOptions {
+    let report = inspect(InspectOptions {
         selection: BuildSelection {
             game: Some("wows".into()),
             region: "ww".into(),
@@ -88,7 +88,7 @@ async fn main() -> wg_update_client::Result<()> {
         },
     })
     .await?;
-    println!("{}: {} bytes", build.version, build.download_size());
+    println!("{}: {} bytes", report.build.version, report.compressed_bytes);
     Ok(())
 }
 ```
@@ -122,7 +122,7 @@ async fn main() -> wg_update_client::Result<()> {
         ..Default::default()
     })
     .await?;
-    println!("Installed {}", installed.plan.manifest.version);
+    println!("Installed {}", installed.plan.build.version);
 
     let current = status(StatusOptions { path: path.clone() }).await?;
     println!(
@@ -182,7 +182,7 @@ async fn main() -> wg_update_client::Result<()> {
             InstallEvent::Planned(plan) => {
                 println!(
                     "Installing {} into {}",
-                    plan.manifest.version,
+                    plan.build.version,
                     plan.root.display()
                 );
             }
@@ -191,7 +191,7 @@ async fn main() -> wg_update_client::Result<()> {
     )
     .await?;
 
-    println!("Finished installing {}", installed.plan.manifest.version);
+    println!("Finished installing {}", installed.plan.build.version);
     Ok(())
 }
 ```
@@ -244,7 +244,7 @@ async fn main() -> wg_update_client::Result<()> {
 
     // This step uses only the downloaded files, so it can run offline.
     let installed = extract(ExtractOptions { path }).await?;
-    println!("Installed {}", installed.plan.manifest.version);
+    println!("Installed {}", installed.plan.build.version);
     Ok(())
 }
 ```
@@ -268,7 +268,7 @@ async fn main() -> wg_update_client::Result<()> {
             game: "local".into(),
             region: "eu".into(),
             name: "Local EU game".into(),
-            host: "http://localhost:8080/updates".parse()?,
+            host: "http://localhost:8080/updates".parse().expect("valid service URL"),
             game_id: "LOCAL.EU".into(),
             channel: "testing".into(),
         },
@@ -276,7 +276,7 @@ async fn main() -> wg_update_client::Result<()> {
             game: "local".into(),
             region: "KR".into(),
             name: "Local KR game".into(),
-            host: "http://localhost:8081/updates".parse()?,
+            host: "http://localhost:8081/updates".parse().expect("valid service URL"),
             game_id: "LOCAL.KR".into(),
             channel: "testing".into(),
         },
@@ -288,7 +288,7 @@ async fn main() -> wg_update_client::Result<()> {
     .await?;
     println!("Found {} builds", catalog.builds.len());
 
-    let build = inspect(InspectOptions {
+    let report = inspect(InspectOptions {
         selection: BuildSelection {
             game: Some("local".into()),
             region: "KR".into(),
@@ -297,7 +297,7 @@ async fn main() -> wg_update_client::Result<()> {
         },
     })
     .await?;
-    println!("{}: {}", build.region, build.version);
+    println!("{}: {}", report.build.region, report.build.version);
     Ok(())
 }
 ```
@@ -312,19 +312,27 @@ the [custom catalog guide](https://github.com/gabrielhamel/wg-launcher/blob/main
 | I want to… | Use | Result |
 | --- | --- | --- |
 | Compare builds | `list(ListOptions)` | Builds and per-variant warnings |
-| Preview one build | `inspect(InspectOptions)` | Manifest and package sizes |
+| Preview one build | `inspect(InspectOptions)` | Build identity, patch summaries, and package sizes |
 | Save packages | `download(DownloadAssetsOptions)` | Cached packages and transfer report |
 | Install local packages | `extract(ExtractOptions)` | Installed build and extraction report |
 | Download and install | `install(InstallOptions)` | Plan and installation report |
 | Check for updates | `status(StatusOptions)` | Installed/latest versions |
 | Update in place | `update(UpdateOptions)` | Status and optional installation result |
 
-Every operation is async and returns `wg_update_client::Result<T>`. Match the
-public `Error` owner variant and its concrete error for application-specific
-recovery, such as `Error::Status(StatusError::InstallationNotFound(path))`.
-Lower-level `Product::validate`, `installation_assets`, `WgusClient`, and
-`AssetDownloader` APIs return `CatalogError`, `ReleaseError`, `WgusError`, and
-`TransferError` respectively; these convert into `Error` with `?`. Discovery can return
-warnings alongside valid builds; a failed metadata request stops discovery.
+Every operation is async and returns `wg_update_client::Result<T>`. Use
+`error.kind()` to distinguish actionable conditions such as
+`ErrorKind::InstallationLocked` or `ErrorKind::InstallationNotFound`. Display
+messages and standard error sources preserve technical diagnostics.
+
+`inspect` returns an `InspectReport` containing `BuildInfo`, patch summaries,
+compressed sizes, and a suggested directory. Installation plans expose that same
+build identity, the destination, cache location, and package names/sizes for
+progress displays. `status` returns the installed `BuildInfo` without exposing
+the stored recovery record. Protocol clients, manifests, archive executors, and
+storage-path constants are internal; use the workflows to manage installations.
+`Product::validate()` returns the same public error contract.
+
+Discovery can return warnings alongside valid builds; a failed metadata request
+stops discovery.
 
 **Next:** [API reference](https://docs.rs/wg-update-client/latest/wg_update_client/) · [Installation details](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/reference.md) · [Troubleshooting](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/troubleshooting.md) · [Contributing](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/contributing.md)

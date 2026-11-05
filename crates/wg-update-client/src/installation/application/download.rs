@@ -104,18 +104,13 @@ where
     if assets.is_empty() {
         return Err(crate::DownloadError::EmptySelection(options.parts.join(", ")).into());
     }
-    let plan = build_plan(manifest, root, assets)?;
+    let plan = build_plan(&manifest, root, &assets)?;
     observer(DownloadAssetsEvent::Planned(Box::new(plan.clone())));
-    save_cache_manifest(&plan.manifest, &plan.cache).await?;
+    save_cache_manifest(&manifest, &plan.cache).await?;
     let report = AssetDownloader::new()?
-        .download_with_observer(
-            plan.assets.clone(),
-            &plan.cache,
-            options.download,
-            move |event| {
-                observer(DownloadAssetsEvent::Progress(event));
-            },
-        )
+        .download_with_observer(assets, &plan.cache, options.download, move |event| {
+            observer(DownloadAssetsEvent::Progress(event));
+        })
         .await?;
     Ok(DownloadAssetsOutcome { plan, report })
 }

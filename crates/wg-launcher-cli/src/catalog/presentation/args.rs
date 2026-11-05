@@ -40,7 +40,7 @@ pub(crate) struct BuildArgs {
 }
 
 impl TryFrom<BuildArgs> for BuildSelection {
-    type Error = wg_update_client::Error;
+    type Error = Box<dyn std::error::Error>;
 
     fn try_from(value: BuildArgs) -> Result<Self, Self::Error> {
         let products = read_products(value.product)?;

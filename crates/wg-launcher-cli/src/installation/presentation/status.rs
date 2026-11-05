@@ -5,7 +5,7 @@ use wg_update_client::StatusReport;
 
 pub(crate) fn print_status(report: &StatusReport, current: &Path) {
     println!("Installation: {}", report.path.display());
-    println!("Game:         {}", report.installed.product.name);
+    println!("Game:         {}", report.installed.name);
     println!("Region:       {}", report.installed.region);
     if report.update_available {
         println!(

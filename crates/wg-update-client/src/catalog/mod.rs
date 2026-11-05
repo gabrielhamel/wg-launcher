@@ -6,12 +6,14 @@ mod infrastructure;
 
 pub(crate) use application::resolve;
 pub use application::{
-    BuildSummary, InspectOptions, ListOptions, ListReport, ListWarning, inspect, list,
+    BuildInfo, BuildSummary, InspectOptions, InspectReport, ListOptions, ListReport, ListWarning,
+    PatchSummary, inspect, list,
 };
+pub(crate) use domain::CatalogError;
 pub(crate) use domain::release::patch_chain::{assets_for_patches, ordered_patches};
-pub use domain::release::{
+pub(crate) use domain::release::{
     Asset, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile, PatchManifest,
     ReleaseError, WebSeed, installation_assets,
 };
-pub use domain::{BuildSelection, CatalogError, Game, Product, Region};
-pub use infrastructure::wgus::{PROTOCOL_VERSION, WgusClient, WgusError};
+pub use domain::{BuildSelection, Game, Product, Region};
+pub(crate) use infrastructure::wgus::{WgusClient, WgusError};
