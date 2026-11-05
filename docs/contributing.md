@@ -41,6 +41,17 @@ version, and package-manager hints. Match color detection to stdout or stderr;
 without color, commands remain plain text. Keep normal Markdown code formatting
 in documentation.
 
+## Context guides
+
+Each context has a short introduction and a glossary of its shared language:
+
+| Area | Guides |
+| --- | --- |
+| Available games and builds | [Catalog](../crates/wg-update-client/src/catalog/README.md) · [Catalog in the launcher](../crates/wg-launcher-cli/src/catalog/README.md) |
+| Local game copies | [Installation](../crates/wg-update-client/src/installation/README.md) · [Installation in the launcher](../crates/wg-launcher-cli/src/installation/README.md) |
+| Launcher releases | [Self-update](../crates/wg-launcher-cli/src/self_update/README.md) |
+| Providing game releases | [Release serving](../crates/wg-update-service/src/release_serving/README.md) |
+
 ## Workspace layout
 
 ```text

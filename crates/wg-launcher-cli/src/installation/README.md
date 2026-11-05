@@ -1,0 +1,25 @@
+# Installation in the launcher
+
+This part of the launcher helps people download, install, and update a game. It
+shows what was selected, where the game belongs, how work is progressing, and
+what completed or needs attention.
+
+It uses the [shared installation language](../../../wg-update-client/src/installation/README.md).
+Its responsibility is to make that work understandable to the person using the
+launcher.
+
+## Shared language
+
+| Term | Meaning here |
+| --- | --- |
+| Destination | The installation folder where the game will be prepared or updated. |
+| Plan | A summary of the chosen build, destination, and packages before work begins. |
+| Download | Save game packages locally for use now or later. |
+| Part filter | Choose which components to download. Preparing the complete game still needs all required packages. |
+| Extract | Prepare the game from packages already downloaded, without needing the publisher to be reachable. |
+| Install | Download and prepare the chosen game in one operation. |
+| Status | Show the installed version and whether an update is available. |
+| Update | Bring the game in the existing installation folder up to date. |
+| Progress | Information about ongoing downloads and the preparation of game files. |
+| Cache hit | A package already present locally that can be reused without downloading it again. |
+| Summary | The result of completed work, including downloads, reused packages, and cleanup. |

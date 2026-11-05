@@ -444,6 +444,11 @@ cleanup request.
   process helpers and fixtures in `e2e/tests/support/`.
 - Prefer descriptive names and simple boundaries. Avoid arbitrary line limits,
   one-file-per-item fragmentation, and abstractions added only to split a file.
+- When introducing a new domain term, add it to the shared-language glossary in
+  the owning bounded context's `README.md` in the same change. Explain its meaning
+  in plain, non-technical language and use it consistently in code and documentation.
+  Reuse existing terms when they already describe the concept; update the glossary
+  when a term's meaning changes.
 - Update the source map and affected documentation when the structure changes.
   For organizational changes, preserve behavior and public APIs and run the
   checks required below.
