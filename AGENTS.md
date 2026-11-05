@@ -294,7 +294,7 @@ record migration.
 
 ## Catalog and protocol rules
 
-Catalog entries live in `crates/wg-update-client/src/catalog.rs`. A product selection
+Catalog entries live in `crates/wg-update-client/src/domain/catalog/mod.rs`. A product selection
 is a game/region pair that binds a publisher host, application ID, and channel.
 When adding or changing one:
 
@@ -314,7 +314,7 @@ uses:
 - application ID: `MT.RU.PRODUCTION`
 - CLI region: `ru` (alias `russia`)
 
-Lesta's install chain omits `version_from` on patches. `crates/wg-update-client/src/service/mod.rs`
+Lesta's install chain omits `version_from` on patches. `crates/wg-update-client/src/infrastructure/wgus/mod.rs`
 normalizes that compatible representation: the first patch for a component
 starts at `0`, and a later patch starts at the previous patch's `version_to`.
 Preserve the explicit value when a publisher provides one. This normalization
@@ -353,24 +353,30 @@ the CLI.
 
 ## File responsibilities
 
-- `crates/wg-update-client/src/catalog.rs`: games, regions, and publisher product endpoints.
-- `crates/wg-update-client/src/catalog/product.rs`: owned product configuration and
-  HTTP(S) URL validation, including ports and path prefixes.
-- `crates/wg-update-client/src/catalog/selection.rs`: custom catalog validation
-  and game/region selection shared by listing, build resolution, and cache reuse.
+- `crates/wg-update-client/src/domain/catalog/`: built-ins, owned product validation,
+  custom catalog selection, and build selection.
+- `crates/wg-update-client/src/domain/release/`: metadata, manifests, transport asset
+  descriptions, variant/language rules, and ordered patch-chain planning.
+- `crates/wg-update-client/src/domain/installation/`: installed identity, pinned
+  selection compatibility, component checkpoints, and resume consistency.
+- `crates/wg-update-client/src/application/`: high-level workflows with their options,
+  events, reports, and local errors; `resolution.rs` chooses live or pinned input,
+  and `plan.rs` builds informational plans.
+- `crates/wg-update-client/src/application/pipeline/`: public `PackageExtractor`
+  façade and shared streaming/local installation orchestration. Preserve locking,
+  prefetch overlap, checkpoint-before-release ordering, and cancellation.
+- `crates/wg-update-client/src/infrastructure/wgus/`: WGUS-compatible HTTP/XML,
+  private wire representations, redirects, and publisher-specific normalization.
+- `crates/wg-update-client/src/infrastructure/transfer/`: resumable HTTP transfer.
+- `crates/wg-update-client/src/infrastructure/packages/`: transport archive decoding
+  and delta application.
+- `crates/wg-update-client/src/infrastructure/installation_fs/`: installation paths,
+  locks, JSON persistence, recovery source files, replacement, and cleanup mechanics.
+- `crates/wg-update-client/src/error.rs`: thin public workflow error wrapper.
+  Define concrete errors beside the rules/operations that own them. Domain and
+  infrastructure functions return local errors; wrap causes at workflow boundaries.
+  Keep the domain free of network/filesystem operations and technical error types.
 - `crates/wg-launcher-cli/src/main.rs`: minimal async executable bootstrap.
-- `crates/wg-update-client/src/service/mod.rs`: WGUS-compatible HTTP/XML protocol and manifest building.
-- `crates/wg-update-client/src/model.rs`: protocol-independent public models and stable output naming.
-- `crates/wg-update-client/src/download.rs`: resumable, concurrent package transfer.
-- `crates/wg-update-client/src/install/`: low-level installation. `mod.rs` exposes the extractor
-  and coordinates the pipeline; `chain.rs` orders patches; `prefetch.rs` queues downloads;
-  `extraction.rs` applies ordered patches; `archive.rs` reads transport volumes;
-  `delta.rs` applies deltas; `storage.rs` handles locks, state, and cleanup;
-  `paths.rs` validates paths; `retry.rs` pins component checkpoints and preserves delta
-  sources; `types.rs` defines options, reports, and events.
-- `crates/wg-update-client/src/launcher/`: high-level workflows, with options and reports
-  beside each workflow; `manifest.rs` owns shared plans and pinned manifest persistence.
-- `crates/wg-update-client/src/service/wire.rs`: private XML representations of WGUS responses.
 - `crates/wg-launcher-cli/src/cli/`: `mod.rs` dispatches commands; `args.rs` parses
   arguments; `output.rs` renders summaries and tables; `observers.rs` adapts events.
 - `crates/wg-launcher-cli/src/cli/self_update/`: bounded release-manifest checks,

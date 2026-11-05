@@ -105,8 +105,23 @@ observer; `_with_observer` variants provide structured progress.
 
 ## Errors
 
-Fallible operations return `wg_update_client::Result<T>` with a structured `Error`.
-Match error variants when your application needs to distinguish conditions.
+High-level workflows return `wg_update_client::Result<T>` with a structured
+`Error`. Match its owner variant and then the concrete error, for example
+`Error::Status(StatusError::InstallationNotFound(path))` or
+`Error::Transfer(TransferError::DownloadRetries { attempts, source, .. })`.
+The wrapper preserves the underlying display message and error source chain.
+
+Lower-level APIs return their owning error: `Product::validate` uses
+`CatalogError`, `installation_assets` uses `ReleaseError`, `WgusClient` uses
+`WgusError`, and `AssetDownloader` uses `TransferError`. `PackageExtractor`
+coordinates several operations and returns the workflow `Error`. These errors
+convert into `Error` with `?` in functions returning `wg_update_client::Result<T>`.
+Concrete error types are exported at the crate root.
+
+**API migration:** the former flat `Error` variants are now nested by owner;
+update pattern matches and explicit lower-level result annotations. Workflow
+options, reports, persisted JSON formats, and installation paths are unchanged.
+
 Discovery reports per-variant failures in `ListReport.warnings`; a metadata
 request failure stops discovery. Successful transfers and partial files may remain
 after a failed operation, allowing another attempt with the same selection.

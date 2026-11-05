@@ -320,7 +320,11 @@ the [custom catalog guide](https://github.com/gabrielhamel/wg-launcher/blob/main
 | Update in place | `update(UpdateOptions)` | Status and optional installation result |
 
 Every operation is async and returns `wg_update_client::Result<T>`. Match the
-public `Error` variants for application-specific recovery. Discovery can return
+public `Error` owner variant and its concrete error for application-specific
+recovery, such as `Error::Status(StatusError::InstallationNotFound(path))`.
+Lower-level `Product::validate`, `installation_assets`, `WgusClient`, and
+`AssetDownloader` APIs return `CatalogError`, `ReleaseError`, `WgusError`, and
+`TransferError` respectively; these convert into `Error` with `?`. Discovery can return
 warnings alongside valid builds; a failed metadata request stops discovery.
 
 **Next:** [API reference](https://docs.rs/wg-update-client/latest/wg_update_client/) · [Installation details](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/reference.md) · [Troubleshooting](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/troubleshooting.md) · [Contributing](https://github.com/gabrielhamel/wg-launcher/blob/main/docs/contributing.md)

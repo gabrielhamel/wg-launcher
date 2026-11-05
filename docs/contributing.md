@@ -53,15 +53,20 @@ crates/
     examples/                 Runnable programs matching the library guide
     src/
       lib.rs                  Public API and consumer documentation
-      catalog.rs              Regions and publisher endpoints
-      catalog/product.rs      Owned products and service URL validation
-      catalog/selection.rs    Catalog validation and region selection
-      model.rs                Protocol-independent public models
-      error.rs                Shared error types
-      download.rs             Resumable package transfers
-      launcher/               High-level workflows, grouped by operation
-      install/                Extraction, patch chains, deltas, storage, prefetch, retry
-      service/                WGUS client and private XML wire models
+      domain/
+        catalog/              Products, built-ins, catalog and build selection
+        release/              Metadata, manifests, assets, patch-chain rules
+        installation/         Installed identity, compatibility, checkpoints
+      application/            High-level workflows, options, events, reports
+        resolution.rs         Live versus pinned resolution and variant fallback
+        plan.rs               Informational build/filesystem plan
+        pipeline/             Shared streaming and local installation coordination
+      infrastructure/
+        wgus/                 HTTP, XML wire models, publisher normalization
+        transfer/             Resumable HTTP package downloads
+        packages/             Transport archives and delta application
+        installation_fs/      Paths, locking, JSON records, replacement, cleanup
+      error.rs                Public workflow error wrapper and Result alias
   wg-launcher-cli/            CLI package, README, and license
     src/
       main.rs                 Runtime bootstrap
@@ -87,8 +92,21 @@ e2e/                          Independent black-box system test package
 
 Each directory's `mod.rs` is its entry point. Workflow options, events, and results
 live beside their workflow; shared installation events and reports live in
-`install/types.rs`. End-to-end scenarios and their process helpers live entirely
+`application/pipeline/types.rs`. End-to-end scenarios and their process helpers live entirely
 under `e2e/tests/`.
+
+The domain owns decisions without network or filesystem operations. Application
+workflows coordinate domain rules and infrastructure, including overlapping
+transfer/extraction, checkpoint-before-release ordering, and cancellation under
+the installation lock. Infrastructure owns HTTP/XML, archive/decoder libraries,
+and filesystem mechanics. WGUS-specific normalization stays in its adapter.
+
+Errors are defined beside their owning behavior: domain and infrastructure
+modules use local `error.rs` files, while small workflow errors live directly in
+the workflow file. Domain errors contain no HTTP, XML, JSON, or I/O failures.
+Lower-level APIs return their owning error type; application workflows expose
+`Error`, a transparent wrapper preserving typed causes and diagnostics. There are
+no repository traits or additional crates solely to enforce these boundaries.
 
 These modules are internal implementation details. Library consumers use the
 public exports from `wg_update_client`.
