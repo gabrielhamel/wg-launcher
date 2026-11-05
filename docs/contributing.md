@@ -43,9 +43,7 @@ in documentation.
 
 ## Context guides
 
-The workspace [context map](../CONTEXT_MAP.md) groups integration relationships by production crate
-and links map nodes to their source directories. Update its CML models alongside architectural
-changes; GitHub Actions validates them and commits changed diagrams on `main`.
+The workspace [context map](../CONTEXT_MAP.md) displays one map per production crate.
 
 Each context has a short introduction and a glossary of its shared language:
 
@@ -56,12 +54,49 @@ Each context has a short introduction and a glossary of its shared language:
 | Launcher releases | [Self-update](../crates/wg-launcher-cli/src/self_update/README.md) |
 | Providing game releases | [Release serving](../crates/wg-update-service/src/release_serving/README.md) |
 
+## Context map generation
+
+Edit the CML sources under [context-maps](context-maps) when context
+boundaries or integration contracts change. Diagram rendering is automated;
+discovering boundaries and choosing DDD patterns still requires review.
+
+The [Context maps workflow](../.github/workflows/context-maps.yml) validates all
+models and renders SVGs only on relevant pushes to `main` or manual runs on
+`main`. It does not run on pull requests. After rendering,
+`github-actions[bot]` commits only changed SVGs. It also removes diagrams
+whose CML model was removed. An unchanged rendering produces no commit.
+
+The commit job uses the built-in `GITHUB_TOKEN` with `contents: write`; no extra
+secret is needed. Repository rules must allow that bot to push to `main`.
+A concurrent update to `main` can reject the push; rerun the workflow against
+the latest `main` in that case. The workflow never force-pushes.
+
+To regenerate locally, install Python 3.12+, Java 17+, and Graphviz, then run:
+
+```console
+python3 docs/context-maps/generate.py
+```
+
+Set `JAVA_HOME` if Java is not on `PATH`; `dot` must be on `PATH`.
+The script downloads the pinned Context Mapper CLI 6.12.0 distribution, verifies
+its SHA-256, and validates every model before replacing generated SVGs.
+It fixes Context Mapper's randomized context orientations in the generated
+Graphviz source before rendering, so identical models produce identical SVGs
+with the same toolchain.
+Tools and intermediate files live in a temporary directory outside the checkout.
+Use the workflow's Ubuntu/Java/Graphviz environment for consistent layout;
+different Graphviz versions can produce different SVG bytes.
+
+The [Context Mapper CLI](https://github.com/ContextMapper/context-mapper-cli)
+and [context map generator](https://contextmapper.org/docs/context-map-generator/)
+provide model validation and diagram generation.
+
 ## Workspace layout
 
 ```text
 Cargo.toml                    Workspace and shared package metadata
 Cargo.lock                    Shared dependency lockfile
-CONTEXT_MAP.md                Workspace context maps, patterns, and automation guide
+CONTEXT_MAP.md                One context map per production crate
 docs/                         User guides and contributor reference
   context-maps/               CML models and the pinned CLI rendering script
     generated/                SVG context maps maintained by GitHub Actions
