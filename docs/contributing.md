@@ -43,8 +43,8 @@ in documentation.
 
 ## Context guides
 
-The workspace [context map](../CONTEXT_MAP.md) shows integration relationships
-across the three production crates. Update its CML models alongside architectural
+The workspace [context map](../CONTEXT_MAP.md) groups integration relationships by production crate
+and links map nodes to their source directories. Update its CML models alongside architectural
 changes; GitHub Actions validates them and commits changed diagrams on `main`.
 
 Each context has a short introduction and a glossary of its shared language:

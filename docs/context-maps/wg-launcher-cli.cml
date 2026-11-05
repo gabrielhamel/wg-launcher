@@ -1,0 +1,40 @@
+/* CatalogPresentation and InstallationPresentation are CLI adapters of the
+ * client-owned contexts, not additional business domain boundaries. */
+ContextMap LauncherCli {
+  type = SYSTEM_LANDSCAPE
+  state = AS_IS
+
+  contains CatalogPresentation, InstallationPresentation, SelfUpdate
+  contains ClientCatalog, ClientInstallation, LauncherDistribution
+
+  ClientCatalog [U] -> [D] CatalogPresentation {
+    implementationTechnology = "wg_update_client list and inspect API"
+  }
+  ClientInstallation [U] -> [D] InstallationPresentation {
+    implementationTechnology = "wg_update_client download, extract, install, status, update API and observers"
+  }
+
+  LauncherDistribution [U] -> [D,ACL] SelfUpdate {
+    implementationTechnology = "HTTPS cargo-dist manifest, archives, and checksums"
+  }
+}
+
+BoundedContext CatalogPresentation {
+  domainVisionStatement = "wg-launcher-cli/src/catalog: parse selections and present client-owned catalog workflows."
+}
+BoundedContext InstallationPresentation {
+  domainVisionStatement = "wg-launcher-cli/src/installation: parse installation arguments and present results and progress."
+}
+BoundedContext ClientCatalog {
+  domainVisionStatement = "wg-update-client/src/catalog: owns catalog behavior used by CLI presentation."
+}
+BoundedContext ClientInstallation {
+  domainVisionStatement = "wg-update-client/src/installation: owns installation behavior used by CLI presentation."
+}
+
+BoundedContext LauncherDistribution {
+  domainVisionStatement = "External release hosting publishes launcher binaries and their cargo-dist release contract."
+}
+BoundedContext SelfUpdate {
+  domainVisionStatement = "wg-launcher-cli: check launcher releases, respect package-manager ownership, and verify direct executable replacement."
+}

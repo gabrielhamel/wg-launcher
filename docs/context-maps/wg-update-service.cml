@@ -1,0 +1,23 @@
+ContextMap UpdateService {
+  type = SYSTEM_LANDSCAPE
+  state = AS_IS
+
+  contains ReleaseServing, ClientCatalog, ClientInstallation
+
+  ReleaseServing [U,OHS,PL] -> [D,ACL] ClientCatalog {
+    implementationTechnology = "WGUS-compatible HTTP/XML discovery"
+  }
+  ReleaseServing [U] -> [D] ClientInstallation {
+    implementationTechnology = "HTTP package downloads and byte ranges"
+  }
+}
+
+BoundedContext ReleaseServing {
+  domainVisionStatement = "wg-update-service/src/release_serving: expose prepared releases and packages through a WGUS-compatible service."
+}
+BoundedContext ClientCatalog {
+  domainVisionStatement = "wg-update-client/src/catalog: translate service discovery into release and selection models."
+}
+BoundedContext ClientInstallation {
+  domainVisionStatement = "wg-update-client/src/installation: download packages from the selected service."
+}

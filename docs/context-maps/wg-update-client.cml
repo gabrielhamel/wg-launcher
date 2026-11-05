@@ -1,4 +1,4 @@
-ContextMap GameAssets {
+ContextMap UpdateClient {
   type = SYSTEM_LANDSCAPE
   state = AS_IS
 
