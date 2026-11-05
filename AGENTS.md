@@ -70,7 +70,7 @@ instead of duplicating the current release version. Configure distribution in
 `dist-workspace.toml` and regenerate `release.yml` with the pinned dist version;
 do not edit generated CI directly. CLI self-updating uses `wg-launcher self-update`;
 `update` remains the game-asset workflow. CLI release discovery, package-manager
-ownership, and executable replacement belong in `cli/self_update/`, independent
+ownership, and executable replacement belong in `self_update/`, independent
 of library/game update behavior. Startup checks must fail open with a short
 HTTP timeout. Respect Homebrew's `INSTALL_RECEIPT.json`, the compile-time
 `WG_LAUNCHER_PACKAGE_MANAGER` marker, and recognized package-manager paths. Verify checksums and the candidate executable
@@ -91,7 +91,7 @@ CLI. High-level workflows live in the library and are exported from `crates/wg-u
 - `status(StatusOptions)`
 - `update(UpdateOptions)`
 
-The CLI in `crates/wg-launcher-cli/src/cli/` should only:
+The CLI catalog and installation contexts should only:
 
 - parse human input;
 - translate arguments into the library option types;
@@ -99,8 +99,10 @@ The CLI in `crates/wg-launcher-cli/src/cli/` should only:
 - call the high-level library functions.
 
 `crates/wg-launcher-cli/src/main.rs` is only the executable bootstrap. Keep it limited to runtime
-setup and `cli::run()`; command definitions and rendering belong in
-`crates/wg-launcher-cli/src/cli/` and `crates/wg-launcher-cli/src/progress/`.
+setup and `cli::run()`. The top-level `cli/` owns command dispatch; context-specific
+arguments, output, and observers belong in `catalog/presentation/`,
+`installation/presentation/`, or `self_update/presentation/`. Shared terminal
+primitives live in `terminal/`.
 
 Do not move terminal formatting, `indicatif` objects, prompts, or process exit
 behavior into the library. Conversely, do not reproduce catalog, networking,
@@ -294,7 +296,7 @@ record migration.
 
 ## Catalog and protocol rules
 
-Catalog entries live in `crates/wg-update-client/src/domain/catalog/mod.rs`. A product selection
+Catalog entries live in `crates/wg-update-client/src/catalog/domain/builtin.rs`. A product selection
 is a game/region pair that binds a publisher host, application ID, and channel.
 When adding or changing one:
 
@@ -314,7 +316,7 @@ uses:
 - application ID: `MT.RU.PRODUCTION`
 - CLI region: `ru` (alias `russia`)
 
-Lesta's install chain omits `version_from` on patches. `crates/wg-update-client/src/infrastructure/wgus/mod.rs`
+Lesta's install chain omits `version_from` on patches. `crates/wg-update-client/src/catalog/infrastructure/wgus/mod.rs`
 normalizes that compatible representation: the first patch for a component
 starts at `0`, and a later patch starts at the previous patch's `version_to`.
 Preserve the explicit value when a publisher provides one. This normalization
@@ -353,43 +355,67 @@ the CLI.
 
 ## File responsibilities
 
-- `crates/wg-update-client/src/domain/catalog/`: built-ins, owned product validation,
-  custom catalog selection, and build selection.
-- `crates/wg-update-client/src/domain/release/`: metadata, manifests, transport asset
-  descriptions, variant/language rules, and ordered patch-chain planning.
-- `crates/wg-update-client/src/domain/installation/`: installed identity, pinned
-  selection compatibility, component checkpoints, and resume consistency.
-- `crates/wg-update-client/src/application/`: high-level workflows with their options,
-  events, reports, and local errors; `resolution.rs` chooses live or pinned input,
-  and `plan.rs` builds informational plans.
-- `crates/wg-update-client/src/application/pipeline/`: public `PackageExtractor`
-  façade and shared streaming/local installation orchestration. Preserve locking,
-  prefetch overlap, checkpoint-before-release ordering, and cancellation.
-- `crates/wg-update-client/src/infrastructure/wgus/`: WGUS-compatible HTTP/XML,
+- `crates/wg-update-client/src/catalog/`: published products and release discovery
+  bounded context. `mod.rs` exposes its entry points and models.
+- `crates/wg-update-client/src/catalog/domain/`: built-in catalogs in `builtin.rs`,
+  owned product validation, and catalog/build selection. `release/` owns metadata,
+  manifests, transport asset descriptions, variant/language rules, and patch planning.
+- `crates/wg-update-client/src/catalog/application/`: list, inspect, and live build
+  resolution, including publisher-default/smallest-variant selection.
+- `crates/wg-update-client/src/catalog/infrastructure/wgus/`: WGUS-compatible HTTP/XML,
   private wire representations, redirects, and publisher-specific normalization.
-- `crates/wg-update-client/src/infrastructure/transfer/`: resumable HTTP transfer.
-- `crates/wg-update-client/src/infrastructure/packages/`: transport archive decoding
-  and delta application.
-- `crates/wg-update-client/src/infrastructure/installation_fs/`: installation paths,
-  locks, JSON persistence, recovery source files, replacement, and cleanup mechanics.
+- `crates/wg-update-client/src/installation/`: local installation lifecycle bounded
+  context. `mod.rs` exposes its workflows, models, and observer contracts.
+- `crates/wg-update-client/src/installation/domain/`: installed identity, pinned
+  selection compatibility, component checkpoints, and resume consistency.
+- `crates/wg-update-client/src/installation/application/`: download, extract, install,
+  status, and update workflows with their options, events, reports, and local errors.
+  `resolution.rs` owns pinned-cache reuse and calls catalog for live resolution;
+  `plan.rs` builds informational plans.
+- `crates/wg-update-client/src/installation/application/pipeline/`: public
+  `PackageExtractor` façade and shared streaming/local installation orchestration.
+  Preserve locking, prefetch overlap, checkpoint-before-release ordering, and cancellation.
+- `crates/wg-update-client/src/installation/infrastructure/transfer/`: resumable HTTP transfer.
+- `crates/wg-update-client/src/installation/infrastructure/packages/`: transport archive
+  decoding and delta application.
+- `crates/wg-update-client/src/installation/infrastructure/filesystem/`: installation
+  paths, locks, JSON persistence, recovery source files, replacement, and cleanup.
 - `crates/wg-update-client/src/error.rs`: thin public workflow error wrapper.
   Define concrete errors beside the rules/operations that own them. Domain and
   infrastructure functions return local errors; wrap causes at workflow boundaries.
   Keep the domain free of network/filesystem operations and technical error types.
 - `crates/wg-launcher-cli/src/main.rs`: minimal async executable bootstrap.
-- `crates/wg-launcher-cli/src/cli/`: `mod.rs` dispatches commands; `args.rs` parses
-  arguments; `output.rs` renders summaries and tables; `observers.rs` adapts events.
-- `crates/wg-launcher-cli/src/cli/self_update/`: bounded release-manifest checks,
-  package-manager detection, archive verification, and CLI executable replacement.
-- `crates/wg-launcher-cli/src/progress/`: shared download/extraction bars in `mod.rs`,
-  discovery spinners in `discovery.rs`, and terminal styles in `styles.rs`.
+- `crates/wg-launcher-cli/src/cli/`: top-level command parsing and cross-context dispatch.
+- `crates/wg-launcher-cli/src/catalog/`: catalog command handlers, selection arguments,
+  discovery tables, and custom product-file loading in its own infrastructure.
+- `crates/wg-launcher-cli/src/installation/`: game installation command handlers,
+  arguments, summaries, status output, observer adapters, and stable progress bars.
+  Business behavior remains in the client library.
+- `crates/wg-launcher-cli/src/self_update/`: independent executable-update context.
+  `domain/` owns release comparison, candidate-version parsing, and path ownership
+  rules; `application/` coordinates checking/updating; `infrastructure/` handles
+  HTTP, archives, manager detection, candidate execution, and replacement;
+  `presentation/` owns notices, instructions, and progress.
+- `crates/wg-launcher-cli/src/terminal/`: shared command styling, byte formatting,
+  discovery spinner, and progress styles without workflow policy.
 - `crates/wg-update-client/src/lib.rs`: the public library contract.
-- `crates/wg-update-service/src/main.rs`: file-service CLI arguments and process lifetime.
-- `crates/wg-update-service/src/server.rs`: file-backed HTTP serving, ranges, and safe path mapping.
+- `crates/wg-update-service/src/main.rs`: minimal executable bootstrap.
+- `crates/wg-update-service/src/release_serving/`: file-backed release serving context.
+  `domain/` owns URL/prefix constraints and template rendering with local errors;
+  `application/` owns `FileService` configuration/startup/lifetime coordination;
+  `infrastructure/` owns HTTP parsing, ranges, filesystem mapping and access logs;
+  `presentation/` owns CLI parsing and startup output.
 - `packaging/`: release-only Debian package/index signing and WinGet manifest
   generation; generated versions derive from the tagged source or release manifest.
 - `e2e/tests/scenarios/`: independent black-box workflow and service-process scenarios.
 - `e2e/tests/support/`: process helpers, synthetic archives, and test-only HTTP server.
+
+Organize every production crate by bounded context first, then by domain,
+application, infrastructure, and presentation as needed within that context. Do
+not restore crate-wide layer directories or create empty layers for symmetry.
+CLI game workflows delegate domain behavior to the client library.
+Cross-context calls use the owning context's entry points; catalog must not depend
+on installation storage or execution. Keep concrete errors beside their owners.
 
 Respect these boundaries. If a change seems to require crossing them, first
 consider whether a model, option, report, or event should be extended instead.

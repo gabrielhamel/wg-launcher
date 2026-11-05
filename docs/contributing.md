@@ -36,7 +36,7 @@ install a game. Keep those programs and their guide snippets synchronized.
 ## Terminal output
 
 CLI command hints use bold cyan with no literal backticks in terminal output.
-Use the shared `cli::output::command` style for installation, update, status,
+Use the shared `terminal::command` style for installation, update, status,
 version, and package-manager hints. Match color detection to stdout or stderr;
 without color, commands remain plain text. Keep normal Markdown code formatting
 in documentation.
@@ -53,34 +53,51 @@ crates/
     examples/                 Runnable programs matching the library guide
     src/
       lib.rs                  Public API and consumer documentation
-      domain/
-        catalog/              Products, built-ins, catalog and build selection
-        release/              Metadata, manifests, assets, patch-chain rules
-        installation/         Installed identity, compatibility, checkpoints
-      application/            High-level workflows, options, events, reports
-        resolution.rs         Live versus pinned resolution and variant fallback
-        plan.rs               Informational build/filesystem plan
-        pipeline/             Shared streaming and local installation coordination
-      infrastructure/
-        wgus/                 HTTP, XML wire models, publisher normalization
-        transfer/             Resumable HTTP package downloads
-        packages/             Transport archives and delta application
-        installation_fs/      Paths, locking, JSON records, replacement, cleanup
+      catalog/                Published products and release discovery context
+        mod.rs                Context entry points and exported models
+        domain/               Built-ins, products, selections, release/patch rules
+        application/          list, inspect, and live build resolution
+        infrastructure/wgus/  HTTP, XML, redirects, publisher normalization
+      installation/           Local installation lifecycle context
+        mod.rs                Context entry points and exported contracts
+        domain/               Installed identity, compatibility, checkpoints
+        application/          download, extract, install, status, update
+          resolution.rs       Pinned-cache reuse and live-resolution coordination
+          plan.rs             Informational build/filesystem plan
+          pipeline/           Shared streaming/local installation coordination
+        infrastructure/
+          transfer/           Resumable HTTP package downloads
+          packages/           Transport archives and delta application
+          filesystem/         Paths, locking, records, replacement, cleanup
       error.rs                Public workflow error wrapper and Result alias
   wg-launcher-cli/            CLI package, README, and license
     src/
       main.rs                 Runtime bootstrap
-      cli/                    Dispatch, arguments, output, observer adapters
-        output/status.rs      Status colors and update size presentation
-        output/cli_update.rs  Boxed CLI release notice and update instructions
-        self_update/          CLI release checks, manager detection, verified replacement
-      progress/               Shared progress bars, discovery spinner, styles
-        self_update.rs        CLI update transfer progress and stage spinners
+      cli/                    Top-level argument parsing and context dispatch
+      catalog/                Catalog CLI context
+        application/          list and inspect command handlers
+        presentation/         Selection arguments, build/patch tables
+        infrastructure/       Custom product file loading
+      installation/           Game installation CLI context
+        application/          download, extract, install, status, update handlers
+        presentation/         Arguments, summaries, observer adapters, progress
+      self_update/            CLI executable update context
+        domain/               Release comparison and ownership/path rules
+        application/          Notices, version checks, executable update workflow
+        infrastructure/       Release HTTP, archives, ownership detection, replacement
+        presentation/         Notices, update instructions, progress
+      terminal/               Shared command styling, byte sizes, spinner/styles
     docs/assets/              CLI demonstration assets
   wg-update-service/          File-backed server binary
     fixtures/                 Example WGUS XML, product catalogs, and payload files
-    src/main.rs               Server CLI bootstrap and arguments
-    src/server.rs             File-backed HTTP serving and byte ranges
+    src/
+      main.rs                 Minimal executable bootstrap
+      lib.rs                  Public service API
+      release_serving/        File-backed release serving context
+        domain/               Release URL/prefix rules and template rendering
+        application/          FileService startup, routing, and lifetime coordination
+        infrastructure/       HTTP/ranges, filesystem mapping, access logs
+        presentation/         Service CLI arguments and startup output
 e2e/                          Independent black-box system test package
   src/bin/cli_update_fixture.rs  Independent replacement executable for CLI update tests
   tests/scenarios/            Workflow and server-process scenarios
@@ -92,14 +109,35 @@ e2e/                          Independent black-box system test package
 
 Each directory's `mod.rs` is its entry point. Workflow options, events, and results
 live beside their workflow; shared installation events and reports live in
-`application/pipeline/types.rs`. End-to-end scenarios and their process helpers live entirely
-under `e2e/tests/`.
+`installation/application/pipeline/types.rs`. End-to-end scenarios and their
+process helpers live entirely under `e2e/tests/`.
 
-The domain owns decisions without network or filesystem operations. Application
-workflows coordinate domain rules and infrastructure, including overlapping
-transfer/extraction, checkpoint-before-release ordering, and cancellation under
-the installation lock. Infrastructure owns HTTP/XML, archive/decoder libraries,
-and filesystem mechanics. WGUS-specific normalization stays in its adapter.
+Organize by bounded context first, with domain, application, and infrastructure
+inside each context. `catalog` owns published product and release knowledge,
+including WGUS discovery and patch planning. `installation` owns the local
+installation lifecycle, including transfer, package application, storage, and
+recovery. Transfer and archive decoding are technical capabilities within the
+installation context. Neither is a separate bounded context.
+
+The CLI mirrors catalog and installation presentation and keeps executable
+self-updating in its own context. Its game commands delegate business behavior
+to the client library; they do not duplicate a domain layer. `terminal/` contains
+only shared presentation primitives. The service has one context,
+`release_serving`, with its own release rules, startup workflow, adapters, and CLI.
+Do not create empty layer directories or additional contexts merely for symmetry.
+
+Each context's `mod.rs` exposes its entry points and models. Installation calls
+catalog entry points for live resolution and patch planning; catalog has no
+knowledge of installation storage or execution. The crate root preserves the
+consumer API by re-exporting these contracts. The root `error.rs` only composes
+errors returned across contexts.
+
+Within each context, domain code makes decisions without network or filesystem
+operations. Application workflows coordinate rules and infrastructure, preserving
+overlapping transfer/extraction, checkpoint-before-release ordering, and
+cancellation under the installation lock. Infrastructure owns HTTP/XML,
+archive/decoder libraries, and filesystem mechanics. WGUS-specific normalization
+stays in the catalog adapter.
 
 Errors are defined beside their owning behavior: domain and infrastructure
 modules use local `error.rs` files, while small workflow errors live directly in
