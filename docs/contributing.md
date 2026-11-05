@@ -43,6 +43,10 @@ in documentation.
 
 ## Context guides
 
+The workspace [context map](../CONTEXT_MAP.md) shows integration relationships
+across the three production crates. Update its CML models alongside architectural
+changes; GitHub Actions validates them and commits changed diagrams on `main`.
+
 Each context has a short introduction and a glossary of its shared language:
 
 | Area | Guides |
@@ -57,7 +61,11 @@ Each context has a short introduction and a glossary of its shared language:
 ```text
 Cargo.toml                    Workspace and shared package metadata
 Cargo.lock                    Shared dependency lockfile
+CONTEXT_MAP.md                Workspace context maps, patterns, and automation guide
 docs/                         User guides and contributor reference
+  context-maps/               CML models and the pinned CLI rendering script
+    generated/                SVG context maps maintained by GitHub Actions
+.github/workflows/context-maps.yml  Main-only context map generation and bot commits
 packaging/                    Signed apt packaging and generated WinGet manifests
 crates/
   wg-update-client/           Reusable update client, README, and license

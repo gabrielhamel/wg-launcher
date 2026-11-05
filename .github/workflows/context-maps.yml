@@ -1,0 +1,78 @@
+name: Context maps
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'crates/**'
+      - 'docs/context-maps/**'
+      - '!docs/context-maps/generated/**'
+      - 'CONTEXT_MAP.md'
+      - '.github/workflows/context-maps.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: context-maps-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  render:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    outputs:
+      revision: ${{ steps.source.outputs.revision }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - id: source
+        run: echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - name: Install Graphviz
+        run: sudo apt-get update && sudo apt-get install --yes graphviz
+      - name: Validate and render context maps
+        run: python docs/context-maps/generate.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: context-maps
+          path: docs/context-maps/generated/*.svg
+          if-no-files-found: error
+
+  commit:
+    needs: render
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ needs.render.outputs.revision }}
+      - name: Remove previous generated maps
+        run: rm -f docs/context-maps/generated/*.svg
+      - uses: actions/download-artifact@v4
+        with:
+          name: context-maps
+          path: docs/context-maps/generated
+      - name: Commit changed diagrams
+        run: |
+          git add -- docs/context-maps/generated
+          if git diff --cached --quiet; then
+            echo "Context maps are unchanged."
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m "docs: regenerate context maps"
+          git push origin HEAD:main

@@ -68,4 +68,4 @@ The custom-catalog example needs your services running at its configured URLs.
 
 ## Work on the project
 
-[Build and validate](contributing.md) · [E2E tests and fixtures](testing.md) · [Agent guide](../AGENTS.md)
+[Build and validate](contributing.md) · [Context map](../CONTEXT_MAP.md) · [E2E tests and fixtures](testing.md) · [Agent guide](../AGENTS.md)

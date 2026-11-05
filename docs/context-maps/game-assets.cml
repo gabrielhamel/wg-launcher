@@ -1,0 +1,35 @@
+ContextMap GameAssets {
+  type = SYSTEM_LANDSCAPE
+  state = AS_IS
+
+  contains PublisherServices, ReleaseServing, Catalog, Installation
+
+  PublisherServices [U] -> [D,ACL] Catalog {
+    implementationTechnology = "WGUS/Lesta HTTP/XML discovery"
+  }
+  ReleaseServing [U,OHS,PL] -> [D,ACL] Catalog {
+    implementationTechnology = "WGUS-compatible HTTP/XML discovery"
+  }
+  Catalog [U] -> [D] Installation {
+    implementationTechnology = "In-process Rust release and selection API"
+  }
+  PublisherServices [U] -> [D] Installation {
+    implementationTechnology = "HTTP package downloads and byte ranges"
+  }
+  ReleaseServing [U] -> [D] Installation {
+    implementationTechnology = "HTTP package downloads and byte ranges"
+  }
+}
+
+BoundedContext PublisherServices {
+  domainVisionStatement = "External Wargaming and Lesta services publish game releases and packages."
+}
+BoundedContext ReleaseServing {
+  domainVisionStatement = "wg-update-service: expose prepared releases and packages through a WGUS-compatible service."
+}
+BoundedContext Catalog {
+  domainVisionStatement = "wg-update-client: discover offerings and resolve a selected build and patch chain."
+}
+BoundedContext Installation {
+  domainVisionStatement = "wg-update-client: maintain a local game copy with resumable download, extraction, status, and update."
+}
