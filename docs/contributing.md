@@ -322,7 +322,9 @@ other warnings. Installation, checksum verification, and package-manager
 ownership are still tested using WinGet itself.
 
 Both workflows run after stable tagged releases and can be retried manually
-with an existing release tag. WinGet retries reuse an open or merged submission
+with an existing release tag. Release 1.4.0 intentionally skips WinGet publishing,
+including manual retries; the other distribution channels remain enabled.
+WinGet retries reuse an open or merged submission
 for that exact version instead of opening duplicate pull requests. They do not republish the Rust crate. Prereleases
 are excluded from these distribution channels.
 

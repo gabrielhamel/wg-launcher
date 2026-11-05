@@ -21,6 +21,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
+    # Release 1.4.0 intentionally excludes WinGet, including manual retries.
+    if: ${{ !contains(fromJSON('["1.4.0", "v1.4.0"]'), inputs.tag || fromJSON(inputs.plan).announcement_tag) }}
     runs-on: windows-latest
     env:
       RELEASE_TAG: ${{ inputs.tag || fromJson(inputs.plan).announcement_tag }}
