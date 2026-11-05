@@ -1,4 +1,4 @@
-use crate::{DownloadEvent, DownloadReport};
+use crate::installation::{DownloadEvent, DownloadReport};
 use serde::Serialize;
 
 /// Progress through local patch extraction, delta application, and finalization.

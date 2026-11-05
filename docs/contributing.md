@@ -69,10 +69,11 @@ crates/
         domain/               Built-ins, products, selections, release/patch rules
         application/          list, inspect, and live build resolution
           reports.rs          Consumer build identity and inspection/patch summaries
+          directory_name.rs   Suggested directory names shared by inspect and installation
         infrastructure/wgus/  HTTP, XML, redirects, publisher normalization
       installation/           Local installation lifecycle context
         mod.rs                Context entry points and exported contracts
-        domain/               Installed identity, compatibility, checkpoints
+        domain/               Installed identity, pinned manifests, compatibility, checkpoints
         application/          download, extract, install, status, update
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
@@ -87,12 +88,12 @@ crates/
       main.rs                 Runtime bootstrap
       cli/                    Top-level argument parsing and context dispatch
       catalog/                Catalog CLI context
-        application/          list and inspect command handlers
         presentation/         Selection arguments, build/patch tables
+          commands.rs         list and inspect command handlers
         infrastructure/       Custom product file loading
       installation/           Game installation CLI context
-        application/          download, extract, install, status, update handlers
         presentation/         Arguments, summaries, observer adapters, progress
+          commands.rs         download, extract, install, status, update handlers
       self_update/            CLI executable update context
         domain/               Release comparison and ownership/path rules
         application/          Notices, version checks, executable update workflow
@@ -126,14 +127,22 @@ process helpers live entirely under `e2e/tests/`.
 
 Organize by bounded context first, with domain, application, and infrastructure
 inside each context. `catalog` owns published product and release knowledge,
-including WGUS discovery and patch planning. `installation` owns the local
+including WGUS discovery and patch planning. Its `ResolvedRelease` describes
+the selected build and published packages without local progress. `installation` owns the local
 installation lifecycle, including transfer, package application, storage, and
-recovery. Transfer and archive decoding are technical capabilities within the
+recovery. Its `PinnedManifest` combines a resolved release with component
+checkpoints; only installation advances those checkpoints. The persistence
+adapter retains the existing flat JSON fields through Serde flattening.
+Suggested directory naming belongs to the catalog application contract so
+inspection and installation use the same suggestion without making catalog
+depend on installation. Transfer and archive decoding are technical capabilities within the
 installation context. Neither is a separate bounded context.
 
 The CLI mirrors catalog and installation presentation and keeps executable
 self-updating in its own context. Its game commands delegate business behavior
-to the client library; they do not duplicate a domain layer. `terminal/` contains
+to the client library; their `presentation/commands.rs` modules coordinate
+arguments, library calls, and terminal output rather than duplicating the
+library application layer. `terminal/` contains
 only shared presentation primitives. The service has one context,
 `release_serving`, with its own release rules, startup workflow, adapters, and CLI.
 Do not create empty layer directories or additional contexts merely for symmetry.
@@ -141,7 +150,8 @@ Do not create empty layer directories or additional contexts merely for symmetry
 Each context's `mod.rs` exposes its entry points and models. Installation calls
 catalog entry points for live resolution and patch planning; catalog has no
 knowledge of installation storage or execution. The crate root exposes consumer workflows and reports while keeping protocol,
-transport, persistence, and execution models internal. The root `error.rs`
+transport, persistence, and execution models internal. Internal imports name the owning context or a nearby module rather than
+routing through root re-exports. The root `error.rs`
 adapts local errors to actionable public categories and preserves their sources.
 
 Within each context, domain code makes decisions without network or filesystem

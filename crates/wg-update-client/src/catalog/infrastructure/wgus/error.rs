@@ -1,4 +1,4 @@
-use crate::{CatalogError, ReleaseError};
+use crate::catalog::{CatalogError, ReleaseError};
 
 /// Failures owned by WGUS discovery.
 #[derive(Debug, thiserror::Error)]

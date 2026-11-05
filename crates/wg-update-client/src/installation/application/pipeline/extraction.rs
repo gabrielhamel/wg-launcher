@@ -1,4 +1,5 @@
-use crate::catalog::ordered_patches;
+use crate::Result;
+use crate::catalog::Patch;
 use crate::installation::infrastructure::{
     filesystem::{
         paths::walk_files,
@@ -10,7 +11,7 @@ use crate::installation::infrastructure::{
     },
     packages::{archive::extract_archive, delta::apply_patch_directory},
 };
-use crate::{ExtractionEvent, ExtractionOptions, ExtractionReport, Patch, PatchManifest, Result};
+use crate::installation::{ExtractionEvent, ExtractionOptions, ExtractionReport, PinnedManifest};
 use std::{fs, path::Path, sync::Arc};
 
 #[derive(Clone, Copy)]
@@ -49,7 +50,7 @@ pub(super) fn extract_patch_sync(
 }
 
 pub(super) fn finalize_installation(
-    manifest: &PatchManifest,
+    manifest: &PinnedManifest,
     install_root: &Path,
     storage: &InstallationStorage,
     options: ExtractionOptions,
@@ -82,7 +83,7 @@ pub(super) fn finalize_installation(
 }
 
 pub(super) fn extract_sync(
-    manifest: &PatchManifest,
+    manifest: &PinnedManifest,
     install_root: &Path,
     storage: &InstallationStorage,
     options: ExtractionOptions,
@@ -90,10 +91,11 @@ pub(super) fn extract_sync(
 ) -> Result<ExtractionReport> {
     let cache = &storage.cache;
     observer(ExtractionEvent::CheckingCache {
-        assets: manifest.assets.len(),
+        assets: manifest.release.assets.len(),
     });
     let mut manifest = resume_manifest(manifest.clone(), storage)?;
-    let patches = ordered_patches(&manifest)?
+    let patches = manifest
+        .ordered_patches()?
         .into_iter()
         .cloned()
         .collect::<Vec<_>>();

@@ -19,6 +19,7 @@ installation manages the copy on a person's machine.
 | Component version | The recorded version of one part of the game. Different parts can change independently. |
 | Download | Bring packages onto the machine, without yet applying them to the game. |
 | Download cache | Packages kept locally so they can be used or reused for installation. |
+| Pinned manifest | The resolved release saved for local work, together with completed component checkpoints. Its saved JSON keeps release details and checkpoints in the same record. |
 | Pinned selection | The saved choice of build and packages for unfinished work. A retry continues that choice even if the publisher releases something newer. |
 | Extraction | Use downloaded packages to put game content in place and apply any changes they contain. |
 | Install | Download and prepare the selected game in one operation. |

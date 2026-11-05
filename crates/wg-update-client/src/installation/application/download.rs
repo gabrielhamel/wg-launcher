@@ -5,9 +5,10 @@ use crate::installation::infrastructure::filesystem::records::{
     load_cache_manifest, save_cache_manifest,
 };
 use crate::{
-    Asset, AssetDownloader, DownloadEvent, DownloadOptions, DownloadReport, Result, WgusClient,
+    Result,
+    catalog::{Asset, WgusClient},
     installation::infrastructure::filesystem::{InstallationLock, installation_storage},
-    installation_assets,
+    installation::{AssetDownloader, DownloadEvent, DownloadOptions, DownloadReport},
 };
 use serde::Serialize;
 use std::path::PathBuf;
@@ -99,10 +100,12 @@ where
     } else {
         manifest
     };
-    let all_assets = installation_assets(&manifest)?;
+    let all_assets = manifest.installation_assets()?;
     let assets = select_download_assets(all_assets, &options.parts);
     if assets.is_empty() {
-        return Err(crate::DownloadError::EmptySelection(options.parts.join(", ")).into());
+        return Err(
+            crate::installation::DownloadError::EmptySelection(options.parts.join(", ")).into(),
+        );
     }
     let plan = build_plan(&manifest, root, &assets)?;
     observer(DownloadAssetsEvent::Planned(Box::new(plan.clone())));

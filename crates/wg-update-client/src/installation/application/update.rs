@@ -1,11 +1,10 @@
 use super::status::{StatusReport, build_status, load_installed_build};
 use super::{InstallEvent, InstallOutcome, install::install_resolved};
+use crate::catalog::WgusClient;
+use crate::installation::DownloadOptions;
 use crate::installation::domain::selection::validate_cached_selection;
 use crate::installation::infrastructure::filesystem::records::load_cache_manifest;
-use crate::{
-    DownloadOptions, Result, WgusClient,
-    installation::infrastructure::filesystem::installation_storage,
-};
+use crate::{Result, installation::infrastructure::filesystem::installation_storage};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -66,14 +65,16 @@ where
         validate_cached_selection(&pending, &installed.selection())?;
         pending
     } else {
-        WgusClient::new()?
-            .manifest_from_versions(
-                &installed.product,
-                &installed.client_type,
-                Some(&installed.language),
-                &installed.component_versions,
-            )
-            .await?
+        crate::installation::PinnedManifest::from(
+            WgusClient::new()?
+                .manifest_from_versions(
+                    &installed.product,
+                    &installed.client_type,
+                    Some(&installed.language),
+                    &installed.component_versions,
+                )
+                .await?,
+        )
     };
     // A package-only download may have pinned a full installation chain. Start
     // that chain at the installed versions, retaining any completed checkpoints.

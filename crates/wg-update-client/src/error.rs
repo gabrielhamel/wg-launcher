@@ -1,6 +1,7 @@
-use crate::{
-    CatalogError, DownloadError, ExtractError, InstallationError, PackageError, PipelineError,
-    ReleaseError, StatusError, StorageError, TransferError, WgusError,
+use crate::catalog::{CatalogError, ReleaseError, WgusError};
+use crate::installation::{
+    DownloadError, ExtractError, InstallationError, PackageError, PipelineError, StatusError,
+    StorageError, TransferError,
 };
 
 /// Actionable category of a workflow failure, independent of internal implementation layers.

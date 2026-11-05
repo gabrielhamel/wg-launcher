@@ -5,26 +5,30 @@ use super::{
     paths::safe_relative_path,
     storage::{DOWNLOAD_MANIFEST_FILE, InstallationStorage, replace_file},
 };
-use crate::{Patch, PatchManifest};
+use crate::catalog::Patch;
+use crate::installation::PinnedManifest;
 use std::{
     fs,
     path::{Path, PathBuf},
 };
 
 pub(crate) fn resume_manifest(
-    manifest: PatchManifest,
+    manifest: PinnedManifest,
     storage: &InstallationStorage,
-) -> Result<PatchManifest> {
+) -> Result<PinnedManifest> {
     let bytes = match fs::read(storage.cache.join(DOWNLOAD_MANIFEST_FILE)) {
         Ok(bytes) => bytes,
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(manifest),
         Err(error) => return Err(error.into()),
     };
-    let pending: PatchManifest = serde_json::from_slice(&bytes)?;
+    let pending: PinnedManifest = serde_json::from_slice(&bytes)?;
     Ok(manifest.resume_from(pending)?)
 }
 
-pub(crate) fn save_manifest(manifest: &PatchManifest, storage: &InstallationStorage) -> Result<()> {
+pub(crate) fn save_manifest(
+    manifest: &PinnedManifest,
+    storage: &InstallationStorage,
+) -> Result<()> {
     fs::create_dir_all(&storage.cache)?;
     let target = storage.cache.join(DOWNLOAD_MANIFEST_FILE);
     let temporary = storage.cache.join("manifest.json.part");
@@ -37,7 +41,7 @@ pub(crate) fn save_manifest(manifest: &PatchManifest, storage: &InstallationStor
 }
 
 pub(crate) fn checkpoint_patch(
-    manifest: &mut PatchManifest,
+    manifest: &mut PinnedManifest,
     patch: &Patch,
     storage: &InstallationStorage,
 ) -> Result<()> {

@@ -1,5 +1,7 @@
 use super::InstallationEvent;
-use crate::{Asset, AssetDownloader, DownloadOptions, DownloadReport, Result};
+use crate::Result;
+use crate::catalog::Asset;
+use crate::installation::{AssetDownloader, DownloadOptions, DownloadReport};
 use std::{path::PathBuf, sync::Arc};
 
 // Stop starting patches once this much data is queued ahead of the current
@@ -75,7 +77,7 @@ impl PatchDownloads {
                     Some(Err(error)) => error.to_string(),
                     _ => "Package downloads stopped before all packages were ready".to_owned(),
                 };
-                Err(crate::PipelineError::ExtractionTask(detail).into())
+                Err(crate::installation::PipelineError::ExtractionTask(detail).into())
             }
         }
     }

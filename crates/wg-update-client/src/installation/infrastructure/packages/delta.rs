@@ -2,7 +2,7 @@ use super::error::{PackageError as Error, Result};
 use crate::installation::infrastructure::filesystem::{
     paths::walk_files, retry::delta_source, storage::replace_file,
 };
-use crate::{ExtractionEvent, ExtractionReport};
+use crate::installation::{ExtractionEvent, ExtractionReport};
 use std::{
     ffi::OsStr,
     fs::{self, File},
@@ -20,9 +20,9 @@ pub(crate) fn apply_patch_directory(
 ) -> Result<()> {
     let files = walk_files(patch_dir)?;
     for source in files.iter().filter(|path| delta_target(path).is_none()) {
-        let relative = source
-            .strip_prefix(patch_dir)
-            .map_err(|_| crate::StorageError::UnsafeAssetPath(source.display().to_string()))?;
+        let relative = source.strip_prefix(patch_dir).map_err(|_| {
+            crate::installation::StorageError::UnsafeAssetPath(source.display().to_string())
+        })?;
         let target = game.join(relative);
         observer(ExtractionEvent::InstallingFile {
             path: relative.to_string_lossy().into_owned(),
@@ -30,9 +30,9 @@ pub(crate) fn apply_patch_directory(
         replace_file(source, &target, &work.join("replacement-backup"))?;
     }
     for delta in files.iter().filter(|path| delta_target(path).is_some()) {
-        let relative = delta
-            .strip_prefix(patch_dir)
-            .map_err(|_| crate::StorageError::UnsafeAssetPath(delta.display().to_string()))?;
+        let relative = delta.strip_prefix(patch_dir).map_err(|_| {
+            crate::installation::StorageError::UnsafeAssetPath(delta.display().to_string())
+        })?;
         let target_relative = delta_target(relative)
             .ok_or_else(|| Error::InvalidDeltaPath(relative.display().to_string()))?;
         let target = game.join(&target_relative);

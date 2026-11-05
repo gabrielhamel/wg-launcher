@@ -1,4 +1,4 @@
-use crate::InstallationError;
+use crate::installation::InstallationError;
 use std::path::PathBuf;
 
 /// Failures owned by installation filesystem storage.

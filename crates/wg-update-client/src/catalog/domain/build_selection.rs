@@ -1,5 +1,5 @@
 use super::error::{CatalogError as Error, Result};
-use crate::{Product, Region};
+use super::{Product, Region};
 
 /// Selects a catalog build.
 ///

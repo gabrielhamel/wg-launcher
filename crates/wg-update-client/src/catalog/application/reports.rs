@@ -1,4 +1,4 @@
-use crate::PatchManifest;
+use crate::catalog::ResolvedRelease;
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -28,7 +28,7 @@ pub struct BuildInfo {
 }
 
 impl BuildInfo {
-    pub(crate) fn from_manifest(manifest: &PatchManifest) -> Self {
+    pub(crate) fn from_manifest(manifest: &ResolvedRelease) -> Self {
         Self {
             game: manifest.product.game(),
             name: manifest.product.name.clone(),
@@ -79,7 +79,7 @@ pub struct InspectReport {
 }
 
 impl InspectReport {
-    pub(crate) fn from_manifest(manifest: &PatchManifest) -> Self {
+    pub(crate) fn from_manifest(manifest: &ResolvedRelease) -> Self {
         Self {
             build: BuildInfo::from_manifest(manifest),
             available_languages: manifest.available_languages.clone(),
@@ -97,7 +97,7 @@ impl InspectReport {
                 .collect(),
             package_count: manifest.assets.len(),
             compressed_bytes: manifest.download_size(),
-            default_output_directory: manifest.default_output_directory(),
+            default_output_directory: BuildInfo::from_manifest(manifest).default_output_directory(),
         }
     }
 }

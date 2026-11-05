@@ -1,5 +1,5 @@
-use super::infrastructure::read_products;
-use super::presentation::{
+use super::super::infrastructure::read_products;
+use super::{
     args::{InspectArgs, ListArgs},
     output::{build_table, print_inspection, print_install_hint},
 };

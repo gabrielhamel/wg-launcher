@@ -12,8 +12,8 @@ pub use application::{
 pub(crate) use domain::CatalogError;
 pub(crate) use domain::release::patch_chain::{assets_for_patches, ordered_patches};
 pub(crate) use domain::release::{
-    Asset, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile, PatchManifest,
-    ReleaseError, WebSeed, installation_assets,
+    Asset, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile, ReleaseError,
+    ResolvedRelease, WebSeed, installation_assets,
 };
 pub use domain::{BuildSelection, Game, Product, Region};
 pub(crate) use infrastructure::wgus::{WgusClient, WgusError};

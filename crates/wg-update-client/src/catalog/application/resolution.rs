@@ -1,9 +1,10 @@
-use crate::{BuildSelection, Error, PatchManifest, Result, WgusClient, installation_assets};
+use crate::catalog::{BuildSelection, ResolvedRelease, WgusClient, installation_assets};
+use crate::{Error, Result};
 
 pub(crate) async fn resolve(
     client: &WgusClient,
     selection: &BuildSelection,
-) -> Result<PatchManifest> {
+) -> Result<ResolvedRelease> {
     let product = selection.selected_product()?;
     if let Some(client_type) = selection.client_type.as_deref() {
         return client
@@ -26,14 +27,14 @@ pub(crate) async fn resolve(
         .map(|client_type| client_type.id.as_str())
         .collect::<Vec<_>>()
         .join(", ");
-    let mut best: Option<(u64, PatchManifest)> = None;
+    let mut best: Option<(u64, ResolvedRelease)> = None;
     let mut first_error: Option<Error> = None;
     for client_type in &metadata.client_types {
         match client
             .manifest_for_product(&product, &client_type.id, selection.language.as_deref())
             .await
         {
-            Ok(manifest) => match installation_assets(&manifest) {
+            Ok(manifest) => match installation_assets(&manifest, &Default::default()) {
                 Ok(assets) => {
                     let size = assets.iter().map(|asset| asset.size).sum();
                     if best.as_ref().is_none_or(|(best_size, _)| size < *best_size) {
@@ -51,7 +52,7 @@ pub(crate) async fn resolve(
     }
     best.map(|(_, manifest)| manifest).ok_or_else(|| {
         first_error.unwrap_or_else(|| {
-            crate::ReleaseError::UnknownClientType {
+            crate::catalog::ReleaseError::UnknownClientType {
                 requested: "publisher default or smallest variant".into(),
                 available,
             }

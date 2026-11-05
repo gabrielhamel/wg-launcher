@@ -1,7 +1,7 @@
 mod error;
 
 use self::error::{Result, TransferError as Error};
-use crate::Asset;
+use crate::catalog::Asset;
 use crate::installation::infrastructure::filesystem::paths::safe_relative_path;
 pub use error::TransferError;
 use futures_util::{StreamExt, stream};

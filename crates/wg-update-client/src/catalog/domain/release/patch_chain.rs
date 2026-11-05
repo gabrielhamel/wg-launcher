@@ -1,18 +1,21 @@
 use super::error::{ReleaseError as Error, Result};
-use crate::{Asset, Patch, PatchManifest};
-use std::collections::{HashMap, HashSet};
+use super::{Asset, Patch, ResolvedRelease};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// Clones the transport assets required by the ordered installation chain.
 ///
-/// Starts at each component checkpoint (or `0` for a fresh install), then
+/// Starts at each supplied component version (or `0` for a fresh install), then
 /// resolves their volumes by name. Does not read disk or contact the catalog.
 ///
 /// # Errors
 ///
 /// Returns an error for an unreachable component target, cyclic patch chain, or a patch
 /// volume absent from the manifest assets.
-pub fn installation_assets(manifest: &PatchManifest) -> Result<Vec<Asset>> {
-    let patches = ordered_patches(manifest)?
+pub fn installation_assets(
+    manifest: &ResolvedRelease,
+    base_versions: &BTreeMap<String, String>,
+) -> Result<Vec<Asset>> {
+    let patches = ordered_patches(manifest, base_versions)?
         .into_iter()
         .cloned()
         .collect::<Vec<_>>();
@@ -23,7 +26,7 @@ pub fn installation_assets(manifest: &PatchManifest) -> Result<Vec<Asset>> {
 }
 
 pub(crate) fn assets_for_patches(
-    manifest: &PatchManifest,
+    manifest: &ResolvedRelease,
     patches: &[Patch],
 ) -> Result<Vec<Vec<Asset>>> {
     let by_name = manifest
@@ -49,18 +52,17 @@ pub(crate) fn assets_for_patches(
         .collect()
 }
 
-pub(crate) fn ordered_patches(manifest: &PatchManifest) -> Result<Vec<&Patch>> {
+pub(crate) fn ordered_patches<'a>(
+    manifest: &'a ResolvedRelease,
+    base_versions: &BTreeMap<String, String>,
+) -> Result<Vec<&'a Patch>> {
     let mut ordered = Vec::new();
     for part in &manifest.parts {
         let target = manifest
             .component_versions
             .get(part)
             .ok_or_else(|| Error::MissingFullPatch { part: part.clone() })?;
-        let mut version = manifest
-            .base_versions
-            .get(part)
-            .map(String::as_str)
-            .unwrap_or("0");
+        let mut version = base_versions.get(part).map(String::as_str).unwrap_or("0");
         let by_from = manifest
             .patches
             .iter()

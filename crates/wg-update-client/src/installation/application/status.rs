@@ -1,4 +1,6 @@
-use crate::{BuildInfo, InstalledBuild, PatchManifest, Result, WgusClient, installation_assets};
+use crate::Result;
+use crate::catalog::{BuildInfo, WgusClient};
+use crate::installation::{InstalledBuild, PinnedManifest};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -52,17 +54,20 @@ pub async fn status(options: StatusOptions) -> Result<StatusReport> {
             &installed.component_versions,
         )
         .await?;
+    let mut latest = PinnedManifest::from(latest);
+    latest.include_installed_versions(&installed);
     build_status(path, installed, &latest)
 }
 
 pub(super) fn build_status(
     path: PathBuf,
     installed: InstalledBuild,
-    manifest: &PatchManifest,
+    manifest: &PinnedManifest,
 ) -> Result<StatusReport> {
     let update_available = installed.differs_from(manifest);
     let update_download_bytes = if update_available {
-        installation_assets(manifest)?
+        manifest
+            .installation_assets()?
             .iter()
             .map(|asset| asset.size)
             .sum()
@@ -72,7 +77,7 @@ pub(super) fn build_status(
     Ok(StatusReport {
         path,
         installed: installed.build_info(),
-        latest_version: manifest.version.clone(),
+        latest_version: manifest.release.version.clone(),
         update_available,
         update_download_bytes,
     })
@@ -88,7 +93,7 @@ pub enum StatusError {
 
 pub(super) async fn load_installed_build(
     root: &std::path::Path,
-) -> crate::Result<crate::InstalledBuild> {
+) -> crate::Result<crate::installation::InstalledBuild> {
     Ok(
         crate::installation::infrastructure::filesystem::records::load_installed_build(root)
             .await?

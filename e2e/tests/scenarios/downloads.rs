@@ -74,6 +74,35 @@ fn filtered_download_preserves_manifest_and_extraction_requires_remaining_packag
     let manifest_path = game.join(".wg-launcher/download/manifest.json");
     let pinned = fs::read(&manifest_path).unwrap();
     let manifest: serde_json::Value = serde_json::from_slice(&pinned).unwrap();
+    let expected_fields = [
+        "architecture",
+        "assets",
+        "available_languages",
+        "base_versions",
+        "channel",
+        "client_type",
+        "component_versions",
+        "game_id",
+        "host",
+        "language",
+        "metadata_version",
+        "parts",
+        "patches",
+        "platform",
+        "product",
+        "publisher_ids",
+        "region",
+        "version",
+        "web_seeds",
+    ];
+    let actual_fields = manifest
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(actual_fields, expected_fields.into_iter().collect());
+    assert_eq!(manifest["base_versions"], serde_json::json!({}));
     assert_eq!(manifest["parts"], serde_json::json!(["client", "locale"]));
     assert_eq!(manifest["assets"].as_array().unwrap().len(), 2);
     assert_eq!(manifest["product"]["game_id"], "LOCAL.WOT");

@@ -5,7 +5,7 @@ use std::path::PathBuf;
 pub enum TransferError {
     /// Invalid local path or other installation storage failure.
     #[error(transparent)]
-    Storage(#[from] crate::StorageError),
+    Storage(#[from] crate::installation::StorageError),
     /// HTTP client creation, request, status, or response-stream failure.
     #[error("request failed: {0}")]
     Http(#[from] reqwest::Error),

@@ -21,3 +21,6 @@ Here, the focus is helping a person make that selection.
 | Default language | The language the publisher selects for that region when no language is requested. |
 | Custom catalog | A supplied collection of products used in place of the built-in catalog. |
 | Warning | An explanation that a particular choice is unavailable, alongside any choices that could be shown. |
+
+Command handlers live in `presentation/commands.rs`. They translate arguments,
+call the client library, and render results; the library owns the workflow rules.

@@ -9,7 +9,7 @@ mod resolution;
 pub(crate) mod status;
 mod update;
 
-use crate::BuildSelection;
+use crate::catalog::BuildSelection;
 pub use download::{
     DownloadAssetsEvent, DownloadAssetsOptions, DownloadAssetsOutcome, download,
     download_with_observer,

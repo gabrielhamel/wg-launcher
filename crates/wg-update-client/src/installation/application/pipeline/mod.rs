@@ -3,12 +3,13 @@
 mod extraction;
 mod prefetch;
 mod types;
-use crate::catalog::{assets_for_patches, ordered_patches};
+use crate::catalog::assets_for_patches;
 use crate::installation::infrastructure::filesystem::{
     InstallationLock, installation_storage, retry,
     storage::{prepare_installation, remove_patch_volumes},
 };
-use crate::{AssetDownloader, DownloadOptions, Error, PatchManifest, Result};
+use crate::installation::{AssetDownloader, DownloadOptions, PinnedManifest};
+use crate::{Error, Result};
 use extraction::{InstallationPaths, extract_patch_sync, extract_sync, finalize_installation};
 use prefetch::{DOWNLOAD_PREFETCH_BYTES, PatchDownloads, merge_download_report};
 use std::{path::Path, sync::Arc};
@@ -43,7 +44,7 @@ impl PackageExtractor {
     /// errors described by [`Self::extract_with_options_and_observer`].
     pub async fn extract_with_observer<F>(
         &self,
-        manifest: PatchManifest,
+        manifest: PinnedManifest,
         install_root: impl AsRef<Path>,
         observer: F,
     ) -> Result<ExtractionReport>
@@ -74,7 +75,7 @@ impl PackageExtractor {
     /// Cache verification uses sizes rather than content hashes.
     pub async fn extract_with_options_and_observer<F>(
         &self,
-        manifest: PatchManifest,
+        manifest: PinnedManifest,
         install_root: impl AsRef<Path>,
         options: ExtractionOptions,
         observer: F,
@@ -90,7 +91,7 @@ impl PackageExtractor {
             extract_sync(&manifest, &install_root, &storage, options, observer)
         })
         .await
-        .map_err(|error| crate::PipelineError::ExtractionTask(error.to_string()))?
+        .map_err(|error| crate::installation::PipelineError::ExtractionTask(error.to_string()))?
     }
 
     /// Streams package downloads and ordered extraction under the installation lock.
@@ -113,7 +114,7 @@ impl PackageExtractor {
     pub async fn download_and_extract_with_observer<F>(
         &self,
         downloader: AssetDownloader,
-        manifest: PatchManifest,
+        manifest: PinnedManifest,
         install_root: impl AsRef<Path>,
         download_options: DownloadOptions,
         extraction_options: ExtractionOptions,
@@ -127,11 +128,12 @@ impl PackageExtractor {
         let _lock = InstallationLock::acquire(&storage, &install_root)?;
         let cache = storage.cache.clone();
         let mut manifest = retry::resume_manifest(manifest, &storage)?;
-        let patches = ordered_patches(&manifest)?
+        let patches = manifest
+            .ordered_patches()?
             .into_iter()
             .cloned()
             .collect::<Vec<_>>();
-        let assets = assets_for_patches(&manifest, &patches)?;
+        let assets = assets_for_patches(&manifest.release, &patches)?;
         retry::save_manifest(&manifest, &storage)?;
         let observer: Arc<dyn Fn(InstallationEvent) + Send + Sync> = Arc::new(observer);
         let extraction_observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = {
@@ -145,7 +147,9 @@ impl PackageExtractor {
         let prepare_storage = storage.clone();
         tokio::task::spawn_blocking(move || prepare_installation(&prepare_root, &prepare_storage))
             .await
-            .map_err(|error| crate::PipelineError::ExtractionTask(error.to_string()))??;
+            .map_err(|error| {
+                crate::installation::PipelineError::ExtractionTask(error.to_string())
+            })??;
 
         let total = patches.len();
         let mut report = InstallationReport::default();
@@ -184,9 +188,10 @@ impl PackageExtractor {
                     };
                     Ok::<_, Error>((deltas, released, checkpoint_manifest))
                 });
-                let (deltas, released, checkpoint_manifest) = extraction
-                    .await
-                    .map_err(|error| crate::PipelineError::ExtractionTask(error.to_string()))??;
+                let (deltas, released, checkpoint_manifest) =
+                    extraction.await.map_err(|error| {
+                        crate::installation::PipelineError::ExtractionTask(error.to_string())
+                    })??;
                 manifest = checkpoint_manifest;
                 report.extraction.applied_deltas += deltas;
                 report.released_package_bytes += released;
@@ -217,7 +222,7 @@ impl PackageExtractor {
             )
         })
         .await
-        .map_err(|error| crate::PipelineError::ExtractionTask(error.to_string()))??;
+        .map_err(|error| crate::installation::PipelineError::ExtractionTask(error.to_string()))??;
         Ok(report)
     }
 }

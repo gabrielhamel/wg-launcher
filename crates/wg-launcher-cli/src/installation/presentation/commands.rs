@@ -1,4 +1,4 @@
-use super::presentation::{
+use super::{
     args::{DownloadArgs, ExtractArgs, InstallArgs, PathArgs, UpdateArgs},
     observers::{
         fail_install_progress, finish_install_progress, observe_download, observe_extract,

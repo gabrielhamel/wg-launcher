@@ -1,6 +1,6 @@
 use super::error::Result;
 use super::installation_storage;
-use crate::{DOWNLOAD_MANIFEST_FILE, InstalledBuild, PatchManifest};
+use crate::installation::{DOWNLOAD_MANIFEST_FILE, InstalledBuild, PinnedManifest};
 use std::path::Path;
 
 pub(crate) async fn load_installed_build(root: &Path) -> Result<Option<InstalledBuild>> {
@@ -12,7 +12,7 @@ pub(crate) async fn load_installed_build(root: &Path) -> Result<Option<Installed
     }
 }
 
-pub(crate) async fn load_cache_manifest(cache: &Path) -> Result<Option<PatchManifest>> {
+pub(crate) async fn load_cache_manifest(cache: &Path) -> Result<Option<PinnedManifest>> {
     let path = cache.join(DOWNLOAD_MANIFEST_FILE);
     match tokio::fs::read(&path).await {
         Ok(bytes) => Ok(Some(serde_json::from_slice(&bytes)?)),
@@ -21,7 +21,7 @@ pub(crate) async fn load_cache_manifest(cache: &Path) -> Result<Option<PatchMani
     }
 }
 
-pub(crate) async fn save_cache_manifest(manifest: &PatchManifest, cache: &Path) -> Result<()> {
+pub(crate) async fn save_cache_manifest(manifest: &PinnedManifest, cache: &Path) -> Result<()> {
     tokio::fs::create_dir_all(cache).await?;
     let mut bytes = serde_json::to_vec_pretty(manifest)?;
     bytes.push(b'\n');

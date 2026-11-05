@@ -1,9 +1,7 @@
 use super::{InstallPlan, plan::build_plan};
 use crate::installation::infrastructure::filesystem::records::load_cache_manifest;
-use crate::{
-    ExtractionEvent, ExtractionReport, PackageExtractor, Result,
-    installation::infrastructure::filesystem::installation_storage, installation_assets,
-};
+use crate::installation::{ExtractionEvent, ExtractionReport, PackageExtractor};
+use crate::{Result, installation::infrastructure::filesystem::installation_storage};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -71,10 +69,10 @@ where
 {
     let root = std::path::absolute(options.path)?;
     let cache = installation_storage(&root)?.cache;
-    let manifest = load_cache_manifest(&cache)
-        .await?
-        .ok_or_else(|| crate::ExtractError::DownloadManifestNotFound(cache.clone()))?;
-    let assets = installation_assets(&manifest)?;
+    let manifest = load_cache_manifest(&cache).await?.ok_or_else(|| {
+        crate::installation::ExtractError::DownloadManifestNotFound(cache.clone())
+    })?;
+    let assets = manifest.installation_assets()?;
     let plan = build_plan(&manifest, root, &assets)?;
     observer(ExtractEvent::Planned(Box::new(plan.clone())));
     let report = PackageExtractor::new()

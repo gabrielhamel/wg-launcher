@@ -1,3 +1,4 @@
+mod directory_name;
 mod discovery;
 mod resolution;
 

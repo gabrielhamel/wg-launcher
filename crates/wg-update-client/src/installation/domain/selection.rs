@@ -1,8 +1,9 @@
+use super::PinnedManifest;
 use super::error::{InstallationError as Error, Result};
-use crate::{BuildSelection, PatchManifest};
+use crate::catalog::BuildSelection;
 
 pub(crate) fn validate_cached_selection(
-    manifest: &PatchManifest,
+    manifest: &PinnedManifest,
     selection: &BuildSelection,
 ) -> Result<()> {
     let product = selection.selected_product()?;
@@ -10,13 +11,15 @@ pub(crate) fn validate_cached_selection(
     let language_matches = selection
         .language
         .as_deref()
-        .is_none_or(|language| language.eq_ignore_ascii_case(&manifest.language));
-    let client_type_matches = selection
-        .client_type
-        .as_deref()
-        .is_none_or(|client_type| manifest.client_type.eq_ignore_ascii_case(client_type));
-    if manifest.product == product
-        && manifest.region == *selected_region
+        .is_none_or(|language| language.eq_ignore_ascii_case(&manifest.release.language));
+    let client_type_matches = selection.client_type.as_deref().is_none_or(|client_type| {
+        manifest
+            .release
+            .client_type
+            .eq_ignore_ascii_case(client_type)
+    });
+    if manifest.release.product == product
+        && manifest.release.region == *selected_region
         && client_type_matches
         && language_matches
     {
@@ -25,10 +28,10 @@ pub(crate) fn validate_cached_selection(
     Err(Error::CachedSelectionMismatch {
         cached: format!(
             "{}/{}/{}{}",
-            manifest.region,
-            manifest.client_type,
-            manifest.language,
-            product_description(&manifest.product)
+            manifest.release.region,
+            manifest.release.client_type,
+            manifest.release.language,
+            product_description(&manifest.release.product)
         ),
         requested: format!(
             "{}/{}/{}{}",
@@ -43,7 +46,7 @@ pub(crate) fn validate_cached_selection(
     })
 }
 
-fn product_description(product: &crate::Product) -> String {
+fn product_description(product: &crate::catalog::Product) -> String {
     format!(
         " ({}/{}: {}, {}, {})",
         product.game(),

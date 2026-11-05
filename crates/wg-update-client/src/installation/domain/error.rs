@@ -1,4 +1,4 @@
-use crate::CatalogError;
+use crate::catalog::CatalogError;
 
 /// Failures owned by installation consistency.
 #[derive(Debug, thiserror::Error)]

@@ -18,7 +18,7 @@ pub use application::{
 pub(crate) use application::{
     download::DownloadError, extract::ExtractError, pipeline::PipelineError, status::StatusError,
 };
-pub(crate) use domain::{InstallationError, InstalledBuild};
+pub(crate) use domain::{InstallationError, InstalledBuild, PinnedManifest};
 pub(crate) use infrastructure::filesystem::{DOWNLOAD_MANIFEST_FILE, StorageError};
 pub(crate) use infrastructure::packages::PackageError;
 pub(crate) use infrastructure::transfer::{AssetDownloader, TransferError};

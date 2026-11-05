@@ -1,7 +1,7 @@
-use crate::PatchManifest;
+use super::PinnedManifest;
 use serde::{Deserialize, Serialize};
 
-/// Build identity serialized in [`INSTALL_MARKER_FILE`](crate::INSTALL_MARKER_FILE).
+/// Build identity serialized in `.wg-launcher/state.json`.
 ///
 /// Created from a manifest only after extraction succeeds. Records the current
 /// installed build, while the installation directory may retain its original version
@@ -14,7 +14,7 @@ pub struct InstalledBuild {
     pub region: String,
     /// Complete selected product, saved for every built-in or custom installation.
     /// This is one product, never the full input catalog.
-    pub product: crate::Product,
+    pub product: crate::catalog::Product,
     /// Publisher release channel.
     pub channel: String,
     /// Publisher game build version.
@@ -33,27 +33,27 @@ pub struct InstalledBuild {
     pub metadata_version: String,
 }
 
-impl From<&PatchManifest> for InstalledBuild {
-    fn from(manifest: &PatchManifest) -> Self {
+impl From<&PinnedManifest> for InstalledBuild {
+    fn from(manifest: &PinnedManifest) -> Self {
         Self {
-            game_id: manifest.game_id.clone(),
-            region: manifest.region.clone(),
-            product: manifest.product.clone(),
-            channel: manifest.channel.clone(),
-            version: manifest.version.clone(),
-            client_type: manifest.client_type.clone(),
-            language: manifest.language.clone(),
-            platform: manifest.platform.clone(),
-            architecture: manifest.architecture.clone(),
-            metadata_version: manifest.metadata_version.clone(),
-            component_versions: manifest.component_versions.clone(),
+            game_id: manifest.release.game_id.clone(),
+            region: manifest.release.region.clone(),
+            product: manifest.release.product.clone(),
+            channel: manifest.release.channel.clone(),
+            version: manifest.release.version.clone(),
+            client_type: manifest.release.client_type.clone(),
+            language: manifest.release.language.clone(),
+            platform: manifest.release.platform.clone(),
+            architecture: manifest.release.architecture.clone(),
+            metadata_version: manifest.release.metadata_version.clone(),
+            component_versions: manifest.release.component_versions.clone(),
         }
     }
 }
 
 impl InstalledBuild {
-    pub(crate) fn build_info(&self) -> crate::BuildInfo {
-        crate::BuildInfo {
+    pub(crate) fn build_info(&self) -> crate::catalog::BuildInfo {
+        crate::catalog::BuildInfo {
             game: self.product.game(),
             name: self.product.name.clone(),
             game_id: self.game_id.clone(),
@@ -67,8 +67,8 @@ impl InstalledBuild {
         }
     }
 
-    pub(crate) fn selection(&self) -> crate::BuildSelection {
-        crate::BuildSelection {
+    pub(crate) fn selection(&self) -> crate::catalog::BuildSelection {
+        crate::catalog::BuildSelection {
             game: Some(self.product.game()),
             region: self.region.clone(),
             products: Some(vec![self.product.clone()]),
@@ -77,7 +77,8 @@ impl InstalledBuild {
         }
     }
 
-    pub(crate) fn differs_from(&self, manifest: &PatchManifest) -> bool {
-        self.version != manifest.version || self.component_versions != manifest.component_versions
+    pub(crate) fn differs_from(&self, manifest: &PinnedManifest) -> bool {
+        self.version != manifest.release.version
+            || self.component_versions != manifest.release.component_versions
     }
 }

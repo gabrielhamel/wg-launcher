@@ -4,9 +4,9 @@ mod wire;
 use self::error::{Result, WgusError as Error};
 pub use error::WgusError;
 
-use crate::{
-    Asset, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile, PatchManifest,
-    Product, WebSeed,
+use crate::catalog::{
+    Asset, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile, Product,
+    ResolvedRelease, WebSeed,
 };
 use reqwest::Client;
 use std::{
@@ -70,7 +70,7 @@ impl WgusClient {
         product: &Product,
         client_type: &str,
         language: Option<&str>,
-    ) -> Result<PatchManifest> {
+    ) -> Result<ResolvedRelease> {
         self.manifest_from_versions(product, client_type, language, &BTreeMap::new())
             .await
     }
@@ -89,7 +89,7 @@ impl WgusClient {
         client_type: &str,
         language: Option<&str>,
         component_versions: &BTreeMap<String, String>,
-    ) -> Result<PatchManifest> {
+    ) -> Result<ResolvedRelease> {
         product.validate_identity()?;
         let mut resolved = product.clone();
 
@@ -206,7 +206,7 @@ impl WgusClient {
         language: String,
         response: PatchesXml,
         component_versions: &BTreeMap<String, String>,
-    ) -> Result<PatchManifest> {
+    ) -> Result<ResolvedRelease> {
         let chain = match response.patches_chain {
             Some(chain) => chain,
             None if selected
@@ -305,7 +305,7 @@ impl WgusClient {
             .or_else(|| patches.first().map(|patch| patch.version_to.clone()))
             .unwrap_or_else(|| "unknown".to_owned());
 
-        Ok(PatchManifest {
+        Ok(ResolvedRelease {
             region: product.region.clone(),
             product: product.clone(),
             channel: product.channel.to_owned(),
@@ -320,7 +320,6 @@ impl WgusClient {
             available_languages: metadata.supported_languages,
             publisher_ids: metadata.publisher_ids,
             parts: selected.parts.iter().map(|part| part.id.clone()).collect(),
-            base_versions: component_versions.clone(),
             component_versions: selected
                 .parts
                 .iter()
@@ -329,11 +328,11 @@ impl WgusClient {
                         .get(&part.id)
                         .cloned()
                         .map(|version| (part.id.clone(), version))
-                        .ok_or_else(|| crate::ReleaseError::MissingFullPatch {
+                        .ok_or_else(|| crate::catalog::ReleaseError::MissingFullPatch {
                             part: part.id.clone(),
                         })
                 })
-                .collect::<std::result::Result<_, crate::ReleaseError>>()?,
+                .collect::<std::result::Result<_, crate::catalog::ReleaseError>>()?,
             patches,
             web_seeds,
             assets,

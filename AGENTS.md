@@ -365,7 +365,8 @@ the CLI.
   bounded context. `mod.rs` exposes its entry points and models.
 - `crates/wg-update-client/src/catalog/domain/`: built-in catalogs in `builtin.rs`,
   owned product validation, and catalog/build selection. `release/` owns metadata,
-  manifests, transport asset descriptions, variant/language rules, and patch planning.
+  resolved releases, transport asset descriptions, variant/language rules, and patch planning.
+  Resolved releases contain no local checkpoints; installation owns pinned manifests.
 - `crates/wg-update-client/src/catalog/application/`: list, inspect, and live build
   resolution, including publisher-default/smallest-variant selection.
 - `crates/wg-update-client/src/catalog/infrastructure/wgus/`: WGUS-compatible HTTP/XML,
@@ -373,7 +374,7 @@ the CLI.
 - `crates/wg-update-client/src/installation/`: local installation lifecycle bounded
   context. `mod.rs` exposes its workflows, models, and observer contracts.
 - `crates/wg-update-client/src/installation/domain/`: installed identity, pinned
-  selection compatibility, component checkpoints, and resume consistency.
+  manifests, selection compatibility, component checkpoints, and resume consistency.
 - `crates/wg-update-client/src/installation/application/`: download, extract, install,
   status, and update workflows with their options, events, reports, and local errors.
   `resolution.rs` owns pinned-cache reuse and calls catalog for live resolution;
@@ -394,9 +395,11 @@ the CLI.
 - `crates/wg-launcher-cli/src/cli/`: top-level command parsing and cross-context dispatch.
 - `crates/wg-launcher-cli/src/catalog/`: catalog command handlers, selection arguments,
   discovery tables, and custom product-file loading in its own infrastructure.
+  `presentation/commands.rs` coordinates library calls and terminal output.
 - `crates/wg-launcher-cli/src/installation/`: game installation command handlers,
   arguments, summaries, status output, observer adapters, and stable progress bars.
-  Business behavior remains in the client library.
+  `presentation/commands.rs` coordinates these commands; business behavior remains
+  in the client library.
 - `crates/wg-launcher-cli/src/self_update/`: independent executable-update context.
   `domain/` owns release comparison, candidate-version parsing, and path ownership
   rules; `application/` coordinates checking/updating; `infrastructure/` handles

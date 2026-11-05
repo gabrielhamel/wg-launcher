@@ -1,4 +1,5 @@
-use crate::{ReleaseError, StorageError};
+use crate::catalog::ReleaseError;
+use crate::installation::StorageError;
 use std::path::PathBuf;
 
 /// Failures owned by archive and delta application.

@@ -1,7 +1,8 @@
 use super::error::{Result, StorageError as Error};
 use super::paths::safe_relative_path;
-use crate::InstalledBuild;
-use crate::{Patch, PatchManifest};
+use crate::catalog::Patch;
+use crate::installation::InstalledBuild;
+use crate::installation::PinnedManifest;
 use std::{
     fs::{self, File, OpenOptions},
     path::{Path, PathBuf},
@@ -119,7 +120,7 @@ pub(crate) fn verify_cache(patches: &[&Patch], cache: &Path) -> Result<()> {
     Ok(())
 }
 
-pub(crate) fn write_marker(manifest: &PatchManifest, marker: &Path) -> Result<()> {
+pub(crate) fn write_marker(manifest: &PinnedManifest, marker: &Path) -> Result<()> {
     let marker_data = InstalledBuild::from(manifest);
     let bytes = serde_json::to_vec_pretty(&marker_data)?;
     if let Some(parent) = marker.parent() {

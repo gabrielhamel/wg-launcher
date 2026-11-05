@@ -1,7 +1,8 @@
 use super::{BuildSelection, InstallPlan, plan::build_plan, resolution::resolve_installation};
-use crate::{
+use crate::Result;
+use crate::catalog::WgusClient;
+use crate::installation::{
     AssetDownloader, DownloadOptions, InstallationEvent, InstallationReport, PackageExtractor,
-    Result, WgusClient, installation_assets,
 };
 use serde::Serialize;
 use std::path::PathBuf;
@@ -86,7 +87,7 @@ where
 }
 
 pub(super) async fn install_resolved<F>(
-    manifest: crate::PatchManifest,
+    manifest: crate::installation::PinnedManifest,
     root: PathBuf,
     download: DownloadOptions,
     observer: F,
@@ -94,7 +95,7 @@ pub(super) async fn install_resolved<F>(
 where
     F: Fn(InstallEvent) + Send + Sync + 'static,
 {
-    let assets = installation_assets(&manifest)?;
+    let assets = manifest.installation_assets()?;
     let plan = build_plan(&manifest, root, &assets)?;
     observer(InstallEvent::Planned(Box::new(plan.clone())));
 

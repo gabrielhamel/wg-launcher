@@ -18,6 +18,7 @@ selection to prepare the game on someone's machine.
 | Catalog | The collection of products available to choose from. |
 | Region | The publisher's label for an offering, such as Europe or worldwide. |
 | Channel | A stream of releases, such as the regular game or a public test. |
+| Resolved release | The selected published build, its component targets, and the packages the publisher offers. It contains no local installation progress. |
 | Build | A particular published version of a game for a chosen edition and language. |
 | Client type | The game's edition or quality variant, such as SD or HD. |
 | Language | The language chosen for the game content. |

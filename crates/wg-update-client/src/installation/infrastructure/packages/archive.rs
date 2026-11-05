@@ -1,6 +1,6 @@
 use super::error::{PackageError as Error, Result};
-use crate::ExtractionEvent;
-use crate::Patch;
+use crate::catalog::Patch;
+use crate::installation::ExtractionEvent;
 use crate::installation::infrastructure::filesystem::{
     paths::{safe_archive_path, safe_relative_path},
     storage::replace_file,
@@ -24,10 +24,10 @@ pub(crate) fn extract_archive(
         .files
         .iter()
         .map(|file| safe_relative_path(&file.name).map(|relative| cache.join(relative)))
-        .collect::<std::result::Result<Vec<_>, crate::StorageError>>()?;
+        .collect::<std::result::Result<Vec<_>, crate::installation::StorageError>>()?;
     volumes.sort();
     if volumes.is_empty() {
-        return Err(crate::ReleaseError::MissingFullPatch {
+        return Err(crate::catalog::ReleaseError::MissingFullPatch {
             part: patch.part.clone(),
         }
         .into());
