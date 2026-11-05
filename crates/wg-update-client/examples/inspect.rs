@@ -18,15 +18,15 @@ async fn main() -> wg_update_client::Result<()> {
         eprintln!("{}: {}", warning.client_type, warning.message);
     }
 
-    let build = inspect(InspectOptions {
+    let report = inspect(InspectOptions {
         selection: BuildSelection {
             game: Some("wot".into()),
             ..Default::default()
         },
     })
     .await?;
-    println!("Version: {}", build.version);
-    println!("Download: {} bytes", build.download_size());
-    println!("Components: {}", build.parts.join(", "));
+    println!("Version: {}", report.build.version);
+    println!("Download: {} bytes", report.compressed_bytes);
+    println!("Components: {}", report.parts.join(", "));
     Ok(())
 }

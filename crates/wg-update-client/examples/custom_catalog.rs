@@ -7,7 +7,9 @@ async fn main() -> wg_update_client::Result<()> {
             game: "local".into(),
             region: "eu".into(),
             name: "Local EU game".into(),
-            host: "http://localhost:8080/updates".parse()?,
+            host: "http://localhost:8080/updates"
+                .parse()
+                .expect("valid service URL"),
             game_id: "LOCAL.EU".into(),
             channel: "testing".into(),
         },
@@ -15,7 +17,9 @@ async fn main() -> wg_update_client::Result<()> {
             game: "local".into(),
             region: "KR".into(),
             name: "Local KR game".into(),
-            host: "http://localhost:8081/updates".parse()?,
+            host: "http://localhost:8081/updates"
+                .parse()
+                .expect("valid service URL"),
             game_id: "LOCAL.KR".into(),
             channel: "testing".into(),
         },
@@ -27,7 +31,7 @@ async fn main() -> wg_update_client::Result<()> {
     .await?;
     println!("Found {} builds", catalog.builds.len());
 
-    let build = inspect(InspectOptions {
+    let report = inspect(InspectOptions {
         selection: BuildSelection {
             game: Some("local".into()),
             region: "KR".into(),
@@ -36,6 +40,6 @@ async fn main() -> wg_update_client::Result<()> {
         },
     })
     .await?;
-    println!("{}: {}", build.region, build.version);
+    println!("{}: {}", report.build.region, report.build.version);
     Ok(())
 }

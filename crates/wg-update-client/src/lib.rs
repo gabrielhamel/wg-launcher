@@ -2,31 +2,29 @@
 #![deny(missing_docs, rustdoc::broken_intra_doc_links)]
 
 mod catalog;
-mod download;
 mod error;
-mod install;
-mod launcher;
-mod model;
-mod service;
+mod installation;
 
-pub use catalog::{Game, Product, Region};
-pub use download::{AssetDownloader, DownloadEvent, DownloadOptions, DownloadReport};
-pub use error::{Error, Result};
-pub use install::{
-    DOWNLOAD_CACHE_DIRECTORY, DOWNLOAD_MANIFEST_FILE, ExtractionEvent, ExtractionOptions,
-    ExtractionReport, INSTALL_MARKER_FILE, InstallationEvent, InstallationReport, InstalledBuild,
-    PackageExtractor, STAGING_DIRECTORY, installation_assets,
+pub use catalog::{
+    BuildInfo, BuildSelection, BuildSummary, Game, InspectOptions, InspectReport, ListOptions,
+    ListReport, ListWarning, PatchSummary, Product, Region, inspect, list,
 };
-pub use launcher::{
-    BuildSelection, BuildSummary, DownloadAssetsEvent, DownloadAssetsOptions,
-    DownloadAssetsOutcome, ExtractEvent, ExtractOptions, ExtractOutcome, InspectOptions,
-    InstallEvent, InstallOptions, InstallOutcome, InstallPlan, ListOptions, ListReport,
-    ListWarning, StatusOptions, StatusReport, UpdateOptions, UpdateOutcome, download,
-    download_with_observer, extract, extract_with_observer, inspect, install,
-    install_with_observer, list, status, update, update_with_observer,
+pub use error::{Error, ErrorKind, Result};
+pub use installation::{
+    DownloadAssetsEvent, DownloadAssetsOptions, DownloadAssetsOutcome, DownloadEvent,
+    DownloadOptions, DownloadReport, ExtractEvent, ExtractOptions, ExtractOutcome, ExtractionEvent,
+    ExtractionReport, InstallEvent, InstallOptions, InstallOutcome, InstallPlan, InstallationEvent,
+    InstallationReport, PackageSummary, StatusOptions, StatusReport, UpdateOptions, UpdateOutcome,
+    download, download_with_observer, extract, extract_with_observer, install,
+    install_with_observer, status, update, update_with_observer,
 };
-pub use model::{
-    Asset, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile, PatchManifest,
-    WebSeed,
+
+pub(crate) use catalog::{
+    Asset, CatalogError, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile,
+    PatchManifest, ReleaseError, WebSeed, WgusClient, WgusError, installation_assets,
 };
-pub use service::{PROTOCOL_VERSION, WgusClient};
+pub(crate) use installation::{
+    AssetDownloader, DOWNLOAD_MANIFEST_FILE, DownloadError, ExtractError, ExtractionOptions,
+    InstallationError, InstalledBuild, PackageError, PackageExtractor, PipelineError, StatusError,
+    StorageError, TransferError,
+};

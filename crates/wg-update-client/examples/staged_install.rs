@@ -16,6 +16,6 @@ async fn main() -> wg_update_client::Result<()> {
 
     // This step uses only the downloaded files, so it can run offline.
     let installed = extract(ExtractOptions { path }).await?;
-    println!("Installed {}", installed.plan.manifest.version);
+    println!("Installed {}", installed.plan.build.version);
     Ok(())
 }

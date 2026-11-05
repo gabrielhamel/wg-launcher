@@ -1,0 +1,118 @@
+use super::output::print_plan;
+use super::progress::{DownloadProgress, ExtractionProgress};
+use crate::terminal::human_bytes;
+use wg_update_client::{DownloadAssetsEvent, ExtractEvent, InstallEvent};
+
+pub(crate) type ProgressBars = Option<(DownloadProgress, ExtractionProgress)>;
+
+pub(crate) fn finish_install_progress(
+    progress: &std::sync::Mutex<ProgressBars>,
+    report: &wg_update_client::InstallationReport,
+) {
+    if let Some((download, extraction)) = progress.lock().expect("progress lock").as_ref() {
+        download.finish_success();
+        extraction.finish_success(&report.extraction);
+    }
+}
+
+pub(crate) fn fail_install_progress(progress: &std::sync::Mutex<ProgressBars>) {
+    if let Some((download, extraction)) = progress.lock().expect("progress lock").as_ref() {
+        download.finish_error();
+        extraction.finish_error();
+    }
+}
+
+pub(crate) fn observe_install(event: InstallEvent, progress: &std::sync::Mutex<ProgressBars>) {
+    match event {
+        InstallEvent::Planned(plan) => {
+            let plan = *plan;
+            println!(
+                "{} {} {} {}: {} assets, {} -> {}",
+                plan.build.region,
+                plan.build.version,
+                plan.build.client_type,
+                plan.build.language,
+                plan.packages.len(),
+                human_bytes(plan.compressed_bytes),
+                plan.root.display(),
+            );
+            println!("  package cache: {}", plan.cache.display());
+            match DownloadProgress::new(
+                plan.compressed_bytes,
+                plan.packages
+                    .iter()
+                    .map(|asset| (asset.name.as_str(), asset.size)),
+            ) {
+                Ok(download) => match ExtractionProgress::new(&download) {
+                    Ok(extraction) => {
+                        *progress.lock().expect("progress lock") = Some((download, extraction));
+                    }
+                    Err(error) => {
+                        eprintln!("warning: terminal progress unavailable: {error}");
+                    }
+                },
+                Err(error) => {
+                    eprintln!("warning: terminal progress unavailable: {error}");
+                }
+            }
+        }
+        InstallEvent::Progress(event) => {
+            let guard = progress.lock().expect("progress lock");
+            let Some((download, extraction)) = guard.as_ref() else {
+                return;
+            };
+            match event {
+                wg_update_client::InstallationEvent::Download(event) => download.update(event),
+                wg_update_client::InstallationEvent::Extraction(event) => extraction.update(event),
+                wg_update_client::InstallationEvent::ReleasedPackages => {
+                    extraction.finish_patch();
+                }
+            }
+        }
+    }
+}
+
+pub(crate) fn observe_download(
+    event: DownloadAssetsEvent,
+    progress: &std::sync::Mutex<Option<DownloadProgress>>,
+) {
+    match event {
+        DownloadAssetsEvent::Planned(plan) => {
+            print_plan(&plan);
+            match DownloadProgress::new(
+                plan.compressed_bytes,
+                plan.packages
+                    .iter()
+                    .map(|asset| (asset.name.as_str(), asset.size)),
+            ) {
+                Ok(download) => *progress.lock().expect("progress lock") = Some(download),
+                Err(error) => eprintln!("warning: terminal progress unavailable: {error}"),
+            }
+        }
+        DownloadAssetsEvent::Progress(event) => {
+            if let Some(progress) = progress.lock().expect("progress lock").as_ref() {
+                progress.update(event);
+            }
+        }
+    }
+}
+
+pub(crate) fn observe_extract(
+    event: ExtractEvent,
+    progress: &std::sync::Mutex<Option<ExtractionProgress>>,
+) {
+    match event {
+        ExtractEvent::Planned(plan) => {
+            print_plan(&plan);
+            match ExtractionProgress::standalone() {
+                Ok(extraction) => *progress.lock().expect("progress lock") = Some(extraction),
+                Err(error) => eprintln!("warning: terminal progress unavailable: {error}"),
+            }
+        }
+        ExtractEvent::Progress(event) => {
+            if let Some(progress) = progress.lock().expect("progress lock").as_ref() {
+                progress.update(event);
+            }
+        }
+    }
+}
