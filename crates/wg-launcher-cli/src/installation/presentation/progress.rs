@@ -142,6 +142,8 @@ impl DownloadProgress {
 pub(crate) struct ExtractionProgress {
     bar: ProgressBar,
     file: ProgressBar,
+    file_style: ProgressStyle,
+    delta_style: ProgressStyle,
 }
 
 impl ExtractionProgress {
@@ -156,12 +158,20 @@ impl ExtractionProgress {
         bar.set_message("Preparing extraction");
         bar.enable_steady_tick(Duration::from_millis(100));
         let file = multi.add(ProgressBar::new(0));
-        file.set_style(
+        let file_style =
             ProgressStyle::with_template("  {msg} [{wide_bar:.cyan/blue}] {bytes}/{total_bytes}")?
-                .progress_chars("━━╸"),
-        );
+                .progress_chars("━━╸");
+        let delta_style = ProgressStyle::with_template(
+            "  {spinner:.green} {msg} • {bytes} • {bytes_per_sec} • elapsed {elapsed_precise}",
+        )?;
+        file.set_style(file_style.clone());
         file.finish_and_clear();
-        Ok(Self { bar, file })
+        Ok(Self {
+            bar,
+            file,
+            file_style,
+            delta_style,
+        })
     }
 
     pub(crate) fn standalone() -> Result<Self, TemplateError> {
@@ -199,11 +209,26 @@ impl ExtractionProgress {
             } => {
                 if extracted == 0 {
                     self.file.reset();
+                    self.file.set_style(self.file_style.clone());
                 }
                 self.file.set_length(size);
                 self.file
                     .set_message(format!("Extracting file {index}/{total}: {path}"));
                 self.file.set_position(extracted);
+            }
+            ExtractionEvent::PreparingDelta { path } => {
+                self.file.finish_and_clear();
+                self.bar
+                    .set_message(format!("Preserving original file: {path}"));
+            }
+            ExtractionEvent::DeltaProgress { path: _, written } => {
+                if written == 0 {
+                    self.file.reset();
+                    self.file.set_style(self.delta_style.clone());
+                    self.file.set_message("Reconstructed");
+                    self.file.enable_steady_tick(Duration::from_millis(100));
+                }
+                self.file.set_position(written);
             }
             ExtractionEvent::ApplyingDelta { path } => {
                 self.file.finish_and_clear();

@@ -93,6 +93,14 @@ Download, extraction, installation, and update also provide `_with_observer`
 variants for structured progress. `DownloadOptions` controls transfer concurrency
 and retries; ordinary calls do not require an observer.
 
+Delta application reports preservation of the original file, the start of
+application, and throttled cumulative reconstructed bytes through
+`ExtractionEvent::PreparingDelta`, `ApplyingDelta`, and `DeltaProgress`.
+The CLI displays reconstructed bytes, throughput, and elapsed time. The final
+output size is not known in advance, so delta progress has no percentage or ETA.
+A final byte notification follows successful output flushing; patch checkpointing
+and installation completion remain separate events.
+
 `inspect` returns `InspectReport`: selected `BuildInfo`, available languages,
 component identifiers, patch summaries, package count, compressed bytes, and a
 suggested installation directory. Each `PatchSummary` describes its component,

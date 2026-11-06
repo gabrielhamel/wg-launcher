@@ -39,6 +39,22 @@ pub enum ExtractionEvent {
         /// Expected uncompressed file size in bytes.
         size: u64,
     },
+    /// The original game file is being preserved for a resumable delta application.
+    PreparingDelta {
+        /// Relative game file path.
+        path: String,
+    },
+    /// Progress reconstructing a game file from a delta.
+    ///
+    /// The output size is unknown in advance. Notifications are throttled, with
+    /// an initial zero and a final byte count after successful output flushing.
+    /// The final count does not mean the whole patch has been checkpointed.
+    DeltaProgress {
+        /// Relative game file path.
+        path: String,
+        /// Reconstructed output bytes, not a per-event increment.
+        written: u64,
+    },
     /// A delta is about to be applied to a game file.
     ApplyingDelta {
         /// Relative archive entry or game file path.

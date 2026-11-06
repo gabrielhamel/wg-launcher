@@ -123,7 +123,7 @@ crates/
           pipeline/           Shared streaming/local installation coordination
         infrastructure/
           transfer/           Resumable HTTP package downloads
-          packages/           Transport archives and delta application
+          packages/           Transport archives, delta application, throttled output progress
           filesystem/         Paths, locking, records, replacement, cleanup
       error.rs                Public Error, ErrorKind classification, and Result alias
   wg-launcher-cli/            CLI package, README, and license
