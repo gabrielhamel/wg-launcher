@@ -10,23 +10,23 @@ Windows/x64. Player login and launching the game are outside its scope.
 
 ## Install the CLI
 
-Install with WinGet, apt, the shell installer, or Homebrew for your platform. Rust and Cargo are not required.
+Install with PowerShell, apt, the shell installer, or Homebrew for your platform. Rust and Cargo are not required.
 The CLI is distributed through GitHub Releases;
 only the `wg-update-client` Rust library is published to crates.io.
 
-### Windows x64 — WinGet
+### Windows x64 — PowerShell
 
-Install with WinGet:
-
-```powershell
-winget install --id GabrielHamel.WgLauncher --exact --source winget
-```
-
-Upgrade WinGet installations with:
+Run this in PowerShell:
 
 ```powershell
-winget upgrade --id GabrielHamel.WgLauncher --exact --source winget
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
 ```
+
+Follow the installer's instructions to add `wg-launcher` to your `PATH`, then
+open a new terminal. To upgrade, run `wg-launcher self-update`.
+
+WinGet support is coming soon: the [package submission](https://github.com/microsoft/winget-pkgs/pull/468869)
+is awaiting Microsoft's approval. Until it is published, use the PowerShell installer above.
 
 ### Debian and Ubuntu x64 — apt
 
@@ -82,15 +82,7 @@ used. Homebrew owns this installation; `wg-launcher self-update` directs you to
 <a id="manual-installation"></a>
 
 <details>
-<summary>Install with PowerShell, curl, an archive, or Rust and Cargo</summary>
-
-#### Windows x64
-
-Run this in PowerShell:
-
-```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
-```
+<summary>Install with curl, an archive, or Rust and Cargo</summary>
 
 #### Linux
 

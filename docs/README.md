@@ -18,7 +18,7 @@ Choose the path that matches what you want to build or install.
 <details>
 <summary>I'm using the terminal. What's the quickest starting point?</summary>
 
-Install with [WinGet on Windows](../crates/wg-launcher-cli/README.md#windows-x64--winget),
+Install with [PowerShell on Windows](../crates/wg-launcher-cli/README.md#windows-x64--powershell),
 [apt on Debian or Ubuntu](../crates/wg-launcher-cli/README.md#debian-and-ubuntu-x64--apt),
 [the shell installer on other Linux distributions](../crates/wg-launcher-cli/README.md#other-linux-x64--shell-installer), or
 [Homebrew on macOS](../crates/wg-launcher-cli/README.md#macos-arm-and-intel--homebrew).

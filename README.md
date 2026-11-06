@@ -10,19 +10,19 @@ Works with Wargaming, Lesta, and your own WGUS-compatible update services.
 Install a prebuilt executable using the instructions for your platform.
 Rust and Cargo are not required.
 
-### Windows x64 — WinGet
+### Windows x64 — PowerShell
 
-Install with WinGet:
-
-```powershell
-winget install --id GabrielHamel.WgLauncher --exact --source winget
-```
-
-To upgrade:
+Run this in PowerShell:
 
 ```powershell
-winget upgrade --id GabrielHamel.WgLauncher --exact --source winget
+powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
 ```
+
+Follow the installer's instructions to add `wg-launcher` to your `PATH`, then
+open a new terminal. To upgrade, run `wg-launcher self-update`.
+
+WinGet support is coming soon: the [package submission](https://github.com/microsoft/winget-pkgs/pull/468869)
+is awaiting Microsoft's approval. Until it is published, use the PowerShell installer above.
 
 ### Debian and Ubuntu x64 — apt
 
@@ -60,13 +60,7 @@ brew install gabrielhamel/tap/wg-launcher
 To upgrade, run `brew update`, then `brew upgrade gabrielhamel/tap/wg-launcher`.
 
 <details>
-<summary>Manual installation: shell, PowerShell, archives, or source</summary>
-
-**Windows x64 — PowerShell:**
-
-```powershell
-powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-launcher/releases/latest/download/wg-launcher-cli-installer.ps1 | iex"
-```
+<summary>Other installation options: shell, archives, or source</summary>
 
 **macOS (Apple Silicon or Intel) and Linux x64:**
 
