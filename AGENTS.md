@@ -391,8 +391,9 @@ the CLI.
 - `crates/wg-update-client/src/installation/infrastructure/filesystem/`: installation
   paths, locks, JSON persistence, recovery source files, replacement, and cleanup.
   Keep layout/staging in `storage.rs`, exclusive locking in `lock.rs`, package
-  verification/release in `cache.rs`, persistence in `records.rs`, recovery
-  coordination in `retry.rs`, and file replacement in `replacement.rs`.
+  verification/release in `cache.rs`, persistence and manifest resumption in
+  `records.rs`, active patch staging and original sources in `patch_workspace.rs`,
+  and file replacement in `replacement.rs`.
 - `crates/wg-update-client/src/error.rs`: thin public workflow error wrapper.
   Define concrete errors beside the rules/operations that own them. Domain and
   infrastructure functions return local errors; wrap causes at workflow boundaries.

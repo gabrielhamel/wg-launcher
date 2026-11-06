@@ -141,6 +141,27 @@ fn retry_after_partial_delta_application_uses_original_sources_and_pinned_releas
         serde_json::from_slice(&fs::read(cache.join("manifest.json")).unwrap()).unwrap();
     assert_eq!(pending["base_versions"]["client"], "1.0");
 
+    let patch = pending["patches"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|patch| patch["part"] == "client" && patch["version_to"] == "2.0")
+        .unwrap();
+    assert_eq!(patch["version_from"], "1.0");
+    assert!(patch.get("source").is_none());
+    let asset = pending["assets"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|asset| asset["name"] == "delta.wgpkg")
+        .unwrap();
+    assert_eq!(asset["version_from"], "1.0");
+    let identity: serde_json::Value = serde_json::from_slice(
+        &fs::read(game.join(".wg-launcher/installing/active/patch.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(identity, serde_json::json!(["client", "1.0", "2.0"]));
+
     // Repair the missing source, then republish an older catalog. The same delta
     // archive is retried without discovery or another transfer.
     fs::write(game.join("z.pkg"), Release::V1.payload()).unwrap();
@@ -323,6 +344,50 @@ fn build_identity_can_advance_without_downloading_unchanged_components() {
         fs::read(game.join("payload.pkg")).unwrap(),
         Release::V1.payload()
     );
+    assert!(!game.join(".wg-launcher/download").exists());
+    assert!(!game.join(".wg-launcher/installing").exists());
+}
+
+#[test]
+fn mixed_patch_installs_replacements_before_deltas_and_keeps_ordinary_delta_extensions() {
+    let sandbox = Sandbox::new();
+    let (game, initial, server) = installed(&sandbox);
+    // The delta needs a source supplied by a replacement in the same archive.
+    // That replacement is listed after the delta to exercise classification order.
+    fs::remove_file(game.join("payload.pkg")).unwrap();
+    let delta = DeltaFixture::build_with_replacements(
+        &initial,
+        &sandbox.path.join("mixed"),
+        false,
+        &[
+            ("payload.pkg", Release::V1.payload()),
+            ("notes.rdiff", b"ordinary game content"),
+            (
+                "notes.pkg.1.not-a-checksum.xdiff",
+                b"also ordinary game content",
+            ),
+        ],
+    );
+    server.replace_resources(delta.resources);
+    let before = server.requests().len();
+    success(sandbox.run(&game, &["update"]));
+    assert_eq!(fs::read(game.join("payload.pkg")).unwrap(), delta.payload);
+    assert_eq!(
+        fs::read(game.join("notes.rdiff")).unwrap(),
+        b"ordinary game content"
+    );
+    assert_eq!(
+        fs::read(game.join("notes.pkg.1.not-a-checksum.xdiff")).unwrap(),
+        b"also ordinary game content"
+    );
+    assert_eq!(state(&game)["component_versions"]["client"], "2.0");
+    let requests = server.requests();
+    let packages = requests[before..]
+        .iter()
+        .filter(|request| request.path.ends_with(".wgpkg"))
+        .map(|request| request.path.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(packages, ["/delta.wgpkg"]);
     assert!(!game.join(".wg-launcher/download").exists());
     assert!(!game.join(".wg-launcher/installing").exists());
 }

@@ -1,6 +1,6 @@
 use super::InstallationEvent;
 use crate::Result;
-use crate::catalog::Asset;
+use crate::catalog::{Patch, PlannedPatch};
 use crate::installation::{AssetDownloader, DownloadOptions, DownloadReport};
 use std::{path::PathBuf, sync::Arc};
 
@@ -10,14 +10,14 @@ use std::{path::PathBuf, sync::Arc};
 pub(super) const DOWNLOAD_PREFETCH_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 pub(super) struct PatchDownloads {
     tasks: tokio::task::JoinSet<()>,
-    reports: tokio::sync::mpsc::UnboundedReceiver<Result<DownloadReport>>,
+    reports: tokio::sync::mpsc::UnboundedReceiver<Result<DownloadedPatch>>,
     current: tokio::sync::watch::Sender<usize>,
 }
 
 impl PatchDownloads {
     pub(super) fn start(
         downloader: AssetDownloader,
-        patches: Vec<Vec<Asset>>,
+        patches: Vec<PlannedPatch>,
         cache: PathBuf,
         options: DownloadOptions,
         observer: Arc<dyn Fn(InstallationEvent) + Send + Sync>,
@@ -29,14 +29,15 @@ impl PatchDownloads {
         tasks.spawn(async move {
             let sizes = patches
                 .iter()
-                .map(|assets| {
-                    assets
+                .map(|planned| {
+                    planned
+                        .packages
                         .iter()
                         .map(|asset| u128::from(asset.size))
                         .sum::<u128>()
                 })
                 .collect::<Vec<_>>();
-            for (index, assets) in patches.into_iter().enumerate() {
+            for (index, planned) in patches.into_iter().enumerate() {
                 loop {
                     let current = *current_rx.borrow_and_update();
                     let queued_bytes = sizes[current.saturating_add(1).min(index)..index]
@@ -51,12 +52,28 @@ impl PatchDownloads {
                 }
                 let progress = Arc::clone(&observer);
                 let result = downloader
-                    .download_with_observer(assets, cache.clone(), options.clone(), move |event| {
-                        progress(InstallationEvent::Download(event));
-                    })
+                    .download_with_observer(
+                        planned.packages,
+                        cache.clone(),
+                        options.clone(),
+                        move |event| {
+                            progress(InstallationEvent::Download(event));
+                        },
+                    )
                     .await;
                 let failed = result.is_err();
-                if reports_tx.send(result.map_err(Into::into)).is_err() || failed {
+                if reports_tx
+                    .send(
+                        result
+                            .map(|report| DownloadedPatch {
+                                patch: planned.patch,
+                                report,
+                            })
+                            .map_err(Into::into),
+                    )
+                    .is_err()
+                    || failed
+                {
                     return;
                 }
             }
@@ -68,7 +85,7 @@ impl PatchDownloads {
         }
     }
 
-    pub(super) async fn next(&mut self, index: usize) -> Result<DownloadReport> {
+    pub(super) async fn next(&mut self, index: usize) -> Result<DownloadedPatch> {
         self.current.send_replace(index);
         match self.reports.recv().await {
             Some(result) => result,
@@ -91,4 +108,10 @@ pub(super) fn merge_download_report(total: &mut DownloadReport, patch: DownloadR
     total.downloaded_files += patch.downloaded_files;
     total.skipped_files += patch.skipped_files;
     total.downloaded_bytes += patch.downloaded_bytes;
+}
+
+/// A patch becomes ready for application together with its transfer result.
+pub(super) struct DownloadedPatch {
+    pub(super) patch: Patch,
+    pub(super) report: DownloadReport,
 }

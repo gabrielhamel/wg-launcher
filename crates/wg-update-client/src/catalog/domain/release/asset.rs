@@ -1,3 +1,4 @@
+use super::PatchSource;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
@@ -17,10 +18,9 @@ pub struct WebSeed {
 pub struct Asset {
     /// Component identifier to which this patch belongs.
     pub part: String,
-    /// Source component version; `Some("0")` denotes a full-install patch.
-    /// Service resolution infers omitted values from earlier patches for the same
-    /// component, starting at `0`; manually constructed manifests may still use `None`.
-    pub version_from: Option<String>,
+    /// Normalized patch source, serialized using the existing version field.
+    #[serde(default, rename = "version_from")]
+    pub source: PatchSource,
     /// Target component version after this patch.
     pub version_to: String,
     /// Relative transport volume path, not a game-owned inner `.pkg` asset.

@@ -15,29 +15,33 @@ pub fn installation_assets(
     release: &ResolvedRelease,
     base_versions: &BTreeMap<String, String>,
 ) -> Result<Vec<Asset>> {
-    let patches = ordered_patches(release, base_versions)?
+    Ok(planned_patches(release, base_versions)?
         .into_iter()
-        .cloned()
-        .collect::<Vec<_>>();
-    Ok(assets_for_patches(release, &patches)?
-        .into_iter()
-        .flatten()
+        .flat_map(|planned| planned.packages)
         .collect())
 }
 
-pub(crate) fn assets_for_patches(
+/// An ordered patch and the resolved transport packages needed to apply it.
+#[derive(Debug, Clone)]
+pub(crate) struct PlannedPatch {
+    pub(crate) patch: Patch,
+    pub(crate) packages: Vec<Asset>,
+}
+
+pub(crate) fn planned_patches(
     release: &ResolvedRelease,
-    patches: &[Patch],
-) -> Result<Vec<Vec<Asset>>> {
+    base_versions: &BTreeMap<String, String>,
+) -> Result<Vec<PlannedPatch>> {
+    let patches = ordered_patches(release, base_versions)?;
     let by_name = release
         .assets
         .iter()
         .map(|asset| (asset.name.as_str(), asset))
         .collect::<HashMap<_, _>>();
     patches
-        .iter()
+        .into_iter()
         .map(|patch| {
-            patch
+            let packages = patch
                 .files
                 .iter()
                 .map(|file| {
@@ -47,7 +51,11 @@ pub(crate) fn assets_for_patches(
                         .cloned()
                         .ok_or_else(|| Error::MissingPatchAsset(file.name.clone()))
                 })
-                .collect()
+                .collect::<Result<Vec<_>>>()?;
+            Ok(PlannedPatch {
+                patch: patch.clone(),
+                packages,
+            })
         })
         .collect()
 }
@@ -67,7 +75,7 @@ pub(crate) fn ordered_patches<'a>(
             .patches
             .iter()
             .filter(|patch| &patch.part == part)
-            .filter_map(|patch| patch.version_from.as_deref().map(|from| (from, patch)))
+            .filter_map(|patch| patch.source.version().map(|from| (from, patch)))
             .collect::<HashMap<_, _>>();
         // A publisher may replace an obsolete delta chain with a full package.
         if version != target && !by_from.contains_key(version) && by_from.contains_key("0") {

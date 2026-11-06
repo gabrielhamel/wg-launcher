@@ -3,8 +3,8 @@
 use super::error::{Result, WgusError as Error};
 use super::wire::{self, MetadataXml, PatchesXml};
 use crate::catalog::{
-    Asset, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile, Product,
-    ResolvedRelease, WebSeed,
+    Asset, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile, PatchSource,
+    Product, ResolvedRelease, WebSeed,
 };
 use std::collections::{BTreeMap, HashMap};
 use url::Url;
@@ -52,7 +52,7 @@ pub(super) fn release_from_wire(
         .map(|(part, version)| (part.clone(), version.clone()))
         .collect::<HashMap<_, _>>();
     for patch in chain.patches {
-        let version_from = inferred_version_from(
+        let source = inferred_patch_source(
             patch.version_from,
             &patch.part,
             &patch.version_to,
@@ -72,7 +72,7 @@ pub(super) fn release_from_wire(
         for file in &files {
             assets.push(Asset {
                 part: patch.part.clone(),
-                version_from: version_from.clone(),
+                source: source.clone(),
                 version_to: patch.version_to.clone(),
                 name: file.name.clone(),
                 url: seed
@@ -102,7 +102,7 @@ pub(super) fn release_from_wire(
             .unwrap_or_default();
         patches.push(Patch {
             part: patch.part,
-            version_from,
+            source,
             version_to: patch.version_to,
             files,
             torrent_hash,
@@ -210,15 +210,15 @@ pub(super) fn normalize_language(language: &str) -> String {
     language.trim().replace('_', "-").to_ascii_uppercase()
 }
 
-fn inferred_version_from(
+fn inferred_patch_source(
     explicit: Option<String>,
     part: &str,
     version_to: &str,
     latest_version_by_part: &mut HashMap<String, String>,
-) -> Option<String> {
+) -> PatchSource {
     let version_from = explicit
         .or_else(|| latest_version_by_part.get(part).cloned())
         .unwrap_or_else(|| "0".to_owned());
     latest_version_by_part.insert(part.to_owned(), version_to.to_owned());
-    Some(version_from)
+    version_from.into()
 }

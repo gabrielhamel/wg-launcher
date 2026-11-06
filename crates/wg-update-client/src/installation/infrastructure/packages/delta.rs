@@ -1,96 +1,86 @@
+use super::contents::{DeltaFile, DeltaFormat, PatchContents};
 use super::delta_progress::DeltaWriter;
 use super::error::{PackageError as Error, Result};
+use crate::installation::ExtractionEvent;
 use crate::installation::infrastructure::filesystem::{
-    paths::walk_files, replacement::replace_file, retry::delta_source,
+    patch_workspace::PatchWorkspace, replacement::replace_file,
 };
-use crate::installation::{ExtractionEvent, ExtractionReport};
 use std::{
-    ffi::OsStr,
     fs::{self, File},
     io::{BufReader, Write},
-    path::{Path, PathBuf},
+    path::Path,
     sync::Arc,
 };
 
 pub(crate) fn apply_patch_directory(
     patch_dir: &Path,
     game: &Path,
-    work: &Path,
+    workspace: &PatchWorkspace,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
-    report: &mut ExtractionReport,
-) -> Result<()> {
-    let files = walk_files(patch_dir)?;
-    for source in files.iter().filter(|path| delta_target(path).is_none()) {
-        let relative = source.strip_prefix(patch_dir).map_err(|_| {
-            crate::installation::StorageError::UnsafeAssetPath(source.display().to_string())
-        })?;
-        let target = game.join(relative);
+) -> Result<usize> {
+    let contents = PatchContents::read(patch_dir)?;
+    for replacement in contents.replacements {
+        let target = game.join(&replacement.relative);
         observer(ExtractionEvent::InstallingFile {
-            path: relative.to_string_lossy().into_owned(),
+            path: replacement.relative.to_string_lossy().into_owned(),
         });
-        replace_file(source, &target, &work.join("replacement-backup"))?;
+        replace_file(
+            &replacement.source,
+            &target,
+            &workspace.replacement_backup(),
+        )?;
     }
-    for delta in files.iter().filter(|path| delta_target(path).is_some()) {
-        let relative = delta.strip_prefix(patch_dir).map_err(|_| {
-            crate::installation::StorageError::UnsafeAssetPath(delta.display().to_string())
-        })?;
-        let target_relative = delta_target(relative)
-            .ok_or_else(|| Error::InvalidDeltaPath(relative.display().to_string()))?;
-        let target = game.join(&target_relative);
+    let mut applied_deltas = 0;
+    for delta in contents.deltas {
+        let target = game.join(&delta.target);
         if !target.is_file() {
             return Err(Error::MissingDeltaTarget(target));
         }
         observer(ExtractionEvent::PreparingDelta {
-            path: target_relative.to_string_lossy().into_owned(),
+            path: delta.target.to_string_lossy().into_owned(),
         });
-        let original = delta_source(game, &target_relative, work)?;
+        let original = workspace.preserve_source(game, &delta.target)?;
         observer(ExtractionEvent::ApplyingDelta {
-            path: target_relative.to_string_lossy().into_owned(),
+            path: delta.target.to_string_lossy().into_owned(),
         });
-        apply_delta(&original, &target, delta, work, |written| {
+        apply_delta(&original, &target, &delta, workspace, |written| {
             observer(ExtractionEvent::DeltaProgress {
-                path: target_relative.to_string_lossy().into_owned(),
+                path: delta.target.to_string_lossy().into_owned(),
                 written,
             });
         })?;
-        report.applied_deltas += 1;
+        applied_deltas += 1;
     }
-    Ok(())
+    Ok(applied_deltas)
 }
 
 fn apply_delta(
     source: &Path,
     target: &Path,
-    delta: &Path,
-    work: &Path,
+    delta: &DeltaFile,
+    workspace: &PatchWorkspace,
     progress: impl FnMut(u64),
 ) -> Result<()> {
-    fs::create_dir_all(work)?;
-    let temporary = work.join("delta-output");
+    let temporary = workspace.delta_output();
     if temporary.exists() {
         fs::remove_file(&temporary)?;
     }
     let mut writer = DeltaWriter::new(File::create(&temporary)?, progress);
-    match delta.extension().and_then(OsStr::to_str) {
-        Some(extension) if extension.eq_ignore_ascii_case("xdiff") => {
-            apply_vcdiff(source, delta, &mut writer)?
-        }
-        Some(extension) if extension.eq_ignore_ascii_case("rdiff") => {
-            apply_rsync_delta(source, delta, &mut writer)?
-        }
-        _ => return Err(Error::InvalidDeltaPath(delta.display().to_string())),
+    match delta.format {
+        DeltaFormat::Vcdiff => apply_vcdiff(source, &delta.source, &mut writer)?,
+        DeltaFormat::Librsync => apply_rsync_delta(source, &delta.source, &mut writer)?,
     }
     writer.finish()?;
     drop(writer);
     if !fs::metadata(&temporary).is_ok_and(|metadata| metadata.len() > 0) {
         return Err(Error::EmptyDeltaOutput(temporary));
     }
-    replace_file(&temporary, target, &work.join("replacement-backup"))?;
+    replace_file(&temporary, target, &workspace.replacement_backup())?;
     Ok(())
 }
 
-fn apply_vcdiff(target: &Path, delta: &Path, writer: &mut impl Write) -> Result<()> {
-    let source_file = File::open(target)?;
+fn apply_vcdiff(source: &Path, delta: &Path, writer: &mut impl Write) -> Result<()> {
+    let source_file = File::open(source)?;
     let source = unsafe { memmap2::MmapOptions::new().map(&source_file)? };
     let mut source = &source[..];
     let patch = BufReader::new(File::open(delta)?);
@@ -105,8 +95,8 @@ fn apply_vcdiff(target: &Path, delta: &Path, writer: &mut impl Write) -> Result<
     Ok(())
 }
 
-fn apply_rsync_delta(target: &Path, delta: &Path, writer: &mut impl Write) -> Result<()> {
-    let source_file = File::open(target)?;
+fn apply_rsync_delta(source: &Path, delta: &Path, writer: &mut impl Write) -> Result<()> {
+    let source_file = File::open(source)?;
     let delta_file = File::open(delta)?;
     let source = unsafe { memmap2::MmapOptions::new().map(&source_file)? };
     let patch = unsafe { memmap2::MmapOptions::new().map(&delta_file)? };
@@ -116,32 +106,4 @@ fn apply_rsync_delta(target: &Path, delta: &Path, writer: &mut impl Write) -> Re
         detail: error.to_string(),
     })?;
     Ok(())
-}
-
-fn delta_target(path: &Path) -> Option<PathBuf> {
-    let value = path.to_string_lossy();
-    let extension = path.extension()?.to_str()?;
-    if !extension.eq_ignore_ascii_case("xdiff") && !extension.eq_ignore_ascii_case("rdiff") {
-        return None;
-    }
-    let without_extension = value.rsplit_once('.')?.0;
-    let (without_checksum, checksum) = without_extension.rsplit_once('.')?;
-    if checksum.is_empty()
-        || !checksum
-            .chars()
-            .all(|character| character.is_ascii_hexdigit())
-    {
-        return None;
-    }
-    let marker = ".pkg.";
-    let position = without_checksum.rfind(marker)?;
-    let version = &without_checksum[position + marker.len()..];
-    if version.is_empty()
-        || !version
-            .chars()
-            .all(|character| character.is_ascii_digit() || character == '.')
-    {
-        return None;
-    }
-    Some(PathBuf::from(&without_checksum[..position + 4]))
 }

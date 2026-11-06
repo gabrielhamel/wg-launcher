@@ -1,9 +1,41 @@
-//! Launcher updates are independent of game workflows and installation state.
+//! Launcher updates are independent of game workflows and terminal presentation.
 
+use super::Result;
 use super::domain::Release;
-use super::infrastructure::{executable, release};
-use super::presentation::{distribution, output, progress::SelfUpdateProgress};
-use super::{CURRENT, Result};
+use super::infrastructure::{distribution, executable, release};
+use semver::Version;
+
+/// A step in checking and replacing the launcher executable.
+#[derive(Clone, Copy)]
+pub(crate) enum SelfUpdateStage {
+    CheckingRelease,
+    FetchingChecksum,
+    DownloadingArchive,
+    VerifyingArchive,
+    OpeningArchive,
+    ExtractingExecutable,
+    VerifyingExecutable,
+    ReplacingExecutable,
+}
+
+/// Progress facts; terminal messages and styling belong to presentation.
+pub(crate) enum SelfUpdateEvent {
+    Stage(SelfUpdateStage),
+    ReleaseChecked,
+    Transfer {
+        stage: SelfUpdateStage,
+        total: Option<u64>,
+    },
+    Advanced(u64),
+}
+
+pub(crate) type Observer<'a> = dyn Fn(SelfUpdateEvent) -> Result<()> + 'a;
+
+pub(crate) enum SelfUpdateOutcome {
+    Managed(&'static str),
+    Current(Version),
+    Updated(Version),
+}
 
 pub(crate) async fn check() -> Option<Release> {
     if std::env::var_os("WG_LAUNCHER_NO_UPDATE_CHECK").is_some() {
@@ -13,55 +45,24 @@ pub(crate) async fn check() -> Option<Release> {
     release::latest().await.ok()
 }
 
-pub(crate) fn notify_if_newer(release: Option<&Release>) {
-    if let Some(release) = release.filter(|release| release.is_newer()) {
-        output::print_cli_update(
-            CURRENT,
-            &release.version.to_string(),
-            &distribution::update_instruction(true),
-        );
-    }
-}
-
-pub(crate) async fn print_version() {
-    let latest = check().await;
-    let update_available = latest.as_ref().is_some_and(Release::is_newer);
-    let version = latest.as_ref().map(|release| release.version.to_string());
-    output::print_cli_version(
-        CURRENT,
-        version.as_deref(),
-        update_available,
-        &distribution::update_instruction(false),
-    );
-    if let Some(reason) = distribution::unsupported_reason(false) {
-        println!("{reason}");
-    }
-}
-
-pub(crate) async fn run() -> Result<()> {
-    let progress = SelfUpdateProgress::new()?;
+pub(crate) async fn run(observer: &Observer<'_>) -> Result<SelfUpdateOutcome> {
+    observer(SelfUpdateEvent::Stage(SelfUpdateStage::CheckingRelease))?;
     let release = release::latest().await;
-    progress.clear();
-    if let Some(reason) = distribution::unsupported_reason(true) {
-        return Err(reason.into());
+    observer(SelfUpdateEvent::ReleaseChecked)?;
+    if let Some(manager) = distribution::manager() {
+        return Ok(SelfUpdateOutcome::Managed(manager));
     }
     let release = release.map_err(|error| {
         format!("Cannot check the latest CLI release: {error}. Check your connection or release mirror and try again.")
     })?;
     if !release.is_newer() {
-        println!(
-            "wg-launcher is already up to date ({CURRENT}; latest: {}).",
-            release.version
-        );
-        return Ok(());
+        return Ok(SelfUpdateOutcome::Current(release.version));
     }
     let work = executable::staging_directory()?;
-    let binary = release.download(work.path(), &progress).await?;
-    progress.stage("Verifying the CLI executable")?;
+    let binary = release.download(work.path(), observer).await?;
+    observer(SelfUpdateEvent::Stage(SelfUpdateStage::VerifyingExecutable))?;
     executable::verify(&binary, &release.version).await?;
-    progress.stage("Replacing the CLI executable")?;
+    observer(SelfUpdateEvent::Stage(SelfUpdateStage::ReplacingExecutable))?;
     executable::replace(&binary)?;
-    progress.clear();
-    output::print_cli_updated(&release.version.to_string());
-    Ok(())
+    Ok(SelfUpdateOutcome::Updated(release.version))
 }

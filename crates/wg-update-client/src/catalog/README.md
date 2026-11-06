@@ -27,6 +27,8 @@ selection to prepare the game on someone's machine.
 | Patch | One step that brings a component from a starting version to a target version. It may provide the full component or changes to an existing one. |
 | Full-install patch | A patch providing a complete component, without requiring an existing component version. WGUS represents its starting version as `0`. |
 | Delta patch | A patch changing an existing component from one version to another. |
+| Patch source | What a patch starts from: a full component needs no earlier version; a delta needs a specific version. An unspecified saved source cannot establish a chain. |
+| Planned patch | One step selected for installation, kept together with the packages needed to apply it. |
 | Patch chain | The ordered steps needed to reach a component's target version. |
 | Package | A downloadable piece of a patch. One patch can require several packages. |
 | Download size | The size of the published packages, before allowing for anything already downloaded. |

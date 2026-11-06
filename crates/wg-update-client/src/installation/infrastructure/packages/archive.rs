@@ -2,6 +2,7 @@ use super::error::{PackageError as Error, Result};
 use crate::catalog::Patch;
 use crate::installation::ExtractionEvent;
 use crate::installation::infrastructure::filesystem::{
+    patch_workspace::PatchWorkspace,
     paths::{safe_archive_path, safe_relative_path},
     replacement::replace_file,
 };
@@ -17,7 +18,7 @@ pub(crate) fn extract_archive(
     patch: &Patch,
     cache: &Path,
     destination: &Path,
-    staging: Option<&Path>,
+    workspace: Option<&PatchWorkspace>,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<()> {
     let mut volumes = patch
@@ -72,11 +73,11 @@ pub(crate) fn extract_archive(
             };
             // A full archive must not truncate a live game file before decoding
             // its replacement succeeds. Delta archives already target staging.
-            let staged = staging.map(|root| root.join("archive").join(&relative));
+            let staged = workspace.map(|work| work.archive().join(&relative));
             let output = staged.as_ref().unwrap_or(&target);
             let result = sevenz_rust::default_entry_extract_fn(entry, &mut progress, output)?;
-            if let Some(root) = staging {
-                replace_file(output, &target, &root.join("replacement-backup"))
+            if let Some(work) = workspace {
+                replace_file(output, &target, &work.replacement_backup())
                     .map_err(|error| sevenz_rust::Error::other(error.to_string()))?;
             }
             notify(progress.extracted);

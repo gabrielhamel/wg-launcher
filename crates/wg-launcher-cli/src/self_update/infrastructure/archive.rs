@@ -1,7 +1,7 @@
 //! Read only the executable into a fixed staging path; never unpack archive paths.
 
 use crate::self_update::Result;
-use crate::self_update::presentation::progress::SelfUpdateProgress;
+use crate::self_update::application::{Observer, SelfUpdateEvent, SelfUpdateStage};
 use std::{
     fs::File,
     io::{Read, Write},
@@ -14,7 +14,7 @@ pub(crate) fn extract(
     archive: &Path,
     directory: &Path,
     zip: bool,
-    progress: &SelfUpdateProgress,
+    observer: &Observer<'_>,
 ) -> Result<PathBuf> {
     let name = if cfg!(windows) {
         "wg-launcher.exe"
@@ -39,8 +39,11 @@ pub(crate) fn extract(
                         "The CLI archive contains a symbolic link instead of an executable.".into(),
                     );
                 }
-                progress.transfer("Extracting the CLI executable", Some(entry.size()))?;
-                write_binary(&mut entry, &output, &mut found, progress)?;
+                observer(SelfUpdateEvent::Transfer {
+                    stage: SelfUpdateStage::ExtractingExecutable,
+                    total: Some(entry.size()),
+                })?;
+                write_binary(&mut entry, &output, &mut found, observer)?;
             }
         }
     } else {
@@ -57,8 +60,11 @@ pub(crate) fn extract(
                 {
                     return Err("The CLI archive has an unsafe executable entry.".into());
                 }
-                progress.transfer("Extracting the CLI executable", Some(entry.size()))?;
-                write_binary(&mut entry, &output, &mut found, progress)?;
+                observer(SelfUpdateEvent::Transfer {
+                    stage: SelfUpdateStage::ExtractingExecutable,
+                    total: Some(entry.size()),
+                })?;
+                write_binary(&mut entry, &output, &mut found, observer)?;
             }
         }
     }
@@ -77,13 +83,24 @@ fn write_binary(
     reader: &mut impl Read,
     output: &Path,
     found: &mut bool,
-    progress: &SelfUpdateProgress,
+    observer: &Observer<'_>,
 ) -> Result<()> {
     if *found {
         return Err("The CLI archive contains duplicate launcher executables.".into());
     }
     let mut file = File::create(output)?;
-    let size = progress.copy(reader.take(LIMIT + 1), &mut file)?;
+    let mut reader = reader.take(LIMIT + 1);
+    let mut buffer = [0; 64 * 1024];
+    let mut size = 0;
+    loop {
+        let count = reader.read(&mut buffer)?;
+        if count == 0 {
+            break;
+        }
+        file.write_all(&buffer[..count])?;
+        size += count as u64;
+        observer(SelfUpdateEvent::Advanced(count as u64))?;
+    }
     if size == 0 || size > LIMIT {
         return Err("The CLI executable has an invalid size.".into());
     }

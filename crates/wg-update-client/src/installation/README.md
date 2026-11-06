@@ -27,6 +27,8 @@ installation manages the copy on a person's machine.
 | Status | A comparison of the recorded installation with what the publisher currently offers. |
 | Update | Bring an existing installation to the required build while keeping its folder and selection. |
 | Delta | Changes that need an existing game file, rather than another complete copy of that file. |
+| Patch workspace | Temporary files and preserved originals for the patch being applied. They remain available after failure until that patch is saved as complete. |
+| Patch contents | The files decoded from a patch: complete replacement files and delta files that change existing content. Replacements are installed before deltas are applied. |
 | Patch completion | Apply a patch successfully, save its checkpoint, then release its recovery files and, when cleanup is enabled, its downloaded packages. |
 | Checkpoint | Saved progress after a patch succeeds, so a retry can skip completed work. |
 | Resume / retry | Continue unfinished work, reusing completed steps and downloads where possible. |

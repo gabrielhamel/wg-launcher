@@ -110,6 +110,7 @@ crates/
       catalog/                Published products and release discovery context
         mod.rs                Context entry points and exported models
         domain/               Built-ins, products, selections, release/patch rules
+          release/patch_chain.rs  Ordered patches with their resolved packages
         application/          list, inspect, and live build resolution
           reports.rs          Consumer build identity and inspection/patch summaries
           directory_name.rs   Suggested directory names shared by inspect and installation
@@ -128,12 +129,13 @@ crates/
         infrastructure/
           transfer/           Resumable HTTP package downloads
           packages/           Transport archives, delta application, throttled output progress
+            contents.rs       Classify replacement files and typed deltas before execution
           filesystem/         Installation filesystem adapters
             storage.rs        Installation-relative paths and staging preparation
             lock.rs           Exclusive installation mutation lock
             cache.rs          Package verification and release
-            records.rs        Pinned-manifest and installed-build persistence
-            retry.rs          Checkpoint coordination and original delta sources
+            records.rs        Pinned-manifest resumption and installed-build persistence
+            patch_workspace.rs  Active patch staging and preserved original sources
             replacement.rs    File replacement with rollback on rename failure
       error.rs                Public Error, ErrorKind classification, and Result alias
   wg-launcher-cli/            CLI package, README, and license
@@ -150,9 +152,9 @@ crates/
           progress/           Shared display with separate download/extraction renderers
       self_update/            CLI executable update context
         domain/               Release comparison and ownership/path rules
-        application/          Notices, version checks, executable update workflow
+        application/          Release checks, executable update workflow, events and outcomes
         infrastructure/       Release HTTP, archives, ownership detection, replacement
-        presentation/         Notices, update instructions, progress
+        presentation/         Command handlers, notices, update instructions, event rendering
       terminal/               Shared command styling, byte sizes, spinner/styles
     docs/assets/              CLI demonstration assets
   wg-update-service/          File-backed server binary
@@ -187,6 +189,18 @@ installation lifecycle, including transfer, package application, storage, and
 recovery. Its `PinnedManifest` combines a resolved release with component
 checkpoints; only installation advances those checkpoints. The persistence
 adapter retains the existing flat JSON fields through Serde flattening.
+
+Patch sources distinguish full content from changes to a specific version, while
+retaining the saved `version_from` string or null representation. Planned patches
+keep each step with its resolved packages; prefetch delivers the patch with its
+transfer result instead of coordinating separate patch and package lists.
+The patch coordinator persists each checkpoint before releasing its workspace
+and cached volumes. `PatchWorkspace` owns the active patch's staging paths and
+original sources, without deleting recovery files on failure.
+
+CLI self-update emits events and returns outcomes; its presentation commands own
+terminal output and adapt those events to the stable progress display.
+
 Discovery requests keep optional defaults and catalog filters; a resolved selection
 contains the known product, client type, and language used for installation compatibility.
 Both streaming installation and staged extraction use the same patch-completion
