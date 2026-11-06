@@ -3,8 +3,7 @@ use crate::Result;
 use crate::installation::infrastructure::filesystem::{
     cache::verify_cache,
     paths::walk_files,
-    records::{save_installed_build, save_manifest},
-    retry::resume_manifest,
+    records::{resume_manifest, save_installed_build, save_manifest},
     storage::{InstallationStorage, prepare_installation},
 };
 use crate::installation::{ExtractionEvent, ExtractionOptions, ExtractionReport, PinnedManifest};

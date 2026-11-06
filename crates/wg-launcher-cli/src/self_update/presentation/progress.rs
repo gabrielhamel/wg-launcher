@@ -1,23 +1,25 @@
 //! A single stable progress display for CLI executable updates.
 
+use crate::self_update::{
+    Result,
+    application::{SelfUpdateEvent, SelfUpdateStage},
+};
 use crate::terminal::styles::{overall_style, spinner_style};
 use indicatif::{ProgressBar, ProgressStyle, style::TemplateError};
-use std::{io, time::Duration};
+use std::time::Duration;
 
 pub(crate) struct SelfUpdateProgress {
     bar: ProgressBar,
 }
 
 impl SelfUpdateProgress {
-    pub(crate) fn new() -> Result<Self, TemplateError> {
-        let progress = Self {
+    pub(crate) fn new() -> Self {
+        Self {
             bar: ProgressBar::new_spinner(),
-        };
-        progress.stage("Checking the latest CLI release")?;
-        Ok(progress)
+        }
     }
 
-    pub(crate) fn stage(&self, message: &str) -> Result<(), TemplateError> {
+    pub(crate) fn stage(&self, message: &str) -> std::result::Result<(), TemplateError> {
         self.bar.reset();
         self.bar.unset_length();
         self.bar.set_style(spinner_style()?);
@@ -26,7 +28,11 @@ impl SelfUpdateProgress {
         Ok(())
     }
 
-    pub(crate) fn transfer(&self, message: &str, total: Option<u64>) -> Result<(), TemplateError> {
+    pub(crate) fn transfer(
+        &self,
+        message: &str,
+        total: Option<u64>,
+    ) -> std::result::Result<(), TemplateError> {
         self.stage(message)?;
         if let Some(total) = total {
             self.bar.set_length(total);
@@ -43,12 +49,14 @@ impl SelfUpdateProgress {
         self.bar.inc(bytes);
     }
 
-    pub(crate) fn copy(
-        &self,
-        reader: impl io::Read,
-        writer: &mut impl io::Write,
-    ) -> io::Result<u64> {
-        io::copy(&mut self.bar.wrap_read(reader), writer)
+    pub(crate) fn observe(&self, event: SelfUpdateEvent) -> Result<()> {
+        match event {
+            SelfUpdateEvent::Stage(stage) => self.stage(message(stage))?,
+            SelfUpdateEvent::ReleaseChecked => self.clear(),
+            SelfUpdateEvent::Transfer { stage, total } => self.transfer(message(stage), total)?,
+            SelfUpdateEvent::Advanced(bytes) => self.advance(bytes),
+        }
+        Ok(())
     }
 
     pub(crate) fn clear(&self) {
@@ -60,5 +68,18 @@ impl SelfUpdateProgress {
 impl Drop for SelfUpdateProgress {
     fn drop(&mut self) {
         self.clear();
+    }
+}
+
+fn message(stage: SelfUpdateStage) -> &'static str {
+    match stage {
+        SelfUpdateStage::CheckingRelease => "Checking the latest CLI release",
+        SelfUpdateStage::FetchingChecksum => "Fetching the CLI archive checksum",
+        SelfUpdateStage::DownloadingArchive => "Downloading the CLI archive",
+        SelfUpdateStage::VerifyingArchive => "Verifying the CLI archive checksum",
+        SelfUpdateStage::OpeningArchive => "Opening the CLI archive",
+        SelfUpdateStage::ExtractingExecutable => "Extracting the CLI executable",
+        SelfUpdateStage::VerifyingExecutable => "Verifying the CLI executable",
+        SelfUpdateStage::ReplacingExecutable => "Replacing the CLI executable",
     }
 }

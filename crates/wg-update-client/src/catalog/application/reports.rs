@@ -89,7 +89,7 @@ impl InspectReport {
                 .iter()
                 .map(|patch| PatchSummary {
                     part: patch.part.clone(),
-                    version_from: patch.version_from.clone(),
+                    version_from: patch.source.version().map(str::to_owned),
                     version_to: patch.version_to.clone(),
                     package_count: patch.files.len(),
                     compressed_bytes: patch.files.iter().map(|file| file.size).sum(),

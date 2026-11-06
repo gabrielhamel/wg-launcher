@@ -16,6 +16,8 @@ game versions belong to [installation](../installation/README.md).
 | Current version | The version of the launcher being used now. |
 | Latest version | The newest launcher release offered by the release source being checked. |
 | Update notice | A message explaining that a newer launcher is available and how to obtain it. |
+| Self-update event | A progress fact from checking, downloading, verifying, or replacing the launcher. Terminal code decides how to display it. |
+| Self-update outcome | Whether the launcher was updated, was already current, or must be updated through its package manager. |
 | Self-update | Replace the launcher with a verified newer release. |
 | Direct installation | A launcher copy installed without a package manager taking responsibility for it. |
 | Managed installation | A launcher copy maintained by a package manager, such as Homebrew or APT. Updates go through that manager. |

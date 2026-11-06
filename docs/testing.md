@@ -111,7 +111,10 @@ The category lives in [`scenarios/recovery/`](../e2e/tests/scenarios/recovery/).
 state writes, movement, and cleanup; `delta.rs` covers a malformed delta stream.
 `interruption/` groups actual child-process termination tests by phase. Existing
 [`updates/delta.rs`](../e2e/tests/scenarios/updates/delta.rs) tests additionally
-cover missing delta sources and checkpoints across multi-component updates.
+cover missing delta sources, checkpoints across multi-component updates, and
+mixed archives whose replacements must be installed before their deltas. Retry
+assertions also check the saved `version_from` fields and active-patch identity
+used to retain original sources across executions.
 
 The agreed recovery matrix maps to the following executable cases. Rows describe
 coverage, rather than a claim that every possible failure in that area is tested.

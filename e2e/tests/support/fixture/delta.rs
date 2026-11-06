@@ -22,6 +22,15 @@ impl DeltaFixture {
     }
 
     pub fn build(initial: &Fixture, scratch: &Path, second_delta: bool) -> Self {
+        Self::build_with_replacements(initial, scratch, second_delta, &[])
+    }
+
+    pub fn build_with_replacements(
+        initial: &Fixture,
+        scratch: &Path,
+        second_delta: bool,
+        replacements: &[(&str, &[u8])],
+    ) -> Self {
         fs::create_dir_all(scratch).unwrap();
         // Librsync delta: copy all but the first byte, then append a literal.
         // Reapplying against its own output produces different bytes, so retry
@@ -43,6 +52,11 @@ impl DeltaFixture {
         if second_delta {
             files.push(("z.pkg.1.deadbeef.rdiff", delta));
         }
+        files.extend(
+            replacements
+                .iter()
+                .map(|(name, bytes)| (*name, bytes.to_vec())),
+        );
         let directory = scratch.join("transport");
         fs::create_dir_all(&directory).unwrap();
         let archive = scratch.join("delta.wgpkg");

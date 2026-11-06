@@ -1,12 +1,14 @@
 use super::super::infrastructure::distribution::manager;
 
 pub(crate) fn unsupported_reason(stderr: bool) -> Option<String> {
-    manager().map(|manager| {
-        format!(
-            "Self-update not supported for this installation: it is managed by {manager}. {}",
-            instruction(manager, stderr)
-        )
-    })
+    manager().map(|manager| managed_reason(manager, stderr))
+}
+
+pub(crate) fn managed_reason(manager: &str, stderr: bool) -> String {
+    format!(
+        "Self-update not supported for this installation: it is managed by {manager}. {}",
+        instruction(manager, stderr)
+    )
 }
 
 pub(crate) fn update_instruction(stderr: bool) -> String {

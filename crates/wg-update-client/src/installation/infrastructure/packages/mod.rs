@@ -1,3 +1,4 @@
+mod contents;
 mod error;
 pub use error::PackageError;
 pub(crate) mod archive;

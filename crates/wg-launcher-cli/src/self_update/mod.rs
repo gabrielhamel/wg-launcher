@@ -4,6 +4,7 @@ mod domain;
 mod infrastructure;
 mod presentation;
 
-pub(crate) use application::{check, notify_if_newer, print_version, run};
+pub(crate) use application::check;
+pub(crate) use presentation::commands::{notify_if_newer, print_version, run};
 pub(crate) const CURRENT: &str = env!("CARGO_PKG_VERSION");
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;

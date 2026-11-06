@@ -4,9 +4,8 @@ mod extraction;
 mod patch;
 mod prefetch;
 mod types;
-use crate::catalog::assets_for_patches;
 use crate::installation::infrastructure::filesystem::{
-    InstallationLock, installation_storage, records, retry, storage::prepare_installation,
+    InstallationLock, installation_storage, records, storage::prepare_installation,
 };
 use crate::installation::{AssetDownloader, DownloadOptions, PinnedManifest};
 use crate::{Error, Result};
@@ -128,13 +127,8 @@ impl PackageExtractor {
         let storage = installation_storage(&install_root)?;
         let _lock = InstallationLock::acquire(&storage, &install_root)?;
         let cache = storage.cache.clone();
-        let mut manifest = retry::resume_manifest(manifest, &storage)?;
-        let patches = manifest
-            .ordered_patches()?
-            .into_iter()
-            .cloned()
-            .collect::<Vec<_>>();
-        let assets = assets_for_patches(&manifest.release, &patches)?;
+        let mut manifest = records::resume_manifest(manifest, &storage)?;
+        let patches = manifest.planned_patches()?;
         records::save_manifest(&manifest, &storage)?;
         let observer: Arc<dyn Fn(InstallationEvent) + Send + Sync> = Arc::new(observer);
         let extraction_observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = {
@@ -154,7 +148,7 @@ impl PackageExtractor {
         let mut report = InstallationReport::default();
         let mut downloads = PatchDownloads::start(
             downloader,
-            assets,
+            patches,
             cache.clone(),
             download_options,
             Arc::clone(&observer),
@@ -162,9 +156,10 @@ impl PackageExtractor {
         );
 
         let result = async {
-            for (index, patch) in patches.into_iter().enumerate() {
+            for index in 0..total {
                 let downloaded = downloads.next(index).await?;
-                merge_download_report(&mut report.download, downloaded);
+                merge_download_report(&mut report.download, downloaded.report);
+                let patch = downloaded.patch;
 
                 let game_for_patch = install_root.clone();
                 let patch_observer = Arc::clone(&extraction_observer);

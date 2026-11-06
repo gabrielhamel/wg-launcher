@@ -68,3 +68,16 @@ pub(crate) fn save_manifest(
         &storage.cache.join("manifest.json.backup"),
     )
 }
+
+pub(crate) fn resume_manifest(
+    manifest: PinnedManifest,
+    storage: &InstallationStorage,
+) -> Result<PinnedManifest> {
+    let bytes = match fs::read(storage.cache.join(DOWNLOAD_MANIFEST_FILE)) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(manifest),
+        Err(error) => return Err(error.into()),
+    };
+    let pending: PinnedManifest = serde_json::from_slice(&bytes)?;
+    Ok(manifest.resume_from(pending)?)
+}

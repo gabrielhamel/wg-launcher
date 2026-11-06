@@ -1,6 +1,7 @@
 use super::InstalledBuild;
 use crate::catalog::{
-    Asset, Patch, ReleaseError, ResolvedRelease, installation_assets, ordered_patches,
+    Asset, Patch, PlannedPatch, ReleaseError, ResolvedRelease, installation_assets,
+    ordered_patches, planned_patches,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -29,6 +30,10 @@ impl PinnedManifest {
 
     pub(crate) fn ordered_patches(&self) -> Result<Vec<&Patch>, ReleaseError> {
         ordered_patches(&self.release, &self.base_versions)
+    }
+
+    pub(crate) fn planned_patches(&self) -> Result<Vec<PlannedPatch>, ReleaseError> {
+        planned_patches(&self.release, &self.base_versions)
     }
 
     pub(crate) fn include_installed_versions(&mut self, installed: &InstalledBuild) {
