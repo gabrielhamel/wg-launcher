@@ -322,7 +322,7 @@ uses:
 - application ID: `MT.RU.PRODUCTION`
 - CLI region: `ru` (alias `russia`)
 
-Lesta's install chain omits `version_from` on patches. `crates/wg-update-client/src/catalog/infrastructure/wgus/mod.rs`
+Lesta's install chain omits `version_from` on patches. `crates/wg-update-client/src/catalog/infrastructure/wgus/conversion.rs`
 normalizes that compatible representation: the first patch for a component
 starts at `0`, and a later patch starts at the previous patch's `version_to`.
 Preserve the explicit value when a publisher provides one. This normalization
@@ -371,6 +371,8 @@ the CLI.
   resolution, including publisher-default/smallest-variant selection.
 - `crates/wg-update-client/src/catalog/infrastructure/wgus/`: WGUS-compatible HTTP/XML,
   private wire representations, redirects, and publisher-specific normalization.
+  `mod.rs` owns transport and redirects; `conversion.rs` translates wire metadata
+  and patch chains into resolved releases.
 - `crates/wg-update-client/src/installation/`: local installation lifecycle bounded
   context. `mod.rs` exposes its workflows, models, and observer contracts.
 - `crates/wg-update-client/src/installation/domain/`: installed identity, pinned
@@ -381,12 +383,16 @@ the CLI.
   `plan.rs` builds informational plans.
 - `crates/wg-update-client/src/installation/application/pipeline/`: internal
   `PackageExtractor` coordinator and shared streaming/local installation orchestration.
+  `patch.rs` owns shared patch application, checkpointing, and package release.
   Preserve locking, prefetch overlap, checkpoint-before-release ordering, and cancellation.
 - `crates/wg-update-client/src/installation/infrastructure/transfer/`: resumable HTTP transfer.
 - `crates/wg-update-client/src/installation/infrastructure/packages/`: transport archive
   decoding and delta application.
 - `crates/wg-update-client/src/installation/infrastructure/filesystem/`: installation
   paths, locks, JSON persistence, recovery source files, replacement, and cleanup.
+  Keep layout/staging in `storage.rs`, exclusive locking in `lock.rs`, package
+  verification/release in `cache.rs`, persistence in `records.rs`, recovery
+  coordination in `retry.rs`, and file replacement in `replacement.rs`.
 - `crates/wg-update-client/src/error.rs`: thin public workflow error wrapper.
   Define concrete errors beside the rules/operations that own them. Domain and
   infrastructure functions return local errors; wrap causes at workflow boundaries.

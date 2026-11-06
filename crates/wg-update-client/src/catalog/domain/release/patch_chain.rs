@@ -10,26 +10,26 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 /// # Errors
 ///
 /// Returns an error for an unreachable component target, cyclic patch chain, or a patch
-/// volume absent from the manifest assets.
+/// volume absent from the release assets.
 pub fn installation_assets(
-    manifest: &ResolvedRelease,
+    release: &ResolvedRelease,
     base_versions: &BTreeMap<String, String>,
 ) -> Result<Vec<Asset>> {
-    let patches = ordered_patches(manifest, base_versions)?
+    let patches = ordered_patches(release, base_versions)?
         .into_iter()
         .cloned()
         .collect::<Vec<_>>();
-    Ok(assets_for_patches(manifest, &patches)?
+    Ok(assets_for_patches(release, &patches)?
         .into_iter()
         .flatten()
         .collect())
 }
 
 pub(crate) fn assets_for_patches(
-    manifest: &ResolvedRelease,
+    release: &ResolvedRelease,
     patches: &[Patch],
 ) -> Result<Vec<Vec<Asset>>> {
-    let by_name = manifest
+    let by_name = release
         .assets
         .iter()
         .map(|asset| (asset.name.as_str(), asset))
@@ -53,17 +53,17 @@ pub(crate) fn assets_for_patches(
 }
 
 pub(crate) fn ordered_patches<'a>(
-    manifest: &'a ResolvedRelease,
+    release: &'a ResolvedRelease,
     base_versions: &BTreeMap<String, String>,
 ) -> Result<Vec<&'a Patch>> {
     let mut ordered = Vec::new();
-    for part in &manifest.parts {
-        let target = manifest
+    for part in &release.parts {
+        let target = release
             .component_versions
             .get(part)
             .ok_or_else(|| Error::MissingFullPatch { part: part.clone() })?;
         let mut version = base_versions.get(part).map(String::as_str).unwrap_or("0");
-        let by_from = manifest
+        let by_from = release
             .patches
             .iter()
             .filter(|patch| &patch.part == part)

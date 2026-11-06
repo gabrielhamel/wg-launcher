@@ -1,16 +1,17 @@
 //! Shared streaming and local installation orchestration.
 
 mod extraction;
+mod patch;
 mod prefetch;
 mod types;
 use crate::catalog::assets_for_patches;
 use crate::installation::infrastructure::filesystem::{
-    InstallationLock, installation_storage, retry,
-    storage::{prepare_installation, remove_patch_volumes},
+    InstallationLock, installation_storage, records, retry, storage::prepare_installation,
 };
 use crate::installation::{AssetDownloader, DownloadOptions, PinnedManifest};
 use crate::{Error, Result};
-use extraction::{InstallationPaths, extract_patch_sync, extract_sync, finalize_installation};
+use extraction::{extract_sync, finalize_installation};
+use patch::{PatchProgress, apply_and_checkpoint_patch};
 use prefetch::{DOWNLOAD_PREFETCH_BYTES, PatchDownloads, merge_download_report};
 use std::{path::Path, sync::Arc};
 pub use types::{
@@ -134,15 +135,13 @@ impl PackageExtractor {
             .cloned()
             .collect::<Vec<_>>();
         let assets = assets_for_patches(&manifest.release, &patches)?;
-        retry::save_manifest(&manifest, &storage)?;
+        records::save_manifest(&manifest, &storage)?;
         let observer: Arc<dyn Fn(InstallationEvent) + Send + Sync> = Arc::new(observer);
         let extraction_observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = {
             let observer = Arc::clone(&observer);
             Arc::new(move |event| observer(InstallationEvent::Extraction(event)))
         };
 
-        let game = install_root.clone();
-        let work = storage.work.clone();
         let prepare_root = install_root.clone();
         let prepare_storage = storage.clone();
         tokio::task::spawn_blocking(move || prepare_installation(&prepare_root, &prepare_storage))
@@ -167,35 +166,29 @@ impl PackageExtractor {
                 let downloaded = downloads.next(index).await?;
                 merge_download_report(&mut report.download, downloaded);
 
-                let cache_for_patch = cache.clone();
-                let game_for_patch = game.clone();
-                let work_for_patch = work.clone();
+                let game_for_patch = install_root.clone();
                 let patch_observer = Arc::clone(&extraction_observer);
                 let mut checkpoint_manifest = manifest.clone();
                 let checkpoint_storage = storage.clone();
                 let extraction = tokio::task::spawn_blocking(move || {
-                    let paths = InstallationPaths {
-                        cache: &cache_for_patch,
-                        game: &game_for_patch,
-                        work: &work_for_patch,
-                    };
-                    let deltas = extract_patch_sync(&patch, paths, index, total, &patch_observer)?;
-                    retry::checkpoint_patch(&mut checkpoint_manifest, &patch, &checkpoint_storage)?;
-                    let released = if extraction_options.clean_download_cache {
-                        remove_patch_volumes(&cache_for_patch, &patch)?
-                    } else {
-                        0
-                    };
-                    Ok::<_, Error>((deltas, released, checkpoint_manifest))
+                    let completion = apply_and_checkpoint_patch(
+                        &mut checkpoint_manifest,
+                        &patch,
+                        &checkpoint_storage,
+                        &game_for_patch,
+                        PatchProgress { index, total },
+                        extraction_options,
+                        &patch_observer,
+                    )?;
+                    Ok::<_, Error>((completion, checkpoint_manifest))
                 });
-                let (deltas, released, checkpoint_manifest) =
-                    extraction.await.map_err(|error| {
-                        crate::installation::PipelineError::ExtractionTask(error.to_string())
-                    })??;
+                let (completion, checkpoint_manifest) = extraction.await.map_err(|error| {
+                    crate::installation::PipelineError::ExtractionTask(error.to_string())
+                })??;
                 manifest = checkpoint_manifest;
-                report.extraction.applied_deltas += deltas;
-                report.released_package_bytes += released;
-                if released > 0 {
+                report.extraction.applied_deltas += completion.applied_deltas;
+                report.released_package_bytes += completion.released_package_bytes;
+                if completion.released_package_bytes > 0 {
                     observer(InstallationEvent::ReleasedPackages);
                 }
             }

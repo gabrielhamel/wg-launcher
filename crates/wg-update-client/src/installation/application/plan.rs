@@ -39,7 +39,7 @@ pub(super) fn build_plan(
     let compressed_bytes = assets.iter().map(|asset| asset.size).sum();
     let cache = installation_storage(&root)?.cache;
     Ok(InstallPlan {
-        build: BuildInfo::from_manifest(&manifest.release),
+        build: BuildInfo::from_release(&manifest.release),
         root,
         cache,
         packages: assets

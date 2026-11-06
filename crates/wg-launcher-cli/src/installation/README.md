@@ -26,3 +26,7 @@ launcher.
 
 Command handlers live in `presentation/commands.rs`. They translate arguments,
 call the client library, and render results; the library owns the workflow rules.
+
+`presentation/progress/` keeps download and extraction rendering separate while
+sharing one terminal display. Each download keeps its bar, byte position, and
+activity together so concurrent events and retries update the same entry.

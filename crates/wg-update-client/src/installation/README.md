@@ -15,6 +15,7 @@ installation manages the copy on a person's machine.
 | Installation | One local copy of a game, together with the information needed to maintain it. |
 | Installation folder | The folder containing that game and its saved installation information. Moving the complete folder keeps them together. |
 | Selection | The chosen game, region, channel, client type, and language. |
+| Resolved selection | The known product, client type, and language of an installation, with no unanswered discovery choices. |
 | Installed build | The game version recorded after all required installation work succeeds. |
 | Component version | The recorded version of one part of the game. Different parts can change independently. |
 | Download | Bring packages onto the machine, without yet applying them to the game. |
@@ -26,6 +27,7 @@ installation manages the copy on a person's machine.
 | Status | A comparison of the recorded installation with what the publisher currently offers. |
 | Update | Bring an existing installation to the required build while keeping its folder and selection. |
 | Delta | Changes that need an existing game file, rather than another complete copy of that file. |
+| Patch completion | Apply a patch successfully, save its checkpoint, then release its recovery files and, when cleanup is enabled, its downloaded packages. |
 | Checkpoint | Saved progress after a patch succeeds, so a retry can skip completed work. |
 | Resume / retry | Continue unfinished work, reusing completed steps and downloads where possible. |
 | Cleanup | Remove packages and temporary work after success, while retaining the installed game's identity. |

@@ -28,18 +28,18 @@ pub struct BuildInfo {
 }
 
 impl BuildInfo {
-    pub(crate) fn from_manifest(manifest: &ResolvedRelease) -> Self {
+    pub(crate) fn from_release(release: &ResolvedRelease) -> Self {
         Self {
-            game: manifest.product.game(),
-            name: manifest.product.name.clone(),
-            game_id: manifest.game_id.clone(),
-            region: manifest.region.clone(),
-            channel: manifest.channel.clone(),
-            version: manifest.version.clone(),
-            client_type: manifest.client_type.clone(),
-            language: manifest.language.clone(),
-            platform: manifest.platform.clone(),
-            architecture: manifest.architecture.clone(),
+            game: release.product.game(),
+            name: release.product.name.clone(),
+            game_id: release.game_id.clone(),
+            region: release.region.clone(),
+            channel: release.channel.clone(),
+            version: release.version.clone(),
+            client_type: release.client_type.clone(),
+            language: release.language.clone(),
+            platform: release.platform.clone(),
+            architecture: release.architecture.clone(),
         }
     }
 }
@@ -79,12 +79,12 @@ pub struct InspectReport {
 }
 
 impl InspectReport {
-    pub(crate) fn from_manifest(manifest: &ResolvedRelease) -> Self {
+    pub(crate) fn from_release(release: &ResolvedRelease) -> Self {
         Self {
-            build: BuildInfo::from_manifest(manifest),
-            available_languages: manifest.available_languages.clone(),
-            parts: manifest.parts.clone(),
-            patches: manifest
+            build: BuildInfo::from_release(release),
+            available_languages: release.available_languages.clone(),
+            parts: release.parts.clone(),
+            patches: release
                 .patches
                 .iter()
                 .map(|patch| PatchSummary {
@@ -95,9 +95,9 @@ impl InspectReport {
                     compressed_bytes: patch.files.iter().map(|file| file.size).sum(),
                 })
                 .collect(),
-            package_count: manifest.assets.len(),
-            compressed_bytes: manifest.download_size(),
-            default_output_directory: BuildInfo::from_manifest(manifest).default_output_directory(),
+            package_count: release.assets.len(),
+            compressed_bytes: release.download_size(),
+            default_output_directory: BuildInfo::from_release(release).default_output_directory(),
         }
     }
 }

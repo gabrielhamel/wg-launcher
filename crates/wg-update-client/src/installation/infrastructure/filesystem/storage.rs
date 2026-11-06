@@ -1,10 +1,6 @@
-use super::error::{Result, StorageError as Error};
-use super::paths::safe_relative_path;
-use crate::catalog::Patch;
-use crate::installation::InstalledBuild;
-use crate::installation::PinnedManifest;
+use super::error::Result;
 use std::{
-    fs::{self, File, OpenOptions},
+    fs,
     path::{Path, PathBuf},
 };
 
@@ -15,21 +11,21 @@ pub const DOWNLOAD_MANIFEST_FILE: &str = "manifest.json";
 /// Directory beneath an installation root used for temporary extraction and delta work.
 pub const STAGING_DIRECTORY: &str = ".wg-launcher/installing";
 /// Installed-build JSON path relative to an installation root.
-pub const INSTALL_MARKER_FILE: &str = ".wg-launcher/state.json";
+pub const INSTALLED_STATE_FILE: &str = ".wg-launcher/state.json";
 const INSTALL_LOCK_FILE: &str = ".wg-launcher/wg-launcher.lock";
 #[derive(Debug, Clone)]
 pub(crate) struct InstallationStorage {
     pub cache: PathBuf,
-    pub work: PathBuf,
-    pub marker: PathBuf,
+    pub staging: PathBuf,
+    pub installed_state: PathBuf,
     pub lock: PathBuf,
 }
 
 pub(crate) fn installation_storage(install_root: &Path) -> Result<InstallationStorage> {
     Ok(InstallationStorage {
         cache: install_root.join(DOWNLOAD_CACHE_DIRECTORY),
-        work: install_root.join(STAGING_DIRECTORY),
-        marker: install_root.join(INSTALL_MARKER_FILE),
+        staging: install_root.join(STAGING_DIRECTORY),
+        installed_state: install_root.join(INSTALLED_STATE_FILE),
         lock: install_root.join(INSTALL_LOCK_FILE),
     })
 }
@@ -39,125 +35,6 @@ pub(crate) fn prepare_installation(
     storage: &InstallationStorage,
 ) -> Result<()> {
     fs::create_dir_all(install_root)?;
-    fs::create_dir_all(&storage.work)?;
+    fs::create_dir_all(&storage.staging)?;
     Ok(())
-}
-
-pub(crate) struct InstallationLock {
-    file: File,
-}
-
-impl InstallationLock {
-    pub(crate) fn acquire(storage: &InstallationStorage, install_root: &Path) -> Result<Self> {
-        fs::create_dir_all(install_root.join(".wg-launcher"))?;
-        let file = OpenOptions::new()
-            .create(true)
-            .truncate(false)
-            .read(true)
-            .write(true)
-            .open(&storage.lock)?;
-        match fs2::FileExt::try_lock_exclusive(&file) {
-            Ok(()) => Ok(Self { file }),
-            Err(error) if error.raw_os_error() == fs2::lock_contended_error().raw_os_error() => {
-                Err(Error::InstallationLocked(install_root.to_path_buf()))
-            }
-            Err(error) => Err(error.into()),
-        }
-    }
-}
-
-impl Drop for InstallationLock {
-    fn drop(&mut self) {
-        let _ = fs2::FileExt::unlock(&self.file);
-    }
-}
-
-pub(crate) fn remove_patch_volumes(cache: &Path, patch: &Patch) -> Result<u64> {
-    let mut removed = 0;
-    for file in &patch.files {
-        let path = cache.join(safe_relative_path(&file.name)?);
-        removed += fs::metadata(&path)?.len();
-        fs::remove_file(&path)?;
-        remove_empty_parents(path.parent(), cache)?;
-    }
-    Ok(removed)
-}
-
-fn remove_empty_parents(mut directory: Option<&Path>, cache: &Path) -> Result<()> {
-    while let Some(path) = directory {
-        if path == cache || !path.starts_with(cache) {
-            break;
-        }
-        match fs::remove_dir(path) {
-            Ok(()) => directory = path.parent(),
-            Err(error) if error.kind() == std::io::ErrorKind::DirectoryNotEmpty => break,
-            Err(error) => return Err(error.into()),
-        }
-    }
-    Ok(())
-}
-
-pub(crate) fn verify_cache(patches: &[&Patch], cache: &Path) -> Result<()> {
-    for file in patches.iter().flat_map(|patch| &patch.files) {
-        let path = cache.join(safe_relative_path(&file.name)?);
-        let actual = fs::metadata(&path)
-            .map(|metadata| {
-                if metadata.is_file() {
-                    metadata.len()
-                } else {
-                    0
-                }
-            })
-            .unwrap_or(0);
-        if actual != file.size {
-            return Err(Error::IncompleteCache {
-                path,
-                expected: file.size,
-                actual,
-            });
-        }
-    }
-    Ok(())
-}
-
-pub(crate) fn write_marker(manifest: &PinnedManifest, marker: &Path) -> Result<()> {
-    let marker_data = InstalledBuild::from(manifest);
-    let bytes = serde_json::to_vec_pretty(&marker_data)?;
-    if let Some(parent) = marker.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    let temporary = marker.with_extension("json.part");
-    fs::write(&temporary, bytes)?;
-    replace_file(&temporary, marker, &marker.with_extension("json.backup"))?;
-    Ok(())
-}
-
-pub(crate) fn replace_file(source: &Path, target: &Path, backup: &Path) -> Result<()> {
-    if let Some(parent) = target.parent() {
-        fs::create_dir_all(parent)?;
-    }
-    if target.exists() {
-        if !fs::symlink_metadata(target)?.file_type().is_file() {
-            return Err(std::io::Error::other(format!(
-                "cannot replace {}: destination is not a regular file; move it aside and retry",
-                target.display()
-            ))
-            .into());
-        }
-        fs::rename(target, backup)?;
-    }
-    match fs::rename(source, target) {
-        Ok(()) => {
-            if backup.exists() {
-                fs::remove_file(backup)?;
-            }
-            Ok(())
-        }
-        Err(error) => {
-            if backup.exists() {
-                let _ = fs::rename(backup, target);
-            }
-            Err(error.into())
-        }
-    }
 }

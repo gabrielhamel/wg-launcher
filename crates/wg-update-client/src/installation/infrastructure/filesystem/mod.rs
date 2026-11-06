@@ -1,8 +1,12 @@
+pub(crate) mod cache;
 mod error;
+mod lock;
+pub(crate) mod replacement;
 pub use error::StorageError;
 pub(crate) mod paths;
 pub(crate) mod records;
 pub(crate) mod retry;
 pub(crate) mod storage;
+pub(crate) use lock::InstallationLock;
 pub(crate) use storage::DOWNLOAD_MANIFEST_FILE;
-pub(crate) use storage::{InstallationLock, installation_storage};
+pub(crate) use storage::installation_storage;

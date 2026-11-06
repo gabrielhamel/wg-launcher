@@ -3,7 +3,8 @@
 use super::{
     error::Result,
     paths::safe_relative_path,
-    storage::{DOWNLOAD_MANIFEST_FILE, InstallationStorage, replace_file},
+    records::save_manifest,
+    storage::{DOWNLOAD_MANIFEST_FILE, InstallationStorage},
 };
 use crate::catalog::Patch;
 use crate::installation::PinnedManifest;
@@ -25,21 +26,6 @@ pub(crate) fn resume_manifest(
     Ok(manifest.resume_from(pending)?)
 }
 
-pub(crate) fn save_manifest(
-    manifest: &PinnedManifest,
-    storage: &InstallationStorage,
-) -> Result<()> {
-    fs::create_dir_all(&storage.cache)?;
-    let target = storage.cache.join(DOWNLOAD_MANIFEST_FILE);
-    let temporary = storage.cache.join("manifest.json.part");
-    fs::write(&temporary, serde_json::to_vec_pretty(manifest)?)?;
-    replace_file(
-        &temporary,
-        &target,
-        &storage.cache.join("manifest.json.backup"),
-    )
-}
-
 pub(crate) fn checkpoint_patch(
     manifest: &mut PinnedManifest,
     patch: &Patch,
@@ -47,7 +33,7 @@ pub(crate) fn checkpoint_patch(
 ) -> Result<()> {
     manifest.checkpoint(patch);
     save_manifest(manifest, storage)?;
-    let active = storage.work.join("active");
+    let active = storage.staging.join("active");
     if active.exists() {
         fs::remove_dir_all(active)?;
     }

@@ -47,7 +47,7 @@ pub struct ResolvedRelease {
 }
 
 impl ResolvedRelease {
-    /// Returns the sum of all manifest asset sizes in compressed bytes.
+    /// Returns the sum of all release asset sizes in compressed bytes.
     ///
     /// This is a transport total, not required disk space or remaining network traffic;
     /// it does not subtract cached files or filter the installation chain.
