@@ -19,7 +19,7 @@ powershell -ExecutionPolicy Bypass -c "irm https://github.com/gabrielhamel/wg-la
 ```
 
 Follow the installer's instructions to add `wg-launcher` to your `PATH`, then
-open a new terminal. To upgrade, run `wg-launcher self-update`.
+open a new terminal.
 
 WinGet support is coming soon: the [package submission](https://github.com/microsoft/winget-pkgs/pull/468869)
 is awaiting Microsoft's approval. Until it is published, use the PowerShell installer above.
@@ -36,8 +36,6 @@ sudo apt update
 sudo apt install wg-launcher
 ```
 
-To upgrade, run `sudo apt update`, then `sudo apt install --only-upgrade wg-launcher`.
-
 ### Other Linux (x64) — shell installer
 
 Run:
@@ -47,7 +45,7 @@ curl --proto '=https' --tlsv1.2 -LsSf https://github.com/gabrielhamel/wg-launche
 ```
 
 Follow the installer's instructions to add `wg-launcher` to your `PATH`, then
-open a new terminal. To upgrade, run `wg-launcher self-update`.
+open a new terminal.
 
 ### macOS (ARM and Intel) — Homebrew
 
@@ -56,8 +54,6 @@ On Apple Silicon (ARM64) or Intel (x64):
 ```sh
 brew install gabrielhamel/tap/wg-launcher
 ```
-
-To upgrade, run `brew update`, then `brew upgrade gabrielhamel/tap/wg-launcher`.
 
 <details>
 <summary>Other installation options: shell, archives, or source</summary>
@@ -72,12 +68,6 @@ Follow the installer's instructions to add `wg-launcher` to your `PATH`, then
 open a new terminal. For archive downloads or building from source, see the
 [manual installation guide](crates/wg-launcher-cli/README.md#manual-installation).
 
-Upgrade a direct installation with:
-
-```console
-wg-launcher self-update
-```
-
 </details>
 
 Check your installation:
@@ -85,12 +75,6 @@ Check your installation:
 ```console
 wg-launcher --version
 ```
-
-The CLI checks for newer stable releases at startup and warns when one is
-available. `--version` shows the installed and latest versions. Package-manager
-installations must be upgraded through their package manager; see the
-[upgrade instructions](crates/wg-launcher-cli/README.md#upgrade-the-cli).
-`wg-launcher update` updates game assets only.
 
 ## Try the CLI
 
