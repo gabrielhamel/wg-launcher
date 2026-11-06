@@ -62,7 +62,7 @@ pub struct ListWarning {
 pub struct ListReport {
     /// Successfully resolved, installable variants.
     pub builds: Vec<BuildSummary>,
-    /// Variants omitted because manifest resolution or patch ordering failed.
+    /// Variants omitted because release resolution or patch ordering failed.
     pub warnings: Vec<ListWarning>,
 }
 
@@ -80,7 +80,7 @@ pub async fn list(options: ListOptions) -> Result<ListReport> {
     list_with_client(&WgusClient::new()?, options).await
 }
 
-/// Selects a build whose resolved WGUS manifest should be inspected.
+/// Selects a build whose resolved WGUS release should be inspected.
 #[derive(Debug, Clone, Default)]
 pub struct InspectOptions {
     /// Build to resolve; requires a game and otherwise uses EU, the publisher's
@@ -95,8 +95,8 @@ pub struct InspectOptions {
 /// Returns an error for failed network requests, invalid protocol responses,
 /// unsupported client types or languages, or missing patch chains or web seeds.
 pub async fn inspect(options: InspectOptions) -> Result<InspectReport> {
-    let manifest = resolve(&WgusClient::new()?, &options.selection).await?;
-    Ok(InspectReport::from_manifest(&manifest))
+    let release = resolve(&WgusClient::new()?, &options.selection).await?;
+    Ok(InspectReport::from_release(&release))
 }
 
 async fn list_with_client(client: &WgusClient, options: ListOptions) -> Result<ListReport> {
@@ -112,22 +112,22 @@ async fn list_with_client(client: &WgusClient, options: ListOptions) -> Result<L
         let metadata = client.metadata_for_product(&product).await?;
         for client_type in &metadata.client_types {
             match client
-                .manifest_for_product(&product, &client_type.id, Some(&metadata.default_language))
+                .release_for_product(&product, &client_type.id, Some(&metadata.default_language))
                 .await
             {
-                Ok(manifest) => match installation_assets(&manifest, &Default::default()) {
+                Ok(release) => match installation_assets(&release, &Default::default()) {
                     Ok(assets) => builds.push(BuildSummary {
                         game: product.game(),
                         region: product.region.clone(),
-                        channel: manifest.channel,
-                        platform: manifest.platform,
-                        architecture: manifest.architecture,
-                        client_type: manifest.client_type,
-                        version: manifest.version,
-                        metadata_version: manifest.metadata_version,
+                        channel: release.channel,
+                        platform: release.platform,
+                        architecture: release.architecture,
+                        client_type: release.client_type,
+                        version: release.version,
+                        metadata_version: release.metadata_version,
                         default_language: metadata.default_language.clone(),
-                        languages: manifest.available_languages,
-                        parts: manifest.parts,
+                        languages: release.available_languages,
+                        parts: release.parts,
                         compressed_bytes: assets.iter().map(|asset| asset.size).sum(),
                     }),
                     Err(error) => warnings.push(ListWarning {

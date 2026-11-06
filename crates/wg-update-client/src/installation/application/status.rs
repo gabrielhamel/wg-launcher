@@ -47,7 +47,7 @@ pub async fn status(options: StatusOptions) -> Result<StatusReport> {
     let path = std::path::absolute(options.path)?;
     let installed = load_installed_build(&path).await?;
     let latest = WgusClient::new()?
-        .manifest_from_versions(
+        .release_from_versions(
             &installed.product,
             &installed.client_type,
             Some(&installed.language),

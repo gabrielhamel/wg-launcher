@@ -1,11 +1,11 @@
 use super::error::Result;
-use super::installation_storage;
+use super::{installation_storage, replacement::replace_file, storage::InstallationStorage};
 use crate::installation::{DOWNLOAD_MANIFEST_FILE, InstalledBuild, PinnedManifest};
-use std::path::Path;
+use std::{fs, path::Path};
 
 pub(crate) async fn load_installed_build(root: &Path) -> Result<Option<InstalledBuild>> {
-    let marker = installation_storage(root)?.marker;
-    match tokio::fs::read(&marker).await {
+    let installed_state = installation_storage(root)?.installed_state;
+    match tokio::fs::read(&installed_state).await {
         Ok(bytes) => Ok(Some(serde_json::from_slice(&bytes)?)),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error.into()),
@@ -33,4 +33,38 @@ pub(crate) async fn save_cache_manifest(manifest: &PinnedManifest, cache: &Path)
     }
     tokio::fs::rename(temporary, target).await?;
     Ok(())
+}
+
+pub(crate) fn save_installed_build(
+    manifest: &PinnedManifest,
+    installed_state: &Path,
+) -> Result<()> {
+    let installed_build = InstalledBuild::from(manifest);
+    let bytes = serde_json::to_vec_pretty(&installed_build)?;
+    if let Some(parent) = installed_state.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    let temporary = installed_state.with_extension("json.part");
+    fs::write(&temporary, bytes)?;
+    replace_file(
+        &temporary,
+        installed_state,
+        &installed_state.with_extension("json.backup"),
+    )?;
+    Ok(())
+}
+
+pub(crate) fn save_manifest(
+    manifest: &PinnedManifest,
+    storage: &InstallationStorage,
+) -> Result<()> {
+    fs::create_dir_all(&storage.cache)?;
+    let target = storage.cache.join(DOWNLOAD_MANIFEST_FILE);
+    let temporary = storage.cache.join("manifest.json.part");
+    fs::write(&temporary, serde_json::to_vec_pretty(manifest)?)?;
+    replace_file(
+        &temporary,
+        &target,
+        &storage.cache.join("manifest.json.backup"),
+    )
 }

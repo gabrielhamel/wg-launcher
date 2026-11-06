@@ -3,7 +3,7 @@ use crate::catalog::Patch;
 use crate::installation::ExtractionEvent;
 use crate::installation::infrastructure::filesystem::{
     paths::{safe_archive_path, safe_relative_path},
-    storage::replace_file,
+    replacement::replace_file,
 };
 use std::{
     fs::{self, File},

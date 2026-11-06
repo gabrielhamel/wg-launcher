@@ -19,11 +19,14 @@ selection to prepare the game on someone's machine.
 | Region | The publisher's label for an offering, such as Europe or worldwide. |
 | Channel | A stream of releases, such as the regular game or a public test. |
 | Resolved release | The selected published build, its component targets, and the packages the publisher offers. It contains no local installation progress. |
+| Build selection request | A discovery request that can leave edition or language to publisher defaults and optionally supply a replacement catalog. |
 | Build | A particular published version of a game for a chosen edition and language. |
 | Client type | The game's edition or quality variant, such as SD or HD. |
 | Language | The language chosen for the game content. |
 | Component / part | A named portion of the game, such as its main content or a language pack. Both words refer to the same thing. |
 | Patch | One step that brings a component from a starting version to a target version. It may provide the full component or changes to an existing one. |
+| Full-install patch | A patch providing a complete component, without requiring an existing component version. WGUS represents its starting version as `0`. |
+| Delta patch | A patch changing an existing component from one version to another. |
 | Patch chain | The ordered steps needed to reach a component's target version. |
 | Package | A downloadable piece of a patch. One patch can require several packages. |
 | Download size | The size of the published packages, before allowing for anything already downloaded. |

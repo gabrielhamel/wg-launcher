@@ -62,12 +62,12 @@ where
     let storage = installation_storage(&path)?;
     let installed = load_installed_build(&path).await?;
     let mut manifest = if let Some(pending) = load_cache_manifest(&storage.cache).await? {
-        validate_cached_selection(&pending, &installed.selection())?;
+        validate_cached_selection(&pending, &installed.selection()?)?;
         pending
     } else {
         crate::installation::PinnedManifest::from(
             WgusClient::new()?
-                .manifest_from_versions(
+                .release_from_versions(
                     &installed.product,
                     &installed.client_type,
                     Some(&installed.language),

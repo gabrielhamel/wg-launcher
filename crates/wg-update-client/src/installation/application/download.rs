@@ -1,6 +1,6 @@
 use super::plan::build_plan;
 use super::{BuildSelection, InstallPlan, resolution::resolve_installation};
-use crate::installation::domain::selection::validate_cached_selection;
+use crate::installation::domain::selection::validate_cached_request;
 use crate::installation::infrastructure::filesystem::records::{
     load_cache_manifest, save_cache_manifest,
 };
@@ -95,7 +95,7 @@ where
     // Discovery happens before locking; another workflow could have checkpointed
     // this installation meanwhile. Read its authoritative manifest under the lock.
     let manifest = if let Some(pending) = load_cache_manifest(&storage.cache).await? {
-        validate_cached_selection(&pending, &options.selection)?;
+        validate_cached_request(&pending, &options.selection)?;
         pending
     } else {
         manifest

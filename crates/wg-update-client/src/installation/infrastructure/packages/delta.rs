@@ -1,7 +1,7 @@
 use super::delta_progress::DeltaWriter;
 use super::error::{PackageError as Error, Result};
 use crate::installation::infrastructure::filesystem::{
-    paths::walk_files, retry::delta_source, storage::replace_file,
+    paths::walk_files, replacement::replace_file, retry::delta_source,
 };
 use crate::installation::{ExtractionEvent, ExtractionReport};
 use std::{

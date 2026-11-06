@@ -113,7 +113,10 @@ crates/
         application/          list, inspect, and live build resolution
           reports.rs          Consumer build identity and inspection/patch summaries
           directory_name.rs   Suggested directory names shared by inspect and installation
-        infrastructure/wgus/  HTTP, XML, redirects, publisher normalization
+        infrastructure/wgus/  WGUS transport and response translation
+          mod.rs              HTTP requests, redirects, and release resolution
+          conversion.rs       Wire-to-domain metadata/releases and publisher normalization
+          wire.rs             XML response representations
       installation/           Local installation lifecycle context
         mod.rs                Context entry points and exported contracts
         domain/               Installed identity, pinned manifests, compatibility, checkpoints
@@ -121,10 +124,17 @@ crates/
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
           pipeline/           Shared streaming/local installation coordination
+            patch.rs          Apply a patch, persist its checkpoint, then release packages
         infrastructure/
           transfer/           Resumable HTTP package downloads
           packages/           Transport archives, delta application, throttled output progress
-          filesystem/         Paths, locking, records, replacement, cleanup
+          filesystem/         Installation filesystem adapters
+            storage.rs        Installation-relative paths and staging preparation
+            lock.rs           Exclusive installation mutation lock
+            cache.rs          Package verification and release
+            records.rs        Pinned-manifest and installed-build persistence
+            retry.rs          Checkpoint coordination and original delta sources
+            replacement.rs    File replacement with rollback on rename failure
       error.rs                Public Error, ErrorKind classification, and Result alias
   wg-launcher-cli/            CLI package, README, and license
     src/
@@ -137,6 +147,7 @@ crates/
       installation/           Game installation CLI context
         presentation/         Arguments, summaries, observer adapters, progress
           commands.rs         download, extract, install, status, update handlers
+          progress/           Shared display with separate download/extraction renderers
       self_update/            CLI executable update context
         domain/               Release comparison and ownership/path rules
         application/          Notices, version checks, executable update workflow
@@ -176,6 +187,10 @@ installation lifecycle, including transfer, package application, storage, and
 recovery. Its `PinnedManifest` combines a resolved release with component
 checkpoints; only installation advances those checkpoints. The persistence
 adapter retains the existing flat JSON fields through Serde flattening.
+Discovery requests keep optional defaults and catalog filters; a resolved selection
+contains the known product, client type, and language used for installation compatibility.
+Both streaming installation and staged extraction use the same patch-completion
+operation, preserving apply-before-checkpoint and checkpoint-before-package-release ordering.
 Suggested directory naming belongs to the catalog application contract so
 inspection and installation use the same suggestion without making catalog
 depend on installation. Transfer and archive decoding are technical capabilities within the

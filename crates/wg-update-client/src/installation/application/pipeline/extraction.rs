@@ -1,53 +1,14 @@
+use super::patch::{PatchProgress, apply_and_checkpoint_patch};
 use crate::Result;
-use crate::catalog::Patch;
-use crate::installation::infrastructure::{
-    filesystem::{
-        paths::walk_files,
-        retry::{checkpoint_patch, prepare_patch, resume_manifest, save_manifest},
-        storage::{
-            InstallationStorage, prepare_installation, remove_patch_volumes, verify_cache,
-            write_marker,
-        },
-    },
-    packages::{archive::extract_archive, delta::apply_patch_directory},
+use crate::installation::infrastructure::filesystem::{
+    cache::verify_cache,
+    paths::walk_files,
+    records::{save_installed_build, save_manifest},
+    retry::resume_manifest,
+    storage::{InstallationStorage, prepare_installation},
 };
 use crate::installation::{ExtractionEvent, ExtractionOptions, ExtractionReport, PinnedManifest};
 use std::{fs, path::Path, sync::Arc};
-
-#[derive(Clone, Copy)]
-pub(super) struct InstallationPaths<'a> {
-    pub(super) cache: &'a Path,
-    pub(super) game: &'a Path,
-    pub(super) work: &'a Path,
-}
-
-pub(super) fn extract_patch_sync(
-    patch: &Patch,
-    paths: InstallationPaths<'_>,
-    index: usize,
-    total: usize,
-    observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
-) -> Result<usize> {
-    observer(ExtractionEvent::ExtractingPatch {
-        part: patch.part.clone(),
-        version_from: patch.version_from.clone().unwrap_or_else(|| "?".to_owned()),
-        version_to: patch.version_to.clone(),
-        index: index + 1,
-        total,
-    });
-    let active = prepare_patch(patch, paths.work)?;
-    if patch.version_from.as_deref() == Some("0") {
-        extract_archive(patch, paths.cache, paths.game, Some(&active), observer)?;
-        return Ok(0);
-    }
-
-    let patch_dir = active.join("archive");
-    extract_archive(patch, paths.cache, &patch_dir, None, observer)?;
-    let mut report = ExtractionReport::default();
-    apply_patch_directory(&patch_dir, paths.game, &active, observer, &mut report)?;
-    fs::remove_dir_all(&patch_dir)?;
-    Ok(report.applied_deltas)
-}
 
 pub(super) fn finalize_installation(
     manifest: &PinnedManifest,
@@ -63,9 +24,9 @@ pub(super) fn finalize_installation(
         cache_removed: false,
     };
     observer(ExtractionEvent::Finalizing);
-    write_marker(manifest, &storage.marker)?;
-    if storage.work.exists() {
-        fs::remove_dir_all(&storage.work)?;
+    save_installed_build(manifest, &storage.installed_state)?;
+    if storage.staging.exists() {
+        fs::remove_dir_all(&storage.staging)?;
     }
     if options.clean_download_cache {
         observer(ExtractionEvent::CleaningCache);
@@ -105,17 +66,17 @@ pub(super) fn extract_sync(
 
     let total = patches.len();
     let mut report = ExtractionReport::default();
-    let paths = InstallationPaths {
-        cache,
-        game: install_root,
-        work: &storage.work,
-    };
     for (index, patch) in patches.into_iter().enumerate() {
-        report.applied_deltas += extract_patch_sync(&patch, paths, index, total, &observer)?;
-        checkpoint_patch(&mut manifest, &patch, storage)?;
-        if options.clean_download_cache {
-            remove_patch_volumes(cache, &patch)?;
-        }
+        let completion = apply_and_checkpoint_patch(
+            &mut manifest,
+            &patch,
+            storage,
+            install_root,
+            PatchProgress { index, total },
+            options,
+            &observer,
+        )?;
+        report.applied_deltas += completion.applied_deltas;
     }
     finalize_installation(
         &manifest,
