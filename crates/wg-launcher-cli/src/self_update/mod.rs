@@ -3,6 +3,7 @@ mod application;
 mod domain;
 mod infrastructure;
 mod presentation;
+mod progress;
 
 pub(crate) use application::check;
 pub(crate) use presentation::commands::{notify_if_newer, print_version, run};

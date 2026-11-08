@@ -1,12 +1,9 @@
-use super::patch::{PatchProgress, apply_and_checkpoint_patch};
-use super::{InstallationPipeline, finalization::finalize_installation};
+use super::InstallationPipeline;
+use super::patch::PatchProgress;
+use super::session::InstallationSession;
 use crate::Result;
 use crate::installation::infrastructure::filesystem::InstallationLock;
-use crate::installation::infrastructure::filesystem::{
-    cache::verify_cache,
-    records::save_manifest,
-    storage::{InstallationLayout, prepare_installation},
-};
+use crate::installation::infrastructure::filesystem::{InstallationLayout, cache::verify_cache};
 use crate::installation::{ExtractionEvent, ExtractionOptions, ExtractionReport, PinnedManifest};
 use std::{path::Path, sync::Arc};
 
@@ -20,30 +17,21 @@ pub(super) fn extract_sync(
     observer(ExtractionEvent::CheckingCache {
         assets: manifest.release.volumes.len(),
     });
-    let mut manifest = super::resume_manifest(manifest.clone(), storage)?;
-    let patches = manifest
+    let mut session = InstallationSession::resume(manifest.clone(), storage.clone())?;
+    let patches = session
+        .manifest
         .ordered_patches()?
         .into_iter()
         .cloned()
         .collect::<Vec<_>>();
     verify_cache(&patches.iter().collect::<Vec<_>>(), cache)?;
-    save_manifest(&manifest, storage)?;
-    prepare_installation(storage)?;
+    session.prepare()?;
 
     let total = patches.len();
-    let mut report = ExtractionReport::default();
     for (index, patch) in patches.into_iter().enumerate() {
-        let completion = apply_and_checkpoint_patch(
-            &mut manifest,
-            &patch,
-            storage,
-            PatchProgress { index, total },
-            options,
-            &observer,
-        )?;
-        report.applied_deltas += completion.applied_deltas;
+        session.apply_patch(&patch, PatchProgress { index, total }, options, &observer)?;
     }
-    finalize_installation(&manifest, storage, options, report.applied_deltas, observer)
+    session.finalize(options, observer)
 }
 
 impl InstallationPipeline {

@@ -71,7 +71,8 @@ fn installation_kind(error: &InstallationError) -> ErrorKind {
         | InstallationError::PinnedReleaseMismatch { .. } => ErrorKind::IncompatibleCache,
         InstallationError::Catalog(_) => ErrorKind::InvalidSelection,
         InstallationError::InvalidInstalledProduct(_)
-        | InstallationError::InstalledRegionMismatch { .. } => ErrorKind::InvalidData,
+        | InstallationError::InstalledRegionMismatch { .. }
+        | InstallationError::IncompleteInstallation { .. } => ErrorKind::InvalidData,
     }
 }
 

@@ -2,7 +2,7 @@
 
 use crate::self_update::{Result, domain::artifact::ArchiveFormat};
 
-use crate::self_update::application::{Observer, SelfUpdateEvent, SelfUpdateStage};
+use crate::self_update::progress::{Observer, SelfUpdateEvent, SelfUpdateStage};
 use std::{
     fs::File,
     io::{Read, Write},

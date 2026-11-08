@@ -40,3 +40,7 @@ release selection through extraction.
 `prepare_candidate` names the complete artifact preparation operation. It returns
 the extracted launcher path; the application then verifies the executable version
 and replaces the current direct installation.
+
+The context's `progress.rs` owns shared stages, events, and the observer contract.
+Application orchestration, infrastructure adapters, and terminal presentation all
+use that contract without importing progress definitions from the application.

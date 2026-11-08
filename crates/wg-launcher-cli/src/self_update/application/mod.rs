@@ -7,37 +7,12 @@ use super::domain::{
     ownership::PackageManager,
 };
 use super::infrastructure::{artifact, distribution, executable, release};
+use super::progress::{Observer, SelfUpdateEvent, SelfUpdateStage};
 use semver::Version;
 
 #[derive(Debug, thiserror::Error)]
 #[error("release discovery failed: {0}")]
 pub(crate) struct ReleaseCheckError(#[source] pub(crate) Box<dyn std::error::Error>);
-
-/// A step in checking and replacing the launcher executable.
-#[derive(Clone, Copy)]
-pub(crate) enum SelfUpdateStage {
-    CheckingRelease,
-    FetchingChecksum,
-    DownloadingArchive,
-    VerifyingArchive,
-    OpeningArchive,
-    ExtractingExecutable,
-    VerifyingExecutable,
-    ReplacingExecutable,
-}
-
-/// Progress facts; terminal messages and styling belong to presentation.
-pub(crate) enum SelfUpdateEvent {
-    Stage(SelfUpdateStage),
-    ReleaseChecked,
-    Transfer {
-        stage: SelfUpdateStage,
-        total: Option<u64>,
-    },
-    Advanced(u64),
-}
-
-pub(crate) type Observer<'a> = dyn Fn(SelfUpdateEvent) -> Result<()> + 'a;
 
 pub(crate) enum SelfUpdateOutcome {
     Managed(PackageManager),

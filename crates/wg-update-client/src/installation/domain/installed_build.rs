@@ -1,4 +1,3 @@
-use super::PinnedManifest;
 use crate::catalog::ComponentVersions;
 use serde::{Deserialize, Serialize};
 
@@ -16,16 +15,6 @@ pub struct InstalledBuild {
     pub product: crate::catalog::Product,
     /// Successfully installed version of each selected component.
     pub component_versions: ComponentVersions,
-}
-
-impl From<&PinnedManifest> for InstalledBuild {
-    fn from(manifest: &PinnedManifest) -> Self {
-        Self {
-            identity: manifest.release.identity.clone(),
-            product: manifest.release.product.clone(),
-            component_versions: manifest.release.component_versions.clone(),
-        }
-    }
 }
 
 impl InstalledBuild {

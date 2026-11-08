@@ -51,16 +51,12 @@ pub(super) fn patch_chain_from_wire(
 
     let mut patches = Vec::with_capacity(chain.patches.len());
     let mut resolved_volumes = Vec::new();
-    let mut latest_version_by_part = component_versions
-        .iter()
-        .map(|(part, version)| (part.clone(), version.clone()))
-        .collect::<HashMap<_, _>>();
+    let mut normalization = PatchChainNormalization::from_known_versions(component_versions);
     for patch in chain.patches {
-        let source = normalize_patch_source_and_record_target(
+        let source = normalization.resolve_source_and_advance(
             patch.version_from,
             &patch.part,
             &patch.version_to,
-            &mut latest_version_by_part,
         );
         let volumes = patch
             .files
@@ -118,7 +114,8 @@ pub(super) fn patch_chain_from_wire(
         .parts
         .iter()
         .map(|part| {
-            latest_version_by_part
+            normalization
+                .reached_versions
                 .get(&part.id)
                 .cloned()
                 .map(|version| (part.id.clone(), version))
@@ -135,15 +132,32 @@ pub(super) fn patch_chain_from_wire(
     })
 }
 
-fn normalize_patch_source_and_record_target(
-    explicit: Option<String>,
-    part: &str,
-    version_to: &str,
-    latest_version_by_part: &mut HashMap<String, String>,
-) -> PatchSource {
-    let version_from = explicit
-        .or_else(|| latest_version_by_part.get(part).cloned())
-        .unwrap_or_else(|| "0".to_owned());
-    latest_version_by_part.insert(part.to_owned(), version_to.to_owned());
-    version_from.into()
+/// Publisher-order component progress used only while converting a WGUS chain.
+struct PatchChainNormalization {
+    reached_versions: HashMap<String, String>,
+}
+
+impl PatchChainNormalization {
+    fn from_known_versions(known: &ComponentVersions) -> Self {
+        Self {
+            reached_versions: known
+                .iter()
+                .map(|(part, version)| (part.clone(), version.clone()))
+                .collect(),
+        }
+    }
+
+    fn resolve_source_and_advance(
+        &mut self,
+        explicit: Option<String>,
+        part: &str,
+        target: &str,
+    ) -> PatchSource {
+        let source = explicit
+            .or_else(|| self.reached_versions.get(part).cloned())
+            .unwrap_or_else(|| "0".to_owned());
+        self.reached_versions
+            .insert(part.to_owned(), target.to_owned());
+        source.into()
+    }
 }

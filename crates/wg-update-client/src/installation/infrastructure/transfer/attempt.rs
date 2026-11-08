@@ -2,7 +2,7 @@
 
 use super::error::{Result, TransferError as Error};
 use super::{
-    AssetDownloader, DownloadEvent, FileOutcome,
+    DownloadEvent, FileOutcome, VolumeDownloader,
     local::{self, DownloadPreparation, VolumePaths},
 };
 use crate::catalog::TransportVolume;
@@ -14,7 +14,7 @@ use tokio::{
     io::{AsyncWriteExt, BufWriter},
 };
 
-impl AssetDownloader {
+impl VolumeDownloader {
     pub(super) async fn download_once(
         &self,
         asset: &TransportVolume,

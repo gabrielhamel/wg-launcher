@@ -2,7 +2,7 @@ use super::InstallationEvent;
 use super::prefetch_budget::PrefetchBudget;
 use crate::Result;
 use crate::catalog::{Patch, PlannedPatch};
-use crate::installation::{AssetDownloader, DownloadOptions, DownloadReport};
+use crate::installation::{DownloadOptions, DownloadReport, VolumeDownloader};
 use std::{path::PathBuf, sync::Arc};
 
 // Stop starting patches once this much data is queued ahead of the current
@@ -17,7 +17,7 @@ pub(super) struct PatchDownloads {
 
 impl PatchDownloads {
     pub(super) fn start(
-        downloader: AssetDownloader,
+        downloader: VolumeDownloader,
         patches: Vec<PlannedPatch>,
         cache: PathBuf,
         options: DownloadOptions,

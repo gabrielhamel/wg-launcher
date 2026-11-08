@@ -34,6 +34,8 @@ installation manages the copy on a person's machine.
 | Update target | The build chosen for comparison with the installed game. Its source is either the live catalog or the pinned manifest for unfinished work. A pinned target need not be the publisher's latest release. |
 | Prefetch budget | The limit on packages queued ahead of the patch currently being applied. A new patch may start below the limit even if finishing it exceeds the limit. |
 | Finalization | Record the completed build and remove temporary work and, when requested, cached packages after all patches succeed. |
+| Installation session | The layout, saved progress, and completed delta count carried through one execution while the caller holds the installation lock. |
+| Installation completion | Confirm every selected component has reached its target before creating the installed build identity. |
 | Installation pipeline | Coordinates package downloads and patch application, including the lock, saved progress, and final cleanup. |
 | Delta filename | A publisher filename whose extension, version segment, and hexadecimal checksum segment identify a delta and its target game package. Recognition checks naming syntax, not checksum correctness; unrecognized names remain replacement files. |
 | Delta | Changes that need an existing game file, rather than another complete copy of that file. |
@@ -101,3 +103,13 @@ catalog's component-version value while retaining ownership of seeding and saved
 checkpoint precedence. Its JSON representation remains a component-to-version map.
 Shared update target and source types live beside target resolution; status report
 construction remains in `application/comparison.rs`.
+
+`pipeline/session.rs` carries mutable execution state through local extraction and
+streaming workers. Both strategies resume saved checkpoints, prepare storage,
+apply patches, and finalize through that session. Streaming moves the session
+between workers rather than cloning the manifest for each patch. The caller
+retains the installation lock and stops pending downloads before returning errors.
+Pinned manifests produce installed identity through `complete_installation`,
+which checks all selected component targets before any state write or cleanup.
+The internal `VolumeDownloader` transfers transport volumes; public workflow,
+report, event, and saved JSON names are unchanged.

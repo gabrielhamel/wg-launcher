@@ -14,6 +14,7 @@ pub(super) fn finalize_installation(
     applied_deltas: usize,
     observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<ExtractionReport> {
+    let installed = manifest.complete_installation()?;
     let files_before_finalization = count_files_before_finalization(storage.root())?;
     let mut report = ExtractionReport {
         files_before_finalization,
@@ -21,7 +22,6 @@ pub(super) fn finalize_installation(
         cache_removed: false,
     };
     observer(ExtractionEvent::Finalizing);
-    let installed = crate::installation::InstalledBuild::from(manifest);
     save_installed_build(&installed, &storage.installed_state)?;
     if storage.staging.exists() {
         fs::remove_dir_all(&storage.staging)?;

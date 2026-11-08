@@ -2,7 +2,7 @@
 
 use crate::self_update::{
     Result,
-    application::{SelfUpdateEvent, SelfUpdateStage},
+    progress::{SelfUpdateEvent, SelfUpdateStage},
 };
 use crate::terminal::styles::{overall_style, spinner_style};
 use indicatif::{ProgressBar, ProgressStyle, style::TemplateError};

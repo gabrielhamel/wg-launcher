@@ -96,11 +96,11 @@ pub struct DownloadReport {
 /// contents. Does not resolve manifests, pin state, extract packages, or acquire
 /// an installation lock. Prefer [`download`](crate::download) for the package workflow.
 #[derive(Clone)]
-pub struct AssetDownloader {
+pub struct VolumeDownloader {
     http: Client,
 }
 
-impl AssetDownloader {
+impl VolumeDownloader {
     /// Creates a downloader with a 15-second connection timeout, 60-second read
     /// timeout, and the crate version in its user agent.
     ///

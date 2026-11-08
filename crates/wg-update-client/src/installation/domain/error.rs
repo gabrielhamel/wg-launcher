@@ -24,6 +24,15 @@ pub enum InstallationError {
         "the saved installation region '{recorded}' differs from its product region '{product}'; restore a consistent .wg-launcher/state.json record"
     )]
     InstalledRegionMismatch { recorded: String, product: String },
+    /// Selected components have not all reached the pinned release targets.
+    #[error(
+        "component '{component}' is at version '{reached}', but requires '{target}'; resume installation before recording it as complete"
+    )]
+    IncompleteInstallation {
+        component: String,
+        reached: String,
+        target: String,
+    },
     /// Failure from the underlying catalog operation.
     #[error(transparent)]
     Catalog(#[from] CatalogError),

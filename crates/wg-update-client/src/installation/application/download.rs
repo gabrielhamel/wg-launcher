@@ -8,7 +8,7 @@ use crate::{
     Result,
     catalog::TransportVolume,
     installation::infrastructure::filesystem::{InstallationLayout, InstallationLock},
-    installation::{AssetDownloader, DownloadEvent, DownloadOptions, DownloadReport},
+    installation::{DownloadEvent, DownloadOptions, DownloadReport, VolumeDownloader},
 };
 use serde::Serialize;
 use std::path::PathBuf;
@@ -99,7 +99,7 @@ where
         manifest
     };
     let all_assets = manifest.required_volumes()?;
-    let assets = select_download_assets(all_assets, &options.parts);
+    let assets = select_download_volumes(all_assets, &options.parts);
     if assets.is_empty() {
         return Err(
             crate::installation::DownloadError::EmptySelection(options.parts.join(", ")).into(),
@@ -108,7 +108,7 @@ where
     let plan = build_plan(&manifest, root, &assets);
     observer(DownloadAssetsEvent::Planned(Box::new(plan.clone())));
     save_manifest(&manifest, &storage)?;
-    let report = AssetDownloader::new()?
+    let report = VolumeDownloader::new()?
         .download_with_observer(assets, &plan.cache, options.download, move |event| {
             observer(DownloadAssetsEvent::Progress(event));
         })
@@ -116,7 +116,7 @@ where
     Ok(DownloadAssetsOutcome { plan, report })
 }
 
-pub(super) fn select_download_assets(
+pub(super) fn select_download_volumes(
     assets: Vec<TransportVolume>,
     parts: &[String],
 ) -> Vec<TransportVolume> {

@@ -20,5 +20,5 @@ pub(crate) use application::{
 pub(crate) use domain::{InstallationError, InstalledBuild, PinnedManifest};
 pub(crate) use infrastructure::filesystem::{DOWNLOAD_MANIFEST_FILE, StorageError};
 pub(crate) use infrastructure::packages::PackageError;
-pub(crate) use infrastructure::transfer::{AssetDownloader, TransferError};
 pub use infrastructure::transfer::{DownloadEvent, DownloadOptions, DownloadReport};
+pub(crate) use infrastructure::transfer::{TransferError, VolumeDownloader};

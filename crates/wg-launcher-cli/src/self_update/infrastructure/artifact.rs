@@ -4,7 +4,7 @@ use super::{
     archive,
     http::{client, fetch},
 };
-use crate::self_update::application::{Observer, SelfUpdateEvent, SelfUpdateStage};
+use crate::self_update::progress::{Observer, SelfUpdateEvent, SelfUpdateStage};
 use crate::self_update::{
     Result,
     domain::{Release, artifact::ReleaseArtifact},

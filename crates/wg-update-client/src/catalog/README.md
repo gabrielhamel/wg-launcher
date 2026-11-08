@@ -12,6 +12,7 @@ selection to prepare the game on someone's machine.
 
 | Term | Meaning here |
 | --- | --- |
+| Patch chain normalization | Read publisher steps in order, infer omitted sources from the known component versions, and advance those versions to each step's target. |
 | Publisher | The organisation providing a game and its updates, such as Wargaming or Lesta. |
 | Game | The game being selected, such as World of Tanks or World of Warships. |
 | Product | A publisher's offering for one game and region, with its own release channel. |
@@ -70,3 +71,7 @@ options, summaries, and warnings; `inspect.rs` owns read-only inspection. Intern
 release, patch, and planned-patch collections use `volumes` for transport pieces.
 Saved manifests retain `assets` and patch `files` keys, and public consumer reports
 retain their existing package names.
+
+WGUS `PatchChainNormalization` owns the temporary component versions used during
+conversion. Explicit sources remain authoritative; omitted sources use the last
+known version or `0`. The accumulated versions supply the selected component targets.

@@ -38,7 +38,7 @@ pub(super) fn apply_and_checkpoint_patch(
     });
     let workspace = PatchWorkspace::prepare(patch, &storage.staging)?;
     let applied_deltas =
-        extract_patch_sync(patch, &storage.cache, storage.root(), &workspace, observer)?;
+        apply_patch_contents(patch, &storage.cache, storage.root(), &workspace, observer)?;
     manifest.checkpoint(patch);
     save_manifest(manifest, storage)?;
     workspace.release()?;
@@ -58,7 +58,7 @@ pub(super) struct PatchCompletion {
     pub(super) released_package_bytes: u64,
 }
 
-fn extract_patch_sync(
+fn apply_patch_contents(
     patch: &Patch,
     cache: &Path,
     game: &Path,

@@ -22,7 +22,7 @@ const MAX_REDIRECTS: usize = 3;
 /// Reusable client for live WGUS-compatible metadata and full installation chains.
 ///
 /// Supports built-in catalogs, including Lesta RU. Resolves transport URLs
-/// without downloading package contents. Use [`AssetDownloader`](crate::AssetDownloader)
+/// without downloading package contents. Use [`VolumeDownloader`](crate::installation::VolumeDownloader)
 /// for transfers or the high-level workflows for installation lifecycle management.
 #[derive(Clone)]
 pub struct WgusClient {

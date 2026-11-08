@@ -26,6 +26,26 @@ impl From<ResolvedRelease> for PinnedManifest {
 }
 
 impl PinnedManifest {
+    /// Produce installed identity only when every selected component reached its target.
+    pub(crate) fn complete_installation(&self) -> InstallationResult<InstalledBuild> {
+        for part in &self.release.parts {
+            let target = self.release.component_versions.get(part);
+            let reached = self.reached_versions().version_or_zero(part);
+            if target.is_none() || Some(reached) != target {
+                return Err(Error::IncompleteInstallation {
+                    component: part.clone(),
+                    reached: reached.to_owned(),
+                    target: target.unwrap_or("unknown").to_owned(),
+                });
+            }
+        }
+        Ok(InstalledBuild {
+            identity: self.release.identity.clone(),
+            product: self.release.product.clone(),
+            component_versions: self.release.component_versions.clone(),
+        })
+    }
+
     /// Component versions reached locally, including saved patch completions.
     pub(crate) fn reached_versions(&self) -> &ComponentVersions {
         self.progress.versions()

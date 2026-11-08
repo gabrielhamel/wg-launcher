@@ -126,7 +126,7 @@ crates/
           mod.rs              HTTP exchange, redirect loop, and release resolution
           request.rs          WGUS query encoding, language mapping, endpoints, redirect targets
           conversion.rs       Release assembly and metadata conversion
-          patch_chain_conversion.rs  Publisher chain normalization, targets, and package URLs
+          patch_chain_conversion.rs  Publisher chain normalization state, targets, and package URLs
           wire.rs             XML response representations
       installation/           Local installation lifecycle context
         mod.rs                Context entry points and exported contracts
@@ -135,6 +135,7 @@ crates/
           error.rs            Installation consistency errors and mismatch diagnostics
           component_progress.rs  Starting versions and saved patch completions
           installed_build.rs  Saved identity, consistency, selection, and build comparison
+          pinned_manifest.rs  Pinned release, checkpoints, and checked installation completion
         application/          download, extract, install, status, update
           progress.rs         Shared package execution and installation observer events
           update_target.rs    Shared update target/source, pending precedence, live fallback, and starting versions
@@ -142,7 +143,8 @@ crates/
           comparison.rs       Build status reports and estimate volumes from explicit starting versions
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
-          pipeline/           InstallationPipeline and checkpoint resumption
+          pipeline/           InstallationPipeline execution strategies
+            session.rs        Layout, authoritative checkpoints, patch execution, and finalization
             reports.rs        Extraction/installation totals and cache-retention options
             extraction.rs     Apply already downloaded patches
             finalization.rs   Record the installed build and clean up successful work
@@ -185,7 +187,8 @@ crates/
         domain/               Release comparison and ownership/path rules
           artifact.rs         Select archive/checksum pair from an explicit host target
           ownership.rs        Typed package-manager ownership and path rules
-        application/          Release checks, executable update workflow, events and outcomes
+        progress.rs           Shared self-update stages, events, and observer contract
+        application/          Release checks, executable update workflow and outcomes
         infrastructure/       Release HTTP, archives, ownership detection, replacement
           release.rs          Discover published launcher releases
           artifact.rs         Prepare a candidate by downloading, verifying, and extracting the artifact

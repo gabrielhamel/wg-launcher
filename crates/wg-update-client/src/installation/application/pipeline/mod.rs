@@ -6,6 +6,7 @@ mod patch;
 mod prefetch;
 mod prefetch_budget;
 mod reports;
+mod session;
 mod streaming;
 
 use super::progress::{ExtractionEvent, InstallationEvent};
@@ -29,16 +30,4 @@ pub enum PipelineError {
     /// The download coordinator ended without producing every planned patch.
     #[error("package downloads stopped before all patches were ready")]
     DownloadsStopped,
-}
-
-/// Restore saved component checkpoints under the installation lock.
-fn resume_manifest(
-    manifest: crate::installation::PinnedManifest,
-    storage: &crate::installation::infrastructure::filesystem::storage::InstallationLayout,
-) -> crate::Result<crate::installation::PinnedManifest> {
-    use crate::installation::infrastructure::filesystem::records::load_pinned_manifest_sync;
-    match load_pinned_manifest_sync(storage)? {
-        Some(pending) => Ok(manifest.resume_from(pending)?),
-        None => Ok(manifest),
-    }
 }

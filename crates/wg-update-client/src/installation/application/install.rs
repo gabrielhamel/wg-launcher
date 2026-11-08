@@ -1,7 +1,7 @@
 use super::{BuildSelection, InstallPlan, plan::build_plan, resolution::resolve_installation};
 use crate::Result;
 use crate::installation::{
-    AssetDownloader, DownloadOptions, InstallationEvent, InstallationPipeline, InstallationReport,
+    DownloadOptions, InstallationEvent, InstallationPipeline, InstallationReport, VolumeDownloader,
 };
 use serde::Serialize;
 use std::path::PathBuf;
@@ -99,7 +99,7 @@ where
     let pipeline = InstallationPipeline::new();
     let report = pipeline
         .download_and_extract_with_observer(
-            AssetDownloader::new()?,
+            VolumeDownloader::new()?,
             manifest,
             &plan.root,
             download,
