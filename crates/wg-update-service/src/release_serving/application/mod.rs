@@ -60,7 +60,7 @@ impl FileService {
             if request.path == patch_chain_route {
                 return Resource::Bytes(patch_chain.clone(), "application/xml");
             }
-            filesystem::package_resource(&packages, &request.path)
+            http::package_resource(&packages, &request.path)
         });
         let handle = ServerHandle::start(listener, handler);
         Ok(Self {

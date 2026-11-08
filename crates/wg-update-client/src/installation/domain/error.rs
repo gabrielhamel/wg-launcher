@@ -13,6 +13,16 @@ pub enum InstallationError {
         /// Requested identifier or build selection.
         requested: String,
     },
+    /// The product saved with the installation is invalid.
+    #[error(
+        "the saved installation product is invalid: {0}; restore a valid .wg-launcher/state.json record"
+    )]
+    InvalidInstalledProduct(#[source] CatalogError),
+    /// The recorded region contradicts the saved product.
+    #[error(
+        "the saved installation region '{recorded}' differs from its product region '{product}'; restore a consistent .wg-launcher/state.json record"
+    )]
+    InstalledRegionMismatch { recorded: String, product: String },
     /// Failure from the underlying catalog operation.
     #[error(transparent)]
     Catalog(#[from] CatalogError),

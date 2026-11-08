@@ -1,4 +1,3 @@
-use super::http::Resource;
 use std::{
     fs, io,
     path::{Component, Path, PathBuf},
@@ -43,24 +42,20 @@ pub(crate) fn load_release(root: &Path) -> io::Result<ReleaseFiles> {
     })
 }
 
-pub(crate) fn package_resource(packages: &Path, request_path: &str) -> Resource {
-    let relative = request_path.trim_start_matches('/');
-    let relative = relative.strip_prefix("packages/").unwrap_or(relative);
-    let path = Path::new(relative);
-    if relative.is_empty()
-        || path
+/// Resolve a package relative to the release's package folder, preserving containment.
+pub(crate) fn resolve_package(packages: &Path, relative: &Path) -> Option<PathBuf> {
+    if relative.as_os_str().is_empty()
+        || relative
             .components()
             .any(|part| !matches!(part, Component::Normal(_)))
     {
-        return Resource::NotFound;
+        return None;
     }
-    let Ok(file) = packages.join(path).canonicalize() else {
-        return Resource::NotFound;
-    };
+    let file = packages.join(relative).canonicalize().ok()?;
     if !file.starts_with(packages) || !file.is_file() {
-        return Resource::NotFound;
+        return None;
     }
-    Resource::File(file, content_type(relative))
+    Some(file)
 }
 
 fn read_required(path: &Path) -> io::Result<Vec<u8>> {
@@ -70,16 +65,6 @@ fn read_required(path: &Path) -> io::Result<Vec<u8>> {
             path.display()
         ))
     })
-}
-
-fn content_type(path: &str) -> &'static str {
-    if path.ends_with(".xml") {
-        "application/xml"
-    } else if path.ends_with(".json") {
-        "application/json"
-    } else {
-        "application/octet-stream"
-    }
 }
 
 fn invalid_input(message: impl Into<String>) -> io::Error {

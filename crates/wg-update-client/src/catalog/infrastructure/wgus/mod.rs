@@ -1,5 +1,6 @@
 mod conversion;
 mod error;
+mod request;
 mod wire;
 
 use self::error::{Result, WgusError as Error};
@@ -7,14 +8,13 @@ pub use error::WgusError;
 
 use crate::catalog::{GameMetadata, Product, ResolvedRelease};
 use conversion::{metadata_from_wire, normalize_language, release_from_wire};
+use request::{patch_chain_query, product_endpoint, redirect_product};
 use reqwest::Client;
 use std::{collections::BTreeMap, time::Duration};
-use url::Url;
 use wire::{MetadataXml, PatchesXml};
 
 /// WGUS protocol version sent in metadata and patch-chain requests.
 pub const PROTOCOL_VERSION: &str = "100500.6969696";
-const INSTALLATION_ID: &str = "wg-launcher";
 const MAX_REDIRECTS: usize = 3;
 
 /// Reusable client for live WGUS-compatible metadata and full installation chains.
@@ -94,45 +94,14 @@ impl WgusClient {
             let selected = metadata.require_client_type(client_type)?.clone();
             let language = normalize_language(language.unwrap_or(&metadata.default_language));
             metadata.validate_language(&language)?;
-            let wire_language = wire_metadata
-                .predefined_section
-                .supported_languages
-                .split(',')
-                .find(|candidate| normalize_language(candidate) == language)
-                .map(str::trim)
-                .unwrap_or(&wire_metadata.predefined_section.default_language)
-                .to_owned();
-
-            let app_id = wire_metadata
-                .predefined_section
-                .redirect_application_id
-                .as_deref()
-                .unwrap_or(&wire_metadata.predefined_section.app_id);
             let endpoint = product_endpoint(&resolved, "patches_chain")?;
-            let mut query = vec![
-                ("game_id".to_owned(), app_id.to_owned()),
-                ("protocol_version".to_owned(), PROTOCOL_VERSION.to_owned()),
-                (
-                    "metadata_protocol_version".to_owned(),
-                    PROTOCOL_VERSION.to_owned(),
-                ),
-                ("installation_id".to_owned(), INSTALLATION_ID.to_owned()),
-                ("client_type".to_owned(), client_type.to_owned()),
-                ("lang".to_owned(), wire_language),
-                (
-                    "metadata_version".to_owned(),
-                    metadata.metadata_version.clone(),
-                ),
-            ];
-            for part in &selected.parts {
-                query.push((
-                    format!("{}_current_version", part.id),
-                    component_versions
-                        .get(&part.id)
-                        .cloned()
-                        .unwrap_or_else(|| "0".to_owned()),
-                ));
-            }
+            let query = patch_chain_query(
+                &wire_metadata,
+                &metadata,
+                &selected,
+                &language,
+                component_versions,
+            );
 
             let text = self
                 .http
@@ -145,19 +114,12 @@ impl WgusClient {
                 .await?;
             let response: PatchesXml = quick_xml::de::from_str(&text)?;
 
-            if let Some(redirect) = response.redirect_url() {
-                let mut redirected = resolved.clone();
-                redirected.host = Url::parse(redirect)?;
-                redirected.validate_identity()?;
-                if product_endpoint(&redirected, "metadata")?
-                    != product_endpoint(&resolved, "metadata")?
-                {
-                    if hop == MAX_REDIRECTS {
-                        return Err(Error::RedirectLimit(product.game_id.clone()));
-                    }
-                    resolved = redirected;
-                    continue;
+            if let Some(redirected) = redirect_product(&resolved, response.redirect_url())? {
+                if hop == MAX_REDIRECTS {
+                    return Err(Error::RedirectLimit(product.game_id.clone()));
                 }
+                resolved = redirected;
+                continue;
             }
 
             return release_from_wire(
@@ -193,12 +155,4 @@ impl WgusClient {
         let metadata = metadata_from_wire(&wire);
         Ok((wire, metadata))
     }
-}
-
-fn product_endpoint(product: &Product, route: &str) -> Result<Url> {
-    product.validate_identity()?;
-    Ok(Url::parse(&format!(
-        "{}/api/v1/{route}/",
-        product.host.as_str().trim_end_matches('/')
-    ))?)
 }

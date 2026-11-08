@@ -137,6 +137,24 @@ impl Fixture {
         resources
     }
 
+    /// A valid release that also directs discovery to another WGUS base URL.
+    /// Keeping its chain allows testing publishers that redirect to their own endpoint.
+    pub fn redirected_resources(&self, prefix: &str, target: &str) -> BTreeMap<String, Vec<u8>> {
+        let mut resources = self.service_resources(prefix);
+        let route = format!("{}/api/v1/patches_chain/", prefix.trim_matches('/'));
+        let chain = String::from_utf8(resources[&route].clone()).unwrap();
+        resources.insert(
+            route,
+            chain
+                .replace(
+                    "<protocol>",
+                    &format!("<protocol><redirect_url>{target}</redirect_url>"),
+                )
+                .into_bytes(),
+        );
+        resources
+    }
+
     /// Builds real 7z transport volumes in a caller-owned scratch directory.
     pub fn build(release: Release, scratch: &Path) -> Self {
         fs::create_dir_all(scratch).unwrap();

@@ -1,4 +1,4 @@
-mod checkpoint;
+mod component_progress;
 mod error;
 mod installed_build;
 mod pinned_manifest;

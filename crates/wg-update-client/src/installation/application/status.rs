@@ -1,5 +1,5 @@
 use crate::Result;
-use crate::catalog::{BuildInfo, WgusClient};
+use crate::catalog::{BuildInfo, resolve_update_release};
 use crate::installation::{InstalledBuild, PinnedManifest};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -65,14 +65,13 @@ pub struct StatusReport {
 pub async fn status(options: StatusOptions) -> Result<StatusReport> {
     let path = std::path::absolute(options.path)?;
     let installed = load_installed_build(&path).await?;
-    let latest = WgusClient::new()?
-        .release_from_versions(
-            &installed.product,
-            &installed.client_type,
-            Some(&installed.language),
-            &installed.component_versions,
-        )
-        .await?;
+    let latest = resolve_update_release(
+        &installed.product,
+        &installed.client_type,
+        &installed.language,
+        &installed.component_versions,
+    )
+    .await?;
     let mut latest = PinnedManifest::from(latest);
     latest.seed_missing_component_versions(&installed);
     build_status(path, installed, &latest, UpdateTargetSource::LiveCatalog)
@@ -117,9 +116,10 @@ pub enum StatusError {
 pub(super) async fn load_installed_build(
     root: &std::path::Path,
 ) -> crate::Result<crate::installation::InstalledBuild> {
-    Ok(
+    let installed =
         crate::installation::infrastructure::filesystem::records::load_installed_build(root)
             .await?
-            .ok_or_else(|| StatusError::InstallationNotFound(root.to_path_buf()))?,
-    )
+            .ok_or_else(|| StatusError::InstallationNotFound(root.to_path_buf()))?;
+    installed.validate_consistency()?;
+    Ok(installed)
 }

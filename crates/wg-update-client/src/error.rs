@@ -30,7 +30,7 @@ pub enum ErrorKind {
     UnsafePath,
     /// A filesystem operation failed.
     Io,
-    /// Stored installation data is unreadable as JSON.
+    /// Stored installation data is unreadable as JSON or has an inconsistent identity.
     InvalidData,
     /// A background worker failed unexpectedly.
     Internal,
@@ -69,6 +69,8 @@ fn installation_kind(error: &InstallationError) -> ErrorKind {
     match error {
         InstallationError::CachedSelectionMismatch { .. } => ErrorKind::IncompatibleCache,
         InstallationError::Catalog(_) => ErrorKind::InvalidSelection,
+        InstallationError::InvalidInstalledProduct(_)
+        | InstallationError::InstalledRegionMismatch { .. } => ErrorKind::InvalidData,
     }
 }
 

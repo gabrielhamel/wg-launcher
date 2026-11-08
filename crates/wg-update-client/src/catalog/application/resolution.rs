@@ -60,3 +60,16 @@ pub(crate) async fn resolve(
         })
     })
 }
+
+/// Discover the publisher's update chain from the caller's known component versions.
+/// Local checkpoints and pending-manifest precedence remain installation concerns.
+pub(crate) async fn resolve_update_release(
+    product: &crate::catalog::Product,
+    client_type: &str,
+    language: &str,
+    component_versions: &std::collections::BTreeMap<String, String>,
+) -> Result<ResolvedRelease> {
+    Ok(WgusClient::new()?
+        .release_from_versions(product, client_type, Some(language), component_versions)
+        .await?)
+}

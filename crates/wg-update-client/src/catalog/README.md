@@ -33,3 +33,8 @@ selection to prepare the game on someone's machine.
 | Package | A downloadable piece of a patch. One patch can require several packages. |
 | Download size | The size of the published packages, before allowing for anything already downloaded. |
 | Payload platform | The kind of computer the game content is intended for. It can differ from the computer running the launcher. |
+
+The catalog application resolves update releases from a product, client type,
+language, and known component versions. Installation owns local progress and
+pending-manifest precedence. WGUS request encoding and redirect targets remain
+inside the protocol adapter; redirects preserve the configured product identity.

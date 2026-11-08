@@ -237,3 +237,107 @@ fn custom_discovery_uses_application_id_path_prefix_and_language_without_downloa
     );
     assert!(!sandbox.game().exists());
 }
+
+#[test]
+fn redirected_discovery_retains_product_and_component_versions_and_ignores_self_redirects() {
+    let sandbox = Sandbox::new();
+    let fixture = sandbox.fixture(Release::V1);
+    let mirror =
+        WgUpdateService::start(fixture.redirected_resources("mirror", "__BASE_URL__/mirror/"));
+    let redirect = format!("{}/mirror", mirror.url());
+    let origin = WgUpdateService::start(fixture.redirected_resources("updates", &redirect));
+    let config = sandbox.configuration(&origin);
+    let game = sandbox.game();
+    success(sandbox.run(
+        &sandbox.path,
+        &[
+            "install",
+            "--game",
+            "wot",
+            "--product",
+            config.to_str().unwrap(),
+            "--region",
+            "local",
+            "--output",
+            game.to_str().unwrap(),
+        ],
+    ));
+    assert_installed_in_region(&game, Release::V1, "local");
+    let state: serde_json::Value =
+        serde_json::from_slice(&fs::read(game.join(".wg-launcher/state.json")).unwrap()).unwrap();
+    assert_eq!(
+        state["product"]["host"],
+        format!("{}/updates", origin.url())
+    );
+    assert!(
+        origin
+            .requests()
+            .iter()
+            .all(|request| request.path.starts_with("/updates/api/v1/"))
+    );
+    assert!(
+        mirror
+            .requests()
+            .iter()
+            .any(|request| request.path == "/client.wgpkg")
+    );
+
+    let updated = sandbox.fixture(Release::V2);
+    mirror.replace_resources(updated.redirected_resources("mirror", "__BASE_URL__/mirror/"));
+    let before = mirror.requests().len();
+    let output = success(sandbox.run(&game, &["status"]));
+    assert!(output.contains("Update available."));
+    success(sandbox.run(&game, &["update"]));
+    assert_installed_in_region(&game, Release::V2, "local");
+    let requests = mirror.requests();
+    let chains = requests[before..]
+        .iter()
+        .filter(|request| request.path.ends_with("/patches_chain/"))
+        .collect::<Vec<_>>();
+    assert_eq!(chains.len(), 2);
+    for request in chains {
+        let query = request.query.as_deref().unwrap();
+        assert!(query.contains("client_current_version=1.0"), "{query}");
+        assert!(query.contains("locale_current_version=1.0"), "{query}");
+        assert!(query.contains("lang=EN"), "{query}");
+    }
+    let state: serde_json::Value =
+        serde_json::from_slice(&fs::read(game.join(".wg-launcher/state.json")).unwrap()).unwrap();
+    assert_eq!(
+        state["product"]["host"],
+        format!("{}/updates", origin.url())
+    );
+}
+
+#[test]
+fn cyclic_discovery_redirects_stop_without_downloading_packages() {
+    let sandbox = Sandbox::new();
+    let fixture = sandbox.fixture(Release::V1);
+    let origin = WgUpdateService::start(fixture.service_resources("updates"));
+    let mirror = WgUpdateService::start(
+        fixture.redirected_resources("mirror", &format!("{}/updates", origin.url())),
+    );
+    origin.replace_resources(
+        fixture.redirected_resources("updates", &format!("{}/mirror", mirror.url())),
+    );
+    let config = sandbox.configuration(&origin);
+    crate::support::failure(
+        sandbox.run(
+            &sandbox.path,
+            &[
+                "inspect",
+                "--game",
+                "wot",
+                "--product",
+                config.to_str().unwrap(),
+                "--region",
+                "local",
+            ],
+        ),
+        "WGUS redirect limit exceeded",
+    );
+    // Omitted client type first fetches metadata to choose the publisher default.
+    assert_eq!(origin.requests().len(), 5);
+    assert_eq!(mirror.requests().len(), 4);
+    assert!(!sandbox.game().exists());
+}

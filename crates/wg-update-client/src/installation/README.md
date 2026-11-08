@@ -17,6 +17,7 @@ installation manages the copy on a person's machine.
 | Selection | The chosen game, region, channel, client type, and language. |
 | Resolved selection | The known product, client type, and language of an installation, with no unanswered discovery choices. |
 | Installed build | The game version recorded after all required installation work succeeds. |
+| Component progress | The versions reached locally, starting with installed versions and advancing after successful patches. Saved progress takes precedence when retrying; it remains stored as `base_versions` in the pinned manifest. |
 | Component version | The recorded version of one part of the game. Different parts can change independently. Starting versions seed missing checkpoints; completed patch checkpoints take precedence. |
 | Download | Bring packages onto the machine, without yet applying them to the game. |
 | Download cache | Packages kept locally so they can be used or reused for installation. |
@@ -35,3 +36,7 @@ installation manages the copy on a person's machine.
 | Checkpoint | Saved progress after a patch succeeds, so a retry can skip completed work. |
 | Resume / retry | Continue unfinished work, reusing completed steps and downloads where possible. |
 | Cleanup | Remove packages and temporary work after success, while retaining the installed game's identity. |
+
+Saved installed identity is checked before status or update discovery. An invalid
+product or a region that differs from its saved product is reported as invalid
+installation data, including when unfinished work is pinned locally.

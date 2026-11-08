@@ -63,7 +63,7 @@ setting. They run a copied launcher, never the shared build executable, and
 replace it with the independent `cli-update-fixture` executable from `e2e/src/bin`.
 Coverage includes startup/help update notices, current/latest version output, offline
 checks, skipped checks, equal/older releases, package-manager refusal (including
-Homebrew receipts in custom prefixes), checksum
+Homebrew receipts in custom prefixes, Scoop, and Nix), checksum
 and embedded-version failures, successful replacement, staging cleanup, and
 preservation of unrelated files, the shared build executable, and another launcher
 copy. The synthetic replacement has its own test version, independent of the
@@ -102,6 +102,12 @@ described below. Neither category claims whole-install transactional rollback. T
 workspace binaries before launching them. Tests are included in
 `cargo test --workspace --locked` and the existing Windows/Linux/macOS CI matrix.
 Only macOS is verified when running locally on a Mac.
+
+Discovery coverage also follows cross-service redirects, ignores redirects back to
+the same endpoint, retains the configured product and component versions through
+redirects, and bounds cyclic redirects without transferring packages. Validation
+coverage rejects inconsistent saved products or regions before HTTP requests for
+both live and pending updates, preserving the saved record and game payload.
 
 ## Recovery coverage
 

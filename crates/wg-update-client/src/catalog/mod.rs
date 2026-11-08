@@ -4,11 +4,11 @@ mod application;
 mod domain;
 mod infrastructure;
 
-pub(crate) use application::resolve;
 pub use application::{
     BuildInfo, BuildSummary, InspectOptions, InspectReport, ListOptions, ListReport, ListWarning,
     PatchSummary, inspect, list,
 };
+pub(crate) use application::{resolve, resolve_update_release};
 pub(crate) use domain::CatalogError;
 pub(crate) use domain::release::patch_chain::{PlannedPatch, ordered_patches, planned_patches};
 pub(crate) use domain::release::{

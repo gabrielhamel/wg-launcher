@@ -1,7 +1,7 @@
 //! Launcher updates are independent of game workflows and terminal presentation.
 
 use super::Result;
-use super::domain::{Release, artifact::ReleaseArtifact};
+use super::domain::{Release, artifact::ReleaseArtifact, ownership::PackageManager};
 use super::infrastructure::{artifact, distribution, executable, release};
 use semver::Version;
 
@@ -32,7 +32,7 @@ pub(crate) enum SelfUpdateEvent {
 pub(crate) type Observer<'a> = dyn Fn(SelfUpdateEvent) -> Result<()> + 'a;
 
 pub(crate) enum SelfUpdateOutcome {
-    Managed(&'static str),
+    Managed(PackageManager),
     Current(Version),
     Updated(Version),
 }

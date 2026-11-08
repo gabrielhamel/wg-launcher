@@ -24,3 +24,7 @@ release on someone's machine belongs to the launcher.
 | Service address | The location launchers use to discover the release and request its packages. |
 | Resumed download | A download that asks for the remaining portion of a package instead of starting over. |
 | Access log | A record of requests received by the service, useful for understanding what launchers asked for. |
+
+The HTTP adapter interprets package routes and assigns response content types.
+The filesystem adapter resolves relative package paths and enforces containment
+inside the package folder, without constructing HTTP responses.

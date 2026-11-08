@@ -111,16 +111,20 @@ crates/
         mod.rs                Context entry points and exported models
         domain/               Built-ins, products, selections, release/patch rules
           release/patch_chain.rs  Ordered patches with their resolved packages
-        application/          list, inspect, and live build resolution
+        application/          list, inspect, and live build/update release resolution
+          resolution.rs       Catalog entry points for discovery requests and known component versions
           reports.rs          Consumer build identity and inspection/patch summaries
           directory_name.rs   Suggested directory names shared by inspect and installation
         infrastructure/wgus/  WGUS transport and response translation
-          mod.rs              HTTP requests, redirects, and release resolution
+          mod.rs              HTTP exchange, redirect loop, and release resolution
+          request.rs          WGUS query encoding, language mapping, endpoints, redirect targets
           conversion.rs       Wire-to-domain metadata/releases and publisher normalization
           wire.rs             XML response representations
       installation/           Local installation lifecycle context
         mod.rs                Context entry points and exported contracts
         domain/               Installed identity, pinned manifests, compatibility, checkpoints
+          component_progress.rs  Starting versions and saved patch completions
+          installed_build.rs  Saved identity, consistency validation, and selection projection
         application/          download, extract, install, status, update
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
@@ -155,6 +159,7 @@ crates/
       self_update/            CLI executable update context
         domain/               Release comparison and ownership/path rules
           artifact.rs         Select the host archive format and checksum pair
+          ownership.rs        Typed package-manager ownership and path rules
         application/          Release checks, executable update workflow, events and outcomes
         infrastructure/       Release HTTP, archives, ownership detection, replacement
           release.rs          Discover published launcher releases
@@ -172,6 +177,8 @@ crates/
         domain/               Release URL/prefix rules and template rendering
         application/          FileService startup, routing, and lifetime coordination
         infrastructure/       HTTP/ranges, filesystem mapping, access logs
+          http.rs             Request parsing, package routes, content types, streamed responses
+          filesystem.rs       Release loading and safe relative package-file lookup
         presentation/         Service CLI arguments and startup output
 e2e/                          Independent black-box system test package
   src/bin/cli_update_fixture.rs  Independent replacement executable for CLI update tests

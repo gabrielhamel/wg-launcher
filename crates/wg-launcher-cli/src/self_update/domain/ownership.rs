@@ -1,6 +1,30 @@
 use std::path::Path;
 
-pub(crate) fn manager_for_path(path: &Path) -> Option<&'static str> {
+/// The owner responsible for updating a managed launcher installation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PackageManager {
+    Homebrew,
+    WinGet,
+    Apt,
+    Scoop,
+    Nix,
+    Other,
+}
+
+impl PackageManager {
+    pub(crate) fn from_marker(marker: &str) -> Self {
+        match marker {
+            "brew" | "homebrew" => Self::Homebrew,
+            "winget" => Self::WinGet,
+            "apt" | "deb" => Self::Apt,
+            "scoop" => Self::Scoop,
+            "nix" => Self::Nix,
+            _ => Self::Other,
+        }
+    }
+}
+
+pub(crate) fn manager_for_path(path: &Path) -> Option<PackageManager> {
     let parts: Vec<_> = path
         .components()
         .map(|part| part.as_os_str().to_string_lossy().to_ascii_lowercase())
@@ -9,16 +33,16 @@ pub(crate) fn manager_for_path(path: &Path) -> Option<&'static str> {
         .windows(2)
         .any(|pair| pair[0] == "cellar" && pair[1].starts_with("wg-launcher"))
     {
-        Some("Homebrew")
+        Some(PackageManager::Homebrew)
     } else if parts.iter().any(|part| part == "winget") {
-        Some("WinGet")
+        Some(PackageManager::WinGet)
     } else if parts.iter().any(|part| part == "scoop") {
-        Some("Scoop")
+        Some(PackageManager::Scoop)
     } else if parts
         .windows(2)
         .any(|pair| pair[0] == "nix" && pair[1] == "store")
     {
-        Some("Nix")
+        Some(PackageManager::Nix)
     } else {
         None
     }

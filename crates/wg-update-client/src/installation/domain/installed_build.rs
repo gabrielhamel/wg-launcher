@@ -67,24 +67,26 @@ impl InstalledBuild {
         }
     }
 
-    pub(crate) fn selection(
-        &self,
-    ) -> Result<super::selection::ResolvedSelection<'_>, crate::catalog::CatalogError> {
-        self.product.validate_identity()?;
+    /// Check the saved identity before using it for discovery or a pending update.
+    pub(crate) fn validate_consistency(&self) -> super::error::Result<()> {
+        self.product
+            .validate_identity()
+            .map_err(super::InstallationError::InvalidInstalledProduct)?;
         if !self.product.region.eq_ignore_ascii_case(&self.region) {
-            return Err(crate::catalog::CatalogError::InvalidProduct(format!(
-                "no product configured for region '{}' and game '{}'; available selections: {}/{}",
-                self.region,
-                self.product.game(),
-                self.product.game(),
-                self.product.region
-            )));
+            return Err(super::InstallationError::InstalledRegionMismatch {
+                recorded: self.region.clone(),
+                product: self.product.region.clone(),
+            });
         }
-        Ok(super::selection::ResolvedSelection {
+        Ok(())
+    }
+
+    pub(crate) fn selection(&self) -> super::selection::ResolvedSelection<'_> {
+        super::selection::ResolvedSelection {
             product: &self.product,
             client_type: &self.client_type,
             language: &self.language,
-        })
+        }
     }
 
     pub(crate) fn differs_from(&self, manifest: &PinnedManifest) -> bool {

@@ -1,6 +1,6 @@
 use super::status::{StatusReport, UpdateTargetSource, build_status, load_installed_build};
 use super::{InstallEvent, InstallOutcome, install::install_resolved};
-use crate::catalog::WgusClient;
+use crate::catalog::resolve_update_release;
 use crate::installation::DownloadOptions;
 use crate::installation::domain::selection::validate_cached_selection;
 use crate::installation::infrastructure::filesystem::records::load_cache_manifest;
@@ -63,19 +63,18 @@ where
     let installed = load_installed_build(&path).await?;
     let (mut manifest, target_source) =
         if let Some(pending) = load_cache_manifest(&storage.cache).await? {
-            validate_cached_selection(&pending, &installed.selection()?)?;
+            validate_cached_selection(&pending, &installed.selection())?;
             (pending, UpdateTargetSource::PinnedManifest)
         } else {
             (
                 crate::installation::PinnedManifest::from(
-                    WgusClient::new()?
-                        .release_from_versions(
-                            &installed.product,
-                            &installed.client_type,
-                            Some(&installed.language),
-                            &installed.component_versions,
-                        )
-                        .await?,
+                    resolve_update_release(
+                        &installed.product,
+                        &installed.client_type,
+                        &installed.language,
+                        &installed.component_versions,
+                    )
+                    .await?,
                 ),
                 UpdateTargetSource::LiveCatalog,
             )

@@ -195,6 +195,8 @@ fn package_manager_installations_refuse_replacement_even_when_newer_is_available
     for (directory, manager) in [
         ("Cellar/wg-launcher/current/bin", "Homebrew"),
         ("Microsoft/WinGet/Packages/example", "WinGet"),
+        ("scoop/apps/wg-launcher/current", "Scoop"),
+        ("nix/store/wg-launcher/bin", "Nix"),
     ] {
         let launcher = sandbox.path.join(directory).join(executable_name());
         copy_launcher(&launcher);
