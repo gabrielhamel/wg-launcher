@@ -35,14 +35,9 @@ pub(crate) fn planned_patches(
     release: &ResolvedRelease,
     base_versions: &ComponentVersions,
 ) -> Result<Vec<PlannedPatch>> {
-    let volumes = release
-        .volumes
-        .iter()
-        .map(|volume| (volume.name.as_str(), volume))
-        .collect::<HashMap<_, _>>();
     let mut planned = Vec::new();
     for component in release.components() {
-        planned.extend(component.planned_patches(base_versions, &volumes)?);
+        planned.extend(component.planned_patches(base_versions)?);
     }
     Ok(planned)
 }
@@ -50,11 +45,12 @@ pub(crate) fn planned_patches(
 impl super::ComponentRelease<'_> {
     /// Validate the volumes of the selected steps, leaving unused publisher
     /// alternatives alone. Planning does not change the persisted release.
-    fn planned_patches(
-        &self,
-        base_versions: &ComponentVersions,
-        volumes: &HashMap<&str, &TransportVolume>,
-    ) -> Result<Vec<PlannedPatch>> {
+    fn planned_patches(&self, base_versions: &ComponentVersions) -> Result<Vec<PlannedPatch>> {
+        let volumes = self
+            .transport_volumes
+            .iter()
+            .map(|volume| (volume.name.as_str(), volume))
+            .collect::<HashMap<_, _>>();
         self.ordered_patches(base_versions)?
             .into_iter()
             .map(|patch| {

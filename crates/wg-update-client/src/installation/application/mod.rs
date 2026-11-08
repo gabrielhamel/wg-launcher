@@ -1,6 +1,5 @@
 //! Local installation workflows and their shared execution pipeline.
 
-mod comparison;
 pub(crate) mod download;
 pub(crate) mod extract;
 mod install;
@@ -10,6 +9,7 @@ mod plan;
 pub(crate) mod progress;
 mod resolution;
 pub(crate) mod status;
+mod status_report;
 mod update;
 mod update_target;
 

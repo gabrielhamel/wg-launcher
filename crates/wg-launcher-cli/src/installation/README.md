@@ -21,12 +21,16 @@ launcher.
 | Status | Show the installed version and whether an update is available. |
 | Update | Bring the game in the existing installation folder up to date. |
 | Progress | Information about ongoing downloads and the preparation of game files. |
+| Progress observer | A presentation adapter that receives workflow events and keeps the same progress display through success or failure. |
 | Download activity | Whether a package is queued, transferring, or complete; terminal bars display this state. |
 | Cache hit | A package already present locally that can be reused without downloading it again. |
 | Summary | The result of completed work, including downloads, reused packages, and cleanup. |
 
 Command handlers live in `presentation/commands.rs`. They translate arguments,
 call the client library, and render results; the library owns the workflow rules.
+`presentation/observers.rs` owns separate download, extraction, and installation
+adapters. Each adapter shares its progress state with the event callback and
+handles success or failure, keeping synchronization out of command handlers.
 
 `presentation/progress/` keeps download and extraction rendering separate while
 sharing one terminal display. Each download keeps its bar, byte position, and

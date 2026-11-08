@@ -55,12 +55,13 @@ installation manages the copy on a person's machine.
 
 | Module | Owns |
 | --- | --- |
+| `domain/patch_identity.rs` | Component transition identity, independent of its recovery-file encoding. |
 | `domain/installed_build.rs` | Installed identity, selection consistency, and comparison with a target build. |
 | `domain/pinned_manifest.rs`, `component_progress.rs` | Pinned release, starting versions, saved checkpoints, and checked completion. |
 | `domain/selection.rs` | Cache compatibility and structured mismatch facts. |
 | `application/` | Public workflows, options, reports, and observer contracts. |
 | `application/resolution.rs`, `update_target.rs` | Pinned-cache reuse, pending update precedence, live fallback, and starting-version seeding. |
-| `application/installed.rs`, `comparison.rs`, `plan.rs` | Validated state loading and consumer status/plan projections. |
+| `application/installed.rs`, `status_report.rs`, `plan.rs` | Validated state loading and consumer status/plan projections. |
 | `application/pipeline/session.rs` | Exclusive installation access, authoritative checkpoints, and execution totals. |
 | `application/pipeline/mod.rs`, `execution_plan.rs` | Resolve remaining work under the session lock, own its consumer summary, and hand patches to execution once. |
 | `application/pipeline/extraction.rs`, `streaming.rs` | Local execution or overlapping downloads and patch application. |

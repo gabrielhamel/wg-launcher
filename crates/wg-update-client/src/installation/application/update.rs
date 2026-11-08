@@ -1,7 +1,7 @@
 use super::status::StatusReport;
 use super::update_target::resolve_update_target;
 use super::{InstallEvent, InstallOutcome, install::install_resolved};
-use super::{comparison::build_status_report, installed::load_installed_build};
+use super::{installed::load_installed_build, status_report::build_status_report};
 use crate::installation::DownloadOptions;
 use crate::{Result, installation::infrastructure::filesystem::InstallationLayout};
 use serde::Serialize;

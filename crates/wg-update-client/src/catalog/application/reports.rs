@@ -90,12 +90,12 @@ impl InspectReport {
         Self {
             build: BuildInfo::from_release(release),
             available_languages: release.available_languages.clone(),
-            parts: release.parts.clone(),
+            parts: release.component_ids.clone(),
             patches: release
                 .patches
                 .iter()
                 .map(|patch| PatchSummary {
-                    part: patch.part.clone(),
+                    part: patch.component_id.clone(),
                     version_from: patch.source.version().map(str::to_owned),
                     version_to: patch.version_to.clone(),
                     package_count: patch.volumes.len(),

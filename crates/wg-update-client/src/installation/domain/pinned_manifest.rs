@@ -31,12 +31,12 @@ impl PinnedManifest {
         for component in self.release.components() {
             if !component.reached_by(self.reached_versions()) {
                 return Err(Error::IncompleteInstallation {
-                    component: component.id.to_owned(),
+                    component: component.id().to_owned(),
                     reached: self
                         .reached_versions()
-                        .version_or_zero(component.id)
+                        .version_or_zero(component.id())
                         .to_owned(),
-                    target: component.target.unwrap_or("unknown").to_owned(),
+                    target: component.target_version().unwrap_or("unknown").to_owned(),
                 });
             }
         }
@@ -80,6 +80,6 @@ impl PinnedManifest {
 
     pub(crate) fn checkpoint(&mut self, patch: &Patch) {
         self.progress
-            .record_completion(&patch.part, &patch.version_to);
+            .record_completion(&patch.component_id, &patch.version_to);
     }
 }

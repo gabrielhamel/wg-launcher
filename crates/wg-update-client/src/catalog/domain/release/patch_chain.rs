@@ -9,9 +9,9 @@ impl<'a> super::ComponentRelease<'a> {
         base_versions: &ComponentVersions,
     ) -> Result<Vec<&'a Patch>> {
         let mut ordered = Vec::new();
-        let part = self.id;
+        let component_id = self.id;
         let target = self.require_target()?;
-        let mut version = base_versions.version_or_zero(part);
+        let mut version = base_versions.version_or_zero(component_id);
         let by_from = self
             .patches()
             .filter_map(|patch| patch.source.version().map(|from| (from, patch)))
@@ -24,7 +24,7 @@ impl<'a> super::ComponentRelease<'a> {
         while version != target {
             if !seen.insert(version) {
                 return Err(Error::BrokenPatchChain {
-                    part: part.to_owned(),
+                    part: component_id.to_owned(),
                     version: version.to_owned(),
                 });
             }
@@ -32,7 +32,7 @@ impl<'a> super::ComponentRelease<'a> {
                 .get(version)
                 .copied()
                 .ok_or_else(|| Error::MissingUpdatePatch {
-                    part: part.to_owned(),
+                    part: component_id.to_owned(),
                     version: version.to_owned(),
                     target: target.to_owned(),
                 })?;

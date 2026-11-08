@@ -125,7 +125,7 @@ pub(super) fn select_download_volumes(
     }
     assets
         .into_iter()
-        .filter(|asset| parts.iter().any(|part| part == &asset.part))
+        .filter(|asset| parts.iter().any(|part| part == &asset.component_id))
         .collect()
 }
 

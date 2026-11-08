@@ -112,11 +112,11 @@ crates/
         domain/               Built-ins, products, selections, release/patch rules
           build_identity.rs   Shared published identity, flattened in saved records
           release/resolved_release.rs  Published release data and component enumeration
-          release/component_release.rs  Associate component targets and steps; target validation and completion checks
+          release/component_release.rs  Associate component targets, steps, and transport volumes; target validation and completion checks
           release/component_versions.rs  Known component versions and the missing-component baseline
           release/patch_chain.rs  Version traversal and full-package fallback
           release/transport_volume.rs  Downloadable transport volumes and HTTP seeds
-          release/package_plan.rs  Own the volume index and resolve selected steps to volumes
+          release/package_plan.rs  Resolve selected component steps to indexed transport volumes
         application/          list, inspect, and live build/update release resolution
           list.rs             Listing options, build summaries, and per-variant warnings
           inspect.rs          Read-only inspection options and workflow
@@ -137,11 +137,12 @@ crates/
           component_progress.rs  Starting versions and saved patch completions
           installed_build.rs  Saved identity, consistency, selection, and build comparison
           pinned_manifest.rs  Pinned release, checkpoints, and checked installation completion
+          patch_identity.rs   Domain identity of the component transition preserved for retry
         application/          download, extract, install, status, update
           progress.rs         Shared package execution and installation observer events
           update_target.rs    Shared update target/source, pending precedence, live fallback, and starting versions
           installed.rs        Shared validated installed-record loading
-          comparison.rs       Build status reports and estimate volumes from explicit starting versions
+          status_report.rs    Build status reports and estimate volumes from explicit starting versions
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
           pipeline/           InstallationPipeline execution strategies
@@ -170,7 +171,7 @@ crates/
             lock.rs           Exclusive installation mutation lock
             cache.rs          Package verification and release
             records.rs        Load pinned manifests and installed identity; save with file replacement
-            patch_workspace.rs  Patch identity, active staging, and preserved original sources
+            patch_workspace.rs  Recovery identity encoding, active staging, and preserved original sources
             replacement.rs    File replacement with rollback on rename failure
       error.rs                Public Error, ErrorKind classification, and Result alias
   wg-launcher-cli/            CLI package, README, and license
@@ -184,6 +185,7 @@ crates/
       installation/           Game installation CLI context
         presentation/         Arguments, summaries, observer adapters, progress
           commands.rs         download, extract, install, status, update handlers
+          observers.rs        Typed adapters owning shared progress and success/failure handling
           progress/           Shared display with separate download/extraction renderers
       self_update/            CLI executable update context
         domain/               Release comparison and ownership/path rules
@@ -251,15 +253,19 @@ The pipeline resolves and owns one execution plan after the session restores
 checkpoints under its lock. Its observer summary uses those selected patches and
 volumes. Starting local or streaming execution consumes the pipeline and hands
 the remaining patches to execution once, alongside the session. Component views
-associate targets with patch steps for planning and completion checks. Internal application IDs and resolved hostnames retain the saved
-`game_id` and `host` keys.
+associate targets with patch steps and resolve their transport volumes for planning;
+completion checks use the same component views. Internal component identifiers map
+to the existing public and persisted `part`/`parts` names. Internal application IDs
+and resolved hostnames retain the saved
+`game_id` and `host` keys. Patch identity is an installation domain value; its
+filesystem adapter preserves the existing recovery-record array encoding.
 
 Patch sources distinguish full content from changes to a specific version, while
 retaining the saved `version_from` string or null representation. Planned patches
 keep each step with its resolved packages; prefetch delivers the patch with its
 transfer result instead of coordinating separate patch and package lists.
 Component release views validate and group each selected component target with
-its patches and a shared package index, preserving publisher order and the saved
+its patches and available transport volumes, preserving publisher order and the saved
 release format. Each component resolves selected patches to their required
 packages before execution. Build
 comparison is independent of package estimation: status supplies installed versions,

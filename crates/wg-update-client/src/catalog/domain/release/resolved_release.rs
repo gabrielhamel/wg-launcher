@@ -20,7 +20,8 @@ pub struct ResolvedRelease {
     /// Publisher identifiers advertised in metadata.
     pub publisher_ids: Vec<String>,
     /// Selected client component identifiers.
-    pub parts: Vec<String>,
+    #[serde(rename = "parts")]
+    pub component_ids: Vec<String>,
     /// Target version of every selected component, including unchanged components.
     pub component_versions: ComponentVersions,
     /// Published patch chain, including full-install and delta patches.
@@ -44,7 +45,7 @@ impl ResolvedRelease {
         compare!(
             identity => "build identity", product => "product", resolved_hostname => "publisher endpoint",
             available_languages => "available languages", publisher_ids => "publisher identifiers",
-            parts => "selected components", component_versions => "component targets",
+            component_ids => "selected components", component_versions => "component targets",
             patches => "patch chains", web_seeds => "download endpoints", volumes => "transport volumes",
         );
         fields
@@ -62,10 +63,13 @@ impl ResolvedRelease {
 impl ResolvedRelease {
     /// Visit selected components in publisher order, including incomplete saved data.
     pub(crate) fn components(&self) -> impl Iterator<Item = super::ComponentRelease<'_>> {
-        self.parts.iter().map(move |part| super::ComponentRelease {
-            id: part,
-            target: self.component_versions.get(part),
-            published_patches: &self.patches,
-        })
+        self.component_ids
+            .iter()
+            .map(move |component_id| super::ComponentRelease {
+                id: component_id,
+                target: self.component_versions.get(component_id),
+                published_patches: &self.patches,
+                transport_volumes: &self.volumes,
+            })
     }
 }

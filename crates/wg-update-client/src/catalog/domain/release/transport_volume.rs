@@ -17,7 +17,8 @@ pub struct WebSeed {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TransportVolume {
     /// Component identifier to which this patch belongs.
-    pub part: String,
+    #[serde(rename = "part")]
+    pub component_id: String,
     /// Normalized patch source, serialized using the existing version field.
     #[serde(default, rename = "version_from")]
     pub source: PatchSource,

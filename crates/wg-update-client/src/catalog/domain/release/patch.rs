@@ -5,7 +5,8 @@ use url::Url;
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Patch {
     /// Component identifier to which this patch belongs.
-    pub part: String,
+    #[serde(rename = "part")]
+    pub component_id: String,
     /// Normalized source of this patch, retaining the existing JSON representation.
     #[serde(default, rename = "version_from")]
     pub source: PatchSource,

@@ -1,20 +1,29 @@
 //! Associate a selected component with its target and published patch steps.
 
-use super::{ComponentVersions, Patch, ReleaseError, error::Result};
+use super::{ComponentVersions, Patch, ReleaseError, TransportVolume, error::Result};
 
 /// Borrowed component data; missing targets remain visible to each consumer's rules.
 /// This view does not change the release's saved representation.
 pub(crate) struct ComponentRelease<'a> {
-    pub(crate) id: &'a str,
-    pub(crate) target: Option<&'a str>,
+    pub(super) id: &'a str,
+    pub(super) target: Option<&'a str>,
     pub(super) published_patches: &'a [Patch],
+    pub(super) transport_volumes: &'a [TransportVolume],
 }
 
 impl<'a> ComponentRelease<'a> {
+    pub(crate) fn id(&self) -> &'a str {
+        self.id
+    }
+
+    pub(crate) fn target_version(&self) -> Option<&'a str> {
+        self.target
+    }
+
     pub(super) fn patches(&self) -> impl Iterator<Item = &'a Patch> {
         self.published_patches
             .iter()
-            .filter(|patch| patch.part == self.id)
+            .filter(|patch| patch.component_id == self.id)
     }
 
     pub(super) fn require_target(&self) -> Result<&'a str> {

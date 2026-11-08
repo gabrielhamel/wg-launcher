@@ -57,7 +57,7 @@ pub(super) fn patch_chain_from_wire(
         )?);
         let (torrent_hash, torrent_urls) = parse_torrent(patch.torrent)?;
         patches.push(Patch {
-            part: patch.part,
+            component_id: patch.part,
             source,
             version_to: patch.version_to,
             volumes,
@@ -124,7 +124,7 @@ fn resolve_transport_volumes(
         .iter()
         .map(|volume| {
             Ok(TransportVolume {
-                part: part.to_owned(),
+                component_id: part.to_owned(),
                 source: source.clone(),
                 version_to: version_to.to_owned(),
                 name: volume.name.clone(),

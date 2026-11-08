@@ -1,5 +1,5 @@
-use super::comparison::build_status_report;
 use super::installed::load_installed_build;
+use super::status_report::build_status_report;
 use super::update_target::{UpdateTarget, UpdateTargetSource};
 use crate::Result;
 use crate::catalog::{BuildInfo, resolve_update_release};

@@ -22,7 +22,7 @@ selection to prepare the game on someone's machine.
 | Catalog | The collection of products available to choose from. |
 | Region | The publisher's label for an offering, such as Europe or worldwide. |
 | Channel | A stream of releases, such as the regular game or a public test. |
-| Component release | A view associating one selected component with its target and published patches. Planning requires a target; completion checks whether that target was reached. |
+| Component release | A view associating one selected component with its target, published patches, and transport volumes. Planning requires a target; completion checks whether that target was reached. |
 | Resolved release | The selected published build, its component targets, and the packages the publisher offers. It contains no local installation progress. |
 | Build selection request | A discovery request that can leave edition or language to publisher defaults and optionally supply a replacement catalog. |
 | Build identity | The published application, region, channel, version, edition, language, and payload target describing a build. It stays distinct from the configured product endpoint. |
@@ -51,9 +51,9 @@ selection to prepare the game on someone's machine.
 | `domain/product.rs`, `builtin.rs`, and selection modules | Product validation, built-in offerings, and selection rules. |
 | `domain/build_identity.rs` | Published application, version, edition, language, and payload target. |
 | `domain/release/resolved_release.rs` | Published build data, separate from local progress. |
-| `domain/release/component_release.rs` | Component targets, associated patch steps, and target-reached checks. |
+| `domain/release/component_release.rs` | Component targets, associated patch steps and transport volumes, and target-reached checks. |
 | `domain/release/patch_chain.rs` | Version traversal, cycle detection, and full-package fallback. |
-| `domain/release/package_plan.rs` | Resolve selected steps to transport volumes through a release-wide index. |
+| `domain/release/package_plan.rs` | Resolve each component’s selected steps to transport volumes using its volume index. |
 | `application/` | Listing, inspection, release resolution, consumer reports, and suggested directory names. |
 | `infrastructure/wgus/` | HTTP/XML, query encoding, redirects, language normalization, and response conversion. Patch conversion names absent-chain handling, seed parsing, transport URL resolution, torrent parsing, and component target collection separately. |
 
@@ -78,3 +78,6 @@ selection to prepare the game on someone's machine.
   the selected chain from supplied starting versions; neither subtracts cached bytes.
 - Consumer reports expose build and patch information without exposing protocol,
   transport execution, or persistence models.
+
+Internal release and patch models use component identifiers. Protocol translation,
+consumer reports, and persistence retain the established `part` and `parts` names.

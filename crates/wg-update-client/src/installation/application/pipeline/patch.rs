@@ -1,6 +1,7 @@
 use super::reports::PackageRetention;
 use crate::Result;
 use crate::catalog::Patch;
+use crate::installation::domain::PatchIdentity;
 use crate::installation::infrastructure::{
     filesystem::{
         cache::remove_patch_volumes, patch_workspace::PatchWorkspace, records::save_manifest,
@@ -31,13 +32,13 @@ pub(super) fn apply_and_checkpoint_patch(
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<PatchCompletion> {
     observer(ExtractionEvent::ExtractingPatch {
-        part: patch.part.clone(),
+        part: patch.component_id.clone(),
         version_from: patch.source.version().unwrap_or("?").to_owned(),
         version_to: patch.version_to.clone(),
         index: progress.index + 1,
         total: progress.total,
     });
-    let workspace = PatchWorkspace::prepare(patch, &storage.staging)?;
+    let workspace = PatchWorkspace::prepare(PatchIdentity::from(patch), &storage.staging)?;
     let applied_deltas =
         apply_patch_contents(patch, &storage.cache, storage.root(), &workspace, observer)?;
     manifest.checkpoint(patch);

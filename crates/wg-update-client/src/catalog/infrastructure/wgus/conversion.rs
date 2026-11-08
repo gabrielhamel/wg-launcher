@@ -45,7 +45,7 @@ pub(super) fn release_from_wire(
         resolved_hostname,
         available_languages: metadata.supported_languages,
         publisher_ids: metadata.publisher_ids,
-        parts: selected.parts.iter().map(|part| part.id.clone()).collect(),
+        component_ids: selected.parts.iter().map(|part| part.id.clone()).collect(),
         component_versions: chain.component_versions,
         patches,
         web_seeds: chain.web_seeds,

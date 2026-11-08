@@ -1,14 +1,11 @@
 use super::{
     args::{DownloadArgs, ExtractArgs, InstallArgs, PathArgs, UpdateArgs},
-    observers::{
-        fail_install_progress, finish_install_progress, observe_download, observe_extract,
-        observe_install,
-    },
+    observers::{DownloadObserver, ExtractObserver, InstallObserver},
     output::print_install_summary,
     status::print_status,
 };
 use crate::terminal::{DiscoveryProgress, human_bytes};
-use std::{path::PathBuf, sync::Arc};
+use std::path::PathBuf;
 use wg_update_client::{
     DownloadAssetsOptions, DownloadOptions, ExtractOptions, InstallOptions, StatusOptions,
     UpdateOptions, UpdateTargetSource, download_with_observer, extract_with_observer,
@@ -16,8 +13,8 @@ use wg_update_client::{
 };
 
 pub(crate) async fn run_download(args: DownloadArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let progress = Arc::new(std::sync::Mutex::new(None));
-    let observed_progress = Arc::clone(&progress);
+    let progress = DownloadObserver::default();
+    let observed_progress = progress.clone();
     let result = download_with_observer(
         DownloadAssetsOptions {
             selection: args.build.try_into()?,
@@ -28,15 +25,13 @@ pub(crate) async fn run_download(args: DownloadArgs) -> Result<(), Box<dyn std::
                 ..DownloadOptions::default()
             },
         },
-        move |event| observe_download(event, &observed_progress),
+        move |event| observed_progress.observe(event),
     )
     .await;
 
     match result {
         Ok(outcome) => {
-            if let Some(progress) = progress.lock().expect("progress lock").as_ref() {
-                progress.finish_success();
-            }
+            progress.finish_success();
             println!(
                 "downloaded: {} new, {} already present, {} transferred",
                 outcome.report.downloaded_files,
@@ -47,30 +42,26 @@ pub(crate) async fn run_download(args: DownloadArgs) -> Result<(), Box<dyn std::
             Ok(())
         }
         Err(error) => {
-            if let Some(progress) = progress.lock().expect("progress lock").as_ref() {
-                progress.finish_error();
-            }
+            progress.finish_error();
             Err(error.into())
         }
     }
 }
 
 pub(crate) async fn run_extract(args: ExtractArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let progress = Arc::new(std::sync::Mutex::new(None));
-    let observed_progress = Arc::clone(&progress);
+    let progress = ExtractObserver::default();
+    let observed_progress = progress.clone();
     let result = extract_with_observer(
         ExtractOptions {
             path: game_path(args.directory)?,
         },
-        move |event| observe_extract(event, &observed_progress),
+        move |event| observed_progress.observe(event),
     )
     .await;
 
     match result {
         Ok(outcome) => {
-            if let Some(progress) = progress.lock().expect("progress lock").as_ref() {
-                progress.finish_success(&outcome.report);
-            }
+            progress.finish_success(&outcome.report);
             println!(
                 "complete: {} files counted before cleanup, {} deltas applied",
                 outcome.report.files_before_finalization, outcome.report.applied_deltas,
@@ -78,9 +69,7 @@ pub(crate) async fn run_extract(args: ExtractArgs) -> Result<(), Box<dyn std::er
             Ok(())
         }
         Err(error) => {
-            if let Some(progress) = progress.lock().expect("progress lock").as_ref() {
-                progress.finish_error();
-            }
+            progress.finish_error();
             Err(error.into())
         }
     }
@@ -101,8 +90,8 @@ pub(crate) async fn run_status(args: PathArgs) -> Result<(), Box<dyn std::error:
 
 pub(crate) async fn run_update(args: UpdateArgs) -> Result<(), Box<dyn std::error::Error>> {
     let loader = DiscoveryProgress::new("Checking for updates")?;
-    let progress = Arc::new(std::sync::Mutex::new(None));
-    let observed_progress = Arc::clone(&progress);
+    let progress = InstallObserver::default();
+    let observed_progress = progress.clone();
     let observed_loader = loader.clone();
     let result = update_with_observer(
         UpdateOptions {
@@ -114,7 +103,7 @@ pub(crate) async fn run_update(args: UpdateArgs) -> Result<(), Box<dyn std::erro
         },
         move |event| {
             observed_loader.finish();
-            observe_install(event, &observed_progress);
+            observed_progress.observe(event);
         },
     )
     .await;
@@ -123,7 +112,7 @@ pub(crate) async fn run_update(args: UpdateArgs) -> Result<(), Box<dyn std::erro
     match result {
         Ok(outcome) => match outcome.installation {
             Some(installation) => {
-                finish_install_progress(&progress, &installation.report);
+                progress.finish_success(&installation.report);
                 print_install_summary(&installation.report);
                 Ok(())
             }
@@ -141,7 +130,7 @@ pub(crate) async fn run_update(args: UpdateArgs) -> Result<(), Box<dyn std::erro
             }
         },
         Err(error) => {
-            fail_install_progress(&progress);
+            progress.finish_error();
             Err(error.into())
         }
     }
@@ -152,8 +141,8 @@ fn game_path(path: Option<PathBuf>) -> Result<PathBuf, std::io::Error> {
 }
 
 pub(crate) async fn run_install(args: InstallArgs) -> Result<(), Box<dyn std::error::Error>> {
-    let progress = Arc::new(std::sync::Mutex::new(None));
-    let observed_progress = Arc::clone(&progress);
+    let progress = InstallObserver::default();
+    let observed_progress = progress.clone();
     let result = install_with_observer(
         InstallOptions {
             selection: args.build.try_into()?,
@@ -163,18 +152,18 @@ pub(crate) async fn run_install(args: InstallArgs) -> Result<(), Box<dyn std::er
                 ..DownloadOptions::default()
             },
         },
-        move |event| observe_install(event, &observed_progress),
+        move |event| observed_progress.observe(event),
     )
     .await;
 
     match result {
         Ok(outcome) => {
-            finish_install_progress(&progress, &outcome.report);
+            progress.finish_success(&outcome.report);
             print_install_summary(&outcome.report);
             Ok(())
         }
         Err(error) => {
-            fail_install_progress(&progress);
+            progress.finish_error();
             Err(error.into())
         }
     }

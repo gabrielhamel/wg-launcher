@@ -1,7 +1,7 @@
 //! Temporary patch files and original sources retained until a checkpoint is saved.
 
 use super::{error::Result, paths::safe_relative_path};
-use crate::catalog::{Patch, PatchSource};
+use crate::installation::domain::PatchIdentity;
 use serde::{Serialize, Serializer};
 use std::{
     fs,
@@ -13,34 +13,20 @@ pub(crate) struct PatchWorkspace {
     active: PathBuf,
 }
 
-/// The component transition whose original files must survive a retry.
-struct PatchIdentity<'a> {
-    component: &'a str,
-    source: &'a PatchSource,
-    target: &'a str,
-}
+/// Disk encoding of a domain identity; keep the existing recovery record format.
+struct PatchIdentityRecord<'a>(PatchIdentity<'a>);
 
-impl<'a> From<&'a Patch> for PatchIdentity<'a> {
-    fn from(patch: &'a Patch) -> Self {
-        Self {
-            component: &patch.part,
-            source: &patch.source,
-            target: &patch.version_to,
-        }
-    }
-}
-
-impl Serialize for PatchIdentity<'_> {
+impl Serialize for PatchIdentityRecord<'_> {
     fn serialize<S: Serializer>(&self, serializer: S) -> std::result::Result<S::Ok, S::Error> {
         // Keep the existing patch.json array representation byte-for-byte.
-        (self.component, self.source, self.target).serialize(serializer)
+        (self.0.component, self.0.source, self.0.target).serialize(serializer)
     }
 }
 
 impl PatchWorkspace {
-    pub(crate) fn prepare(patch: &Patch, staging: &Path) -> Result<Self> {
+    pub(crate) fn prepare(identity: PatchIdentity<'_>, staging: &Path) -> Result<Self> {
         let active = staging.join("active");
-        let identity = serde_json::to_vec(&PatchIdentity::from(patch))?;
+        let identity = serde_json::to_vec(&PatchIdentityRecord(identity))?;
         if fs::read(active.join("patch.json")).ok().as_deref() != Some(identity.as_slice()) {
             if active.exists() {
                 fs::remove_dir_all(&active)?;
