@@ -49,15 +49,8 @@ impl PinnedManifest {
 
     pub(crate) fn resume_from(mut self, pending: Self) -> InstallationResult<Self> {
         if self.release != pending.release {
-            return Err(Error::CachedSelectionMismatch {
-                cached: format!(
-                    "{} {}",
-                    pending.release.identity.game_id, pending.release.identity.version
-                ),
-                requested: format!(
-                    "{} {}",
-                    self.release.identity.game_id, self.release.identity.version
-                ),
+            return Err(Error::PinnedReleaseMismatch {
+                differences: self.release.differing_fields(&pending.release).join(", "),
             });
         }
         // Persisted checkpoints are authoritative when retrying an original plan.

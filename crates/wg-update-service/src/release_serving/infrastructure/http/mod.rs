@@ -7,7 +7,7 @@ mod server;
 pub(crate) use request::Request;
 pub(crate) use server::{ServerHandle, bind};
 
-use super::super::application::{PackageKind, ReleaseContent};
+use super::super::application::{ContentKind, ReleaseContent};
 use response::{write_bytes, write_empty, write_file};
 use std::{io, net::TcpStream};
 
@@ -26,14 +26,14 @@ fn serve(stream: &mut TcpStream, handler: &Handler) -> io::Result<()> {
             "application/xml",
             request.range.as_deref(),
         ),
-        ReleaseContent::Package { path, kind } => write_file(
+        ReleaseContent::File { path, kind } => write_file(
             stream,
             method == "HEAD",
             &path,
             match kind {
-                PackageKind::Xml => "application/xml",
-                PackageKind::Json => "application/json",
-                PackageKind::Binary => "application/octet-stream",
+                ContentKind::Xml => "application/xml",
+                ContentKind::Json => "application/json",
+                ContentKind::Binary => "application/octet-stream",
             },
             request.range.as_deref(),
         ),

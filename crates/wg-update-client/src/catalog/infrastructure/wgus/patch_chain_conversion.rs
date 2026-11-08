@@ -119,7 +119,7 @@ pub(super) fn patch_chain_from_wire(
                 .get(&part.id)
                 .cloned()
                 .map(|version| (part.id.clone(), version))
-                .ok_or_else(|| crate::catalog::ReleaseError::MissingFullPatch {
+                .ok_or_else(|| crate::catalog::ReleaseError::MissingComponentTarget {
                     part: part.id.clone(),
                 })
         })

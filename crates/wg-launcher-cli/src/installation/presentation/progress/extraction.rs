@@ -131,7 +131,7 @@ impl ExtractionProgress {
         self.file.finish_and_clear();
         if !self.bar.is_finished() {
             self.finish_bar(
-                report.installed_files,
+                report.files_before_finalization,
                 report.applied_deltas,
                 report.cache_removed,
             );
@@ -147,7 +147,7 @@ impl ExtractionProgress {
             ""
         };
         self.bar.finish_with_message(format!(
-            "✓ Installation ready ({files} files, {deltas} deltas applied{cleanup})"
+            "✓ Installation ready ({files} files counted before cleanup, {deltas} deltas applied{cleanup})"
         ));
     }
 

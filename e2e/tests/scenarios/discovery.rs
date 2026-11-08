@@ -1,4 +1,4 @@
-use crate::support::{Sandbox, assert_installed_in_region, success};
+use crate::support::{Sandbox, assert_installed_in_region, failure, success};
 use crate::{
     fixture::{Fixture, Release},
     server::WgUpdateService,
@@ -340,4 +340,67 @@ fn cyclic_discovery_redirects_stop_without_downloading_packages() {
     assert_eq!(origin.requests().len(), 5);
     assert_eq!(mirror.requests().len(), 4);
     assert!(!sandbox.game().exists());
+}
+
+#[test]
+fn smallest_variant_ties_keep_publisher_order() {
+    let sandbox = Sandbox::new();
+    let fixture = sandbox.fixture(Release::V1);
+    let mut resources = resources_with_client_types(&fixture, "missing");
+    let metadata = resources.get_mut("updates/api/v1/metadata/").unwrap();
+    *metadata = String::from_utf8(metadata.clone())
+        .unwrap()
+        .replace("<client_part id=\"client\" integrity=\"true\"/>", "")
+        .into_bytes();
+    let service = WgUpdateService::start(resources);
+    let config = sandbox.configuration(&service);
+    let output = success(sandbox.run(
+        &sandbox.path,
+        &[
+            "inspect",
+            "--game",
+            "wot",
+            "--product",
+            config.to_str().unwrap(),
+            "--region",
+            "local",
+        ],
+    ));
+    assert!(output.contains("Client:        large"), "{output}");
+}
+
+#[test]
+fn missing_component_targets_preserve_first_variant_failure() {
+    let sandbox = Sandbox::new();
+    let fixture = sandbox.fixture(Release::V1);
+    let mut resources = resources_with_client_types(&fixture, "missing");
+    let chain = resources.get_mut("updates/api/v1/patches_chain/").unwrap();
+    *chain = String::from_utf8(chain.clone())
+        .unwrap()
+        .replace("<part>client</part>", "<part>unselected-client</part>")
+        .replace("<part>locale</part>", "<part>unselected-locale</part>")
+        .into_bytes();
+    let service = WgUpdateService::start(resources);
+    let config = sandbox.configuration(&service);
+    failure(
+        sandbox.run(
+            &sandbox.path,
+            &[
+                "inspect",
+                "--game",
+                "wot",
+                "--product",
+                config.to_str().unwrap(),
+                "--region",
+                "local",
+            ],
+        ),
+        "cannot plan client: the release has no target version for this component",
+    );
+    assert!(
+        service
+            .requests()
+            .iter()
+            .all(|request| !request.path.ends_with(".wgpkg"))
+    );
 }

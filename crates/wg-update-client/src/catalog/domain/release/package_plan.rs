@@ -2,7 +2,7 @@
 
 use super::error::{ReleaseError as Error, Result};
 use super::{Asset, Patch, ResolvedRelease};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 
 /// Clones the transport assets required by the ordered installation chain.
 ///
@@ -34,9 +34,14 @@ pub(crate) fn planned_patches(
     release: &ResolvedRelease,
     base_versions: &BTreeMap<String, String>,
 ) -> Result<Vec<PlannedPatch>> {
+    let packages = release
+        .assets
+        .iter()
+        .map(|asset| (asset.name.as_str(), asset))
+        .collect::<HashMap<_, _>>();
     let mut planned = Vec::new();
     for component in release.components() {
-        planned.extend(component?.planned_patches(base_versions)?);
+        planned.extend(component?.planned_patches(base_versions, &packages)?);
     }
     Ok(planned)
 }
@@ -47,6 +52,7 @@ impl super::resolved_release::ComponentRelease<'_> {
     fn planned_patches(
         &self,
         base_versions: &BTreeMap<String, String>,
+        packages: &HashMap<&str, &Asset>,
     ) -> Result<Vec<PlannedPatch>> {
         self.ordered_patches(base_versions)?
             .into_iter()
@@ -55,7 +61,7 @@ impl super::resolved_release::ComponentRelease<'_> {
                     .files
                     .iter()
                     .map(|file| {
-                        self.packages
+                        packages
                             .get(file.name.as_str())
                             .copied()
                             .cloned()

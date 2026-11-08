@@ -46,8 +46,14 @@ normalizes source versions and resolves packages, seeds, and component targets.
 Build identity is shared internally by resolved releases and installed records.
 Consumer reports project that identity without exposing persistence models. Patch
 chain selection visits validated component releases in publisher order, keeping each
-component target and its patches together with a shared package lookup, without changing saved release data.
+component target and its patches together without a package lookup. Package planning
+builds its own release-wide volume index, without changing saved release data.
 Each component resolves its selected steps to complete planned patches and rejects
 missing packages before execution.
 It owns version traversal and full-package fallback; package planning resolves
 the transport volumes for those selected steps.
+
+The application names smallest-installable-variant resolution explicitly. Candidates
+are visited in publisher order, equal sizes keep the first candidate, and total
+failure reports the first resolution or package-planning error. A missing component
+target is reported separately from a missing full-install patch.

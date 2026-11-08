@@ -30,6 +30,10 @@ payload bytes, installed identity, retained or released cache files, and observe
 HTTP requests. Preserve the bounded process execution and server shutdown when
 adding failure scenarios.
 
+Discovery regression coverage includes publisher-order tie breaking for equally
+sized variants and retention of the first missing-component-target error when
+every candidate fails. These checks resolve metadata without downloading packages.
+
 ## Run end-to-end tests
 
 The CLI end-to-end scenarios exercise complete workflows using local fixtures.

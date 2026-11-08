@@ -17,6 +17,12 @@ pub enum ReleaseError {
         /// Human-readable list of supported identifiers.
         available: String,
     },
+    /// A selected component has no published target version.
+    #[error("cannot plan {part}: the release has no target version for this component")]
+    MissingComponentTarget {
+        /// Affected component identifier.
+        part: String,
+    },
     /// A component had no usable full-install patch starting at version `0`.
     #[error("cannot extract {part}: no full-install patch starts at version 0")]
     MissingFullPatch {

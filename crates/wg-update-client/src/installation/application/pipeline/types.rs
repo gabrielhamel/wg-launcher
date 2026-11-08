@@ -71,7 +71,7 @@ pub enum ExtractionEvent {
     CleaningCache,
     /// Extraction and requested cleanup completed successfully.
     Completed {
-        /// Files counted in the final game tree; see [`ExtractionReport::installed_files`].
+        /// Files counted before state writes and cleanup; see [`ExtractionReport::files_before_finalization`].
         files: usize,
         /// Delta files applied during this operation.
         deltas: usize,
@@ -85,8 +85,9 @@ pub enum ExtractionEvent {
 pub struct ExtractionReport {
     /// Files counted recursively beneath the installation root before finalization.
     /// Includes pre-existing files and launcher state still present at that point;
-    /// this is not the number of files newly extracted.
-    pub installed_files: usize,
+    /// this is not the number of files newly extracted. The serialized field uses
+    /// the same `files_before_finalization` name.
+    pub files_before_finalization: usize,
     /// Delta files successfully applied during this operation.
     pub applied_deltas: usize,
     /// Whether successful finalization requested and completed cache removal.

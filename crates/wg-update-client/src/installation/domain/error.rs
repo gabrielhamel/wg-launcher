@@ -13,6 +13,14 @@ pub enum InstallationError {
         /// Requested identifier or build selection.
         requested: String,
     },
+    /// Saved work belongs to a different resolved release, even if its selection matches.
+    #[error(
+        "the pinned release differs from the requested release in {differences}; continue with the pinned release or use a different output directory"
+    )]
+    PinnedReleaseMismatch {
+        /// Release fields whose values differ from the saved work.
+        differences: String,
+    },
     /// The product saved with the installation is invalid.
     #[error(
         "the saved installation product is invalid: {0}; restore a valid .wg-launcher/state.json record"

@@ -1,9 +1,6 @@
 use super::{Asset, Patch, WebSeed};
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{BTreeMap, HashMap},
-    sync::Arc,
-};
+use std::collections::BTreeMap;
 
 /// Resolved build identity, published patch chains, and transport assets.
 ///
@@ -34,6 +31,23 @@ pub struct ResolvedRelease {
 }
 
 impl ResolvedRelease {
+    /// Describe incompatibility with saved work without changing release equality.
+    pub(crate) fn differing_fields(&self, other: &Self) -> Vec<&'static str> {
+        let mut fields = Vec::new();
+        macro_rules! compare {
+            ($($field:ident => $label:literal),* $(,)?) => {$(
+                if self.$field != other.$field { fields.push($label); }
+            )*};
+        }
+        compare!(
+            identity => "build identity", product => "product", host => "publisher endpoint",
+            available_languages => "available languages", publisher_ids => "publisher identifiers",
+            parts => "selected components", component_versions => "component targets",
+            patches => "patch chains", web_seeds => "download endpoints", assets => "transport volumes",
+        );
+        fields
+    }
+
     /// Returns the sum of all release asset sizes in compressed bytes.
     ///
     /// This is a transport total, not required disk space or remaining network traffic;
@@ -49,7 +63,6 @@ pub(super) struct ComponentRelease<'a> {
     pub(super) id: &'a str,
     pub(super) target: &'a str,
     pub(super) patches: Vec<&'a Patch>,
-    pub(super) packages: Arc<HashMap<&'a str, &'a Asset>>,
 }
 
 impl ResolvedRelease {
@@ -57,21 +70,13 @@ impl ResolvedRelease {
     pub(super) fn components(
         &self,
     ) -> impl Iterator<Item = super::error::Result<ComponentRelease<'_>>> {
-        let packages = Arc::new(
-            self.assets
-                .iter()
-                .map(|asset| (asset.name.as_str(), asset))
-                .collect::<HashMap<_, _>>(),
-        );
         self.parts.iter().map(move |part| {
-            let target = self
-                .component_versions
-                .get(part)
-                .ok_or_else(|| super::ReleaseError::MissingFullPatch { part: part.clone() })?;
+            let target = self.component_versions.get(part).ok_or_else(|| {
+                super::ReleaseError::MissingComponentTarget { part: part.clone() }
+            })?;
             Ok(ComponentRelease {
                 id: part,
                 target,
-                packages: Arc::clone(&packages),
                 patches: self
                     .patches
                     .iter()

@@ -152,7 +152,15 @@ failures. Classification follows nested causes, including exhausted transfer
 retries. Use the display message and `std::error::Error::source()` for detailed
 diagnostics; implementation-specific error types are internal.
 
-**API migration (breaking):** replace `StatusReport.latest_version` with
+`ExtractionReport.files_before_finalization` counts regular files beneath the
+installation root before state writes and cleanup. It includes pre-existing game
+files, launcher metadata, and any cached packages still present. It does not count
+newly extracted files. The `ExtractionEvent::Completed.files` value uses the same
+count.
+
+**API migration (breaking):** rename `ExtractionReport.installed_files` to
+`files_before_finalization`, including the field in serialized reports. Its value
+is unchanged. Replace `StatusReport.latest_version` with
 `StatusReport.target.version`; use `target.source` to distinguish live discovery
 from a pinned retry target. Replace `inspect` manifest access such as
 `manifest.version` with `report.build.version`, and `download_size()` with

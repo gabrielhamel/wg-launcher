@@ -7,11 +7,11 @@ use std::path::{Path, PathBuf};
 pub(crate) enum ReleaseContent {
     Metadata(Vec<u8>),
     PatchChain(Vec<u8>),
-    Package { path: PathBuf, kind: PackageKind },
+    File { path: PathBuf, kind: ContentKind },
     Missing,
 }
 
-pub(crate) enum PackageKind {
+pub(crate) enum ContentKind {
     Xml,
     Json,
     Binary,
@@ -48,23 +48,23 @@ impl ReleaseRoutes {
         if request_path == self.patch_chain_route {
             return ReleaseContent::PatchChain(self.patch_chain.clone());
         }
-        package_resource(&self.packages, request_path)
+        file_resource(&self.packages, request_path)
     }
 }
 
-/// Select a package and its content kind after safe filesystem lookup.
-fn package_resource(packages: &Path, request_path: &str) -> ReleaseContent {
+/// Select a release file and its content kind after safe filesystem lookup.
+fn file_resource(packages: &Path, request_path: &str) -> ReleaseContent {
     let relative = request_path.trim_start_matches('/');
     let relative = relative.strip_prefix("packages/").unwrap_or(relative);
     let Some(file) = filesystem::resolve_package(packages, Path::new(relative)) else {
         return ReleaseContent::Missing;
     };
     let kind = if relative.ends_with(".xml") {
-        PackageKind::Xml
+        ContentKind::Xml
     } else if relative.ends_with(".json") {
-        PackageKind::Json
+        ContentKind::Json
     } else {
-        PackageKind::Binary
+        ContentKind::Binary
     };
-    ReleaseContent::Package { path: file, kind }
+    ReleaseContent::File { path: file, kind }
 }

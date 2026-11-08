@@ -113,9 +113,9 @@ crates/
           build_identity.rs   Shared published identity, flattened in saved records
           release/resolved_release.rs  Published release and validated component views
           release/patch_chain.rs  Version traversal and full-package fallback
-          release/package_plan.rs  Resolve selected patch steps to transport packages
+          release/package_plan.rs  Own the volume index and resolve selected steps to packages
         application/          list, inspect, and live build/update release resolution
-          resolution.rs       Catalog entry points for discovery requests and known component versions
+          resolution.rs       Resolve explicit/default variants, smallest installable variants, and updates
           reports.rs          Consumer build identity and inspection/patch summaries
           directory_name.rs   Suggested directory names shared by inspect and installation
         infrastructure/wgus/  WGUS transport and response translation

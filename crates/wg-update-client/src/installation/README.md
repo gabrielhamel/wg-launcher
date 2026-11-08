@@ -39,6 +39,7 @@ installation manages the copy on a person's machine.
 | Patch workspace | Temporary files and preserved originals for the patch being applied. They remain available after failure until that patch is saved as complete. |
 | Patch contents | The files decoded from a patch: complete replacement files and delta files that change existing content. Replacements are installed before deltas are applied. |
 | Patch completion | Apply a patch successfully, save its checkpoint, then release its recovery files and, when cleanup is enabled, its downloaded packages. |
+| Pinned release mismatch | Saved work and a requested release differ in their build identity, product, component targets, patch chains, or other published details. The error names the differing fields; matching selection alone does not make the releases interchangeable. |
 | Checkpoint | Saved progress after a patch succeeds, so a retry can skip completed work. |
 | Resume / retry | Continue unfinished work, reusing completed steps and downloads where possible. |
 | Cleanup | Remove packages and temporary work after success, while retaining the installed game's identity. |
@@ -79,4 +80,5 @@ Patch workspaces name the patch identity explicitly while preserving its saved a
 representation. Package `patch_application.rs` owns replacement-first execution and
 source preservation; `delta.rs` reconstructs and replaces an individual file.
 Finalization counts files before state writes and cleanup, including pre-existing files
-and launcher metadata, preserving the existing public `installed_files` metric.
+and launcher metadata, reported as `ExtractionReport.files_before_finalization`. The count is unchanged;
+it includes launcher metadata and cached packages still present before cleanup.

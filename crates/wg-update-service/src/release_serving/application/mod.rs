@@ -1,5 +1,5 @@
 mod routing;
-pub(crate) use routing::{PackageKind, ReleaseContent};
+pub(crate) use routing::{ContentKind, ReleaseContent};
 
 use super::domain::{ReleaseError, normalize_prefix, render_text, validate_public_url};
 use super::infrastructure::{

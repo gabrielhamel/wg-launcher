@@ -1,4 +1,6 @@
-use crate::catalog::{BuildSelection, ResolvedRelease, WgusClient, installation_assets};
+use crate::catalog::{
+    BuildSelection, GameMetadata, Product, ResolvedRelease, WgusClient, installation_assets,
+};
 use crate::{Error, Result};
 
 pub(crate) async fn resolve(
@@ -21,6 +23,18 @@ pub(crate) async fn resolve(
             .map_err(Into::into);
     }
 
+    resolve_smallest_installable_variant(client, &product, &metadata, selection.language.as_deref())
+        .await
+}
+
+/// Resolve candidates in publisher order; equal sizes keep the first candidate,
+/// and total failure preserves the first resolution or planning error.
+async fn resolve_smallest_installable_variant(
+    client: &WgusClient,
+    product: &Product,
+    metadata: &GameMetadata,
+    language: Option<&str>,
+) -> Result<ResolvedRelease> {
     let available = metadata
         .client_types
         .iter()
@@ -31,7 +45,7 @@ pub(crate) async fn resolve(
     let mut first_error: Option<Error> = None;
     for client_type in &metadata.client_types {
         match client
-            .release_for_product(&product, &client_type.id, selection.language.as_deref())
+            .release_for_product(product, &client_type.id, language)
             .await
         {
             Ok(release) => match installation_assets(&release, &Default::default()) {

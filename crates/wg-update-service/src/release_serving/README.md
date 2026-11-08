@@ -14,7 +14,8 @@ release on someone's machine belongs to the launcher.
 | --- | --- |
 | Publisher | The person or organisation making game content available. |
 | Release | A prepared offering of game content and the information describing how to obtain it. |
-| Release content | The metadata, patch chain, or package selected for a request, or the fact that none exists. HTTP headers are chosen separately. |
+| Release content | The metadata, patch chain, or file selected for a request, or the fact that none exists. HTTP headers are chosen separately. |
+| Content kind | Whether a served file contains XML, JSON, or binary data. This describes its representation, rather than its role in a game patch. |
 | Release folder | The local collection of release descriptions and packages that the service makes available. |
 | Product | The game offering a launcher asks about, identified by its publisher and application identity. |
 | Application identity | The publisher's name for the game offering being requested. |

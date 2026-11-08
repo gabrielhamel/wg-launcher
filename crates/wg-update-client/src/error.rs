@@ -67,7 +67,8 @@ fn release_kind(error: &ReleaseError) -> ErrorKind {
 
 fn installation_kind(error: &InstallationError) -> ErrorKind {
     match error {
-        InstallationError::CachedSelectionMismatch { .. } => ErrorKind::IncompatibleCache,
+        InstallationError::CachedSelectionMismatch { .. }
+        | InstallationError::PinnedReleaseMismatch { .. } => ErrorKind::IncompatibleCache,
         InstallationError::Catalog(_) => ErrorKind::InvalidSelection,
         InstallationError::InvalidInstalledProduct(_)
         | InstallationError::InstalledRegionMismatch { .. } => ErrorKind::InvalidData,
