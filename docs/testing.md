@@ -56,6 +56,9 @@ cargo test -p wg-launcher-e2e --locked
 
 The server-crossing installation scenarios also check that full patches retain
 empty directories and nested payloads in integrated and offline staged workflows.
+Split-volume coverage advertises uneven nested volumes in reverse filename order,
+checks both workflows reconstruct the original payload, and verifies missing-volume
+rejection leaves staged installation untouched before an offline retry.
 They also install full-plus-delta chains with omitted source versions in both
 workflows, checking component-specific normalization, pinned JSON, payload bytes,
 and cleanup.

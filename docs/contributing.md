@@ -111,6 +111,7 @@ crates/
         mod.rs                Context entry points and exported models
         domain/               Built-ins, products, selections, release/patch rules
           build_identity.rs   Shared published identity, flattened in saved records
+          build_selection.rs  Public discovery input and the validated selected product request
           release/resolved_release.rs  Published release data and component enumeration
           release/component_release.rs  Component-facing validation, completion, and planning; delegate traversal and volume lookup
           release/component_versions.rs  Known component versions and the missing-component baseline
@@ -133,6 +134,7 @@ crates/
         mod.rs                Context entry points and exported contracts
         domain/               Installed identity, pinned manifests, compatibility, checkpoints
           selection.rs        Cache compatibility and structured selection mismatches
+          release_compatibility.rs  Published release differences preventing saved-work resume
           error.rs            Installation consistency errors and mismatch diagnostics
           component_progress.rs  Starting versions and saved patch completions
           installed_build.rs  Saved identity, consistency, selection, and build comparison
@@ -144,9 +146,10 @@ crates/
           installed.rs        Shared validated installed-record loading
           status_report.rs    Build status reports and estimate volumes from explicit starting versions
           resolution.rs       Pinned-cache reuse and live-resolution coordination
+          access.rs           Locked access, matching-download adoption, and exact-release resume
           plan.rs             Consumer plan and progress package summaries
           pipeline/           InstallationPipeline execution strategies
-            session.rs        Owned lock, layout, restored checkpoints, execution totals, and finalization
+            session.rs        Execution state holding locked access, restored checkpoints, totals, and finalization
             execution_plan.rs  Remaining patches resolved under the lock and their consumer summary
             reports.rs        Execution totals, public options, and internal package-retention policy
             extraction.rs     Apply already downloaded patches
@@ -172,7 +175,7 @@ crates/
           filesystem/         Installation filesystem adapters
             storage.rs        InstallationLayout owns the root and derived paths; explicit staging preparation
             lock.rs           Exclusive installation mutation lock
-            cache.rs          Package verification and release
+            cache.rs          Bind planned patches to local volume paths, verify packages, and release them
             records.rs        Load pinned manifests and installed identity; save with file replacement
             patch_workspace.rs  Recovery identity encoding, active staging, and preserved original sources
             replacement.rs    File replacement with rollback on rename failure
@@ -190,6 +193,7 @@ crates/
           commands.rs         download, extract, install, status, update handlers
           observers.rs        Typed adapters owning shared progress and success/failure handling
           progress/           Shared display with separate download/extraction renderers
+            installation.rs   InstallationProgress owns their terminal surface and coordinates both renderers
       self_update/            CLI executable update context
         domain/               Release comparison and ownership/path rules
           artifact.rs         Select archive/checksum pair from an explicit host target

@@ -24,6 +24,7 @@ selection to prepare the game on someone's machine.
 | Channel | A stream of releases, such as the regular game or a public test. |
 | Component release | A view associating one selected component with its target, published patches, and transport volumes. Planning requires a target; completion checks whether that target was reached. |
 | Resolved release | The selected published build, its component targets, and the packages the publisher offers. It contains no local installation progress. |
+| Selected product request | A validated product choice, with edition and language still allowed to use publisher defaults. Discovery and cache matching use this same choice. |
 | Build selection request | A discovery request that can leave edition or language to publisher defaults and optionally supply a replacement catalog. |
 | Build identity | The published application, region, channel, version, edition, language, and payload target describing a build. It stays distinct from the configured product endpoint. |
 | Build | A particular published version of a game for a chosen edition and language. |
@@ -48,7 +49,7 @@ selection to prepare the game on someone's machine.
 
 | Module | Owns |
 | --- | --- |
-| `domain/product.rs`, `builtin.rs`, and selection modules | Product validation, built-in offerings, and selection rules. |
+| `domain/product.rs`, `builtin.rs`, and selection modules | Product validation, built-in offerings, and resolving a build selection request to a selected product request. |
 | `domain/build_identity.rs` | Published application, version, edition, language, and payload target. |
 | `domain/release/resolved_release.rs` | Published build data, separate from local progress. |
 | `domain/release/component_release.rs` | Component-facing target validation, completion checks, and planning; delegates chain traversal and volume lookup to focused helpers. |
@@ -68,6 +69,8 @@ selection to prepare the game on someone's machine.
 - Explicit client variants take precedence. Otherwise resolution chooses a valid
   publisher default, then the smallest installable variant. Equal sizes retain
   publisher order; total failure retains the first resolution or planning error.
+- Inspect, download, and install select and validate the product once before cache
+  matching or discovery. Edition and language defaults remain unresolved until needed.
 - Redirects preserve the configured product. Internal `application_id` and
   `resolved_hostname` names distinguish publisher identity from game labels and
   service addresses. Public fields and saved keys remain `game_id` and `host`.

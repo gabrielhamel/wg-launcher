@@ -1,5 +1,6 @@
 //! Local installation workflows and their shared execution pipeline.
 
+mod access;
 pub(crate) mod download;
 pub(crate) mod extract;
 mod install;

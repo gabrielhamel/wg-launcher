@@ -1,7 +1,7 @@
 use crate::{
     fixture::{DeltaFixture, Fixture, Release},
     server::WgUpdateService,
-    support::{Sandbox, assert_installed, success},
+    support::{Sandbox, assert_installed, failure, success},
 };
 use std::fs;
 
@@ -159,5 +159,57 @@ fn omitted_sources_keep_component_chains_and_packages_together() {
         );
         assert!(!game.join(".wg-launcher/download").exists());
         assert!(!game.join(".wg-launcher/installing").exists());
+    }
+}
+
+#[test]
+fn split_volumes_keep_local_paths_sizes_and_archive_order_in_both_workflows() {
+    for staged in [false, true] {
+        let sandbox = Sandbox::new();
+        let fixture = sandbox.fixture(Release::V1);
+        let resources = fixture.split_volume_resources("updates");
+        let service = WgUpdateService::start(resources.clone());
+        let config = sandbox.configuration(&service);
+        let game = sandbox.game();
+        success(sandbox.run(
+            &sandbox.path,
+            &[
+                if staged { "download" } else { "install" },
+                "--game",
+                "wot",
+                "--product",
+                config.to_str().unwrap(),
+                "--region",
+                "local",
+                "--output",
+                game.to_str().unwrap(),
+            ],
+        ));
+        let before = service.requests();
+        for name in ["client/content.wgpkg.001", "client/content.wgpkg.002"] {
+            assert_eq!(
+                before
+                    .iter()
+                    .filter(|request| request.path == format!("/{name}"))
+                    .count(),
+                1
+            );
+        }
+        if staged {
+            service.stop();
+            let cache = game.join(".wg-launcher/download");
+            let missing = cache.join("client/content.wgpkg.002");
+            fs::remove_file(&missing).unwrap();
+            failure(sandbox.run(&game, &["extract"]), "incomplete");
+            assert!(!game.join("payload.pkg").exists());
+            assert!(!game.join(".wg-launcher/state.json").exists());
+            let manifest: serde_json::Value =
+                serde_json::from_slice(&fs::read(cache.join("manifest.json")).unwrap()).unwrap();
+            assert_eq!(manifest["base_versions"], serde_json::json!({}));
+            fs::write(missing, &resources["client/content.wgpkg.002"]).unwrap();
+            success(sandbox.run(&game, &["extract"]));
+            assert_eq!(service.requests(), before);
+        }
+        assert_installed(&game, Release::V1);
     }
 }

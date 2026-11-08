@@ -14,6 +14,6 @@ pub(crate) use domain::release::{
     ClientPart, ClientType, ComponentVersions, Executable, GameMetadata, Patch, PatchSource,
     PatchVolume, ReleaseError, ResolvedRelease, TransportVolume, WebSeed, required_volumes,
 };
-pub(crate) use domain::{BuildIdentity, CatalogError};
+pub(crate) use domain::{BuildIdentity, CatalogError, SelectedProductRequest};
 pub use domain::{BuildSelection, Game, Product, Region};
 pub(crate) use infrastructure::wgus::WgusError;

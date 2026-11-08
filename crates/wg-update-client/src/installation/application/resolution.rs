@@ -1,5 +1,5 @@
 use crate::Result;
-use crate::catalog::BuildSelection;
+use crate::catalog::SelectedProductRequest;
 use crate::catalog::{BuildInfo, resolve};
 use crate::installation::PinnedManifest;
 use crate::installation::{
@@ -9,10 +9,9 @@ use crate::installation::{
 use std::path::PathBuf;
 
 pub(super) async fn resolve_installation(
-    selection: &BuildSelection,
+    selection: &SelectedProductRequest<'_>,
     requested_root: Option<PathBuf>,
 ) -> Result<(PinnedManifest, PathBuf)> {
-    selection.selected_product()?;
     if let Some(root) = requested_root {
         let storage = InstallationLayout::for_root(&root);
         if let Some(manifest) = load_pinned_manifest(&storage.cache).await? {

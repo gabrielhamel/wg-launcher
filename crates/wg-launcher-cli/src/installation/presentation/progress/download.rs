@@ -41,20 +41,19 @@ enum FileActivity {
 }
 
 impl DownloadProgress {
-    pub(super) fn multi_progress(&self) -> MultiProgress {
-        self.state
-            .lock()
-            .expect("download progress lock")
-            .multi
-            .clone()
-    }
-
     pub(crate) fn new<'a>(
         total_bytes: u64,
         assets: impl ExactSizeIterator<Item = (&'a str, u64)>,
     ) -> Result<Self, TemplateError> {
+        Self::with_multi(MultiProgress::new(), total_bytes, assets)
+    }
+
+    pub(super) fn with_multi<'a>(
+        multi: MultiProgress,
+        total_bytes: u64,
+        assets: impl ExactSizeIterator<Item = (&'a str, u64)>,
+    ) -> Result<Self, TemplateError> {
         let asset_count = assets.len();
-        let multi = MultiProgress::new();
         let overall = multi.add(ProgressBar::new(total_bytes));
         let active_style = overall_style()?;
         let waiting_style = ProgressStyle::with_template(

@@ -1,56 +1,53 @@
 //! Mutable execution state shared by local extraction and streaming installation.
 
+use super::super::access::LockedInstallation;
 use super::finalization::finalize_installation;
 use super::patch::{PatchCompletion, PatchProgress, apply_and_checkpoint_patch};
 use super::{ExtractionEvent, ExtractionOptions, ExtractionReport};
+use crate::Result;
 use crate::installation::{
     PinnedManifest,
     infrastructure::filesystem::{
-        InstallationLayout, InstallationLock, records, storage::prepare_installation,
+        InstallationLayout, InstallationLock, cache::LocalPatch, records,
+        storage::prepare_installation,
     },
 };
-use crate::{Result, catalog::Patch};
 use std::sync::Arc;
 
 /// One execution's layout, authoritative checkpoints, and completed delta count.
 /// Owns exclusive access even while a blocking worker outlives its awaiting future.
 pub(super) struct InstallationSession {
     pub(super) manifest: PinnedManifest,
-    pub(super) layout: InstallationLayout,
+    pub(super) access: LockedInstallation,
     applied_deltas: usize,
-    lock: Arc<InstallationLock>,
 }
 
 impl InstallationSession {
     /// Acquire exclusive access before restoring authoritative saved checkpoints.
     pub(super) fn resume(manifest: PinnedManifest, layout: InstallationLayout) -> Result<Self> {
-        let lock = Arc::new(InstallationLock::acquire(&layout)?);
-        let manifest = match records::load_pinned_manifest_sync(&layout)? {
-            Some(pending) => manifest.resume_from(pending)?,
-            None => manifest,
-        };
+        let access = LockedInstallation::open(layout)?;
+        let manifest = access.resume_exact_release(manifest)?;
         Ok(Self {
             manifest,
-            layout,
+            access,
             applied_deltas: 0,
-            lock,
         })
     }
 
     /// Keep downloads protected until cancellation completes, even if patch execution fails.
     pub(super) fn retain_lock(&self) -> Arc<InstallationLock> {
-        Arc::clone(&self.lock)
+        self.access.retain_lock()
     }
 
     pub(super) fn prepare(&self) -> Result<()> {
-        records::save_manifest(&self.manifest, &self.layout)?;
-        prepare_installation(&self.layout)?;
+        records::save_manifest(&self.manifest, &self.access.layout)?;
+        prepare_installation(&self.access.layout)?;
         Ok(())
     }
 
     pub(super) fn apply_patch(
         &mut self,
-        patch: &Patch,
+        patch: &LocalPatch,
         progress: PatchProgress,
         options: ExtractionOptions,
         observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
@@ -58,7 +55,7 @@ impl InstallationSession {
         let completion = apply_and_checkpoint_patch(
             &mut self.manifest,
             patch,
-            &self.layout,
+            &self.access.layout,
             progress,
             options,
             observer,
@@ -74,7 +71,7 @@ impl InstallationSession {
     ) -> Result<ExtractionReport> {
         finalize_installation(
             &self.manifest,
-            &self.layout,
+            &self.access.layout,
             options,
             self.applied_deltas,
             observer,

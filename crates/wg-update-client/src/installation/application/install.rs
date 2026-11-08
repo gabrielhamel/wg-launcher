@@ -79,7 +79,8 @@ pub async fn install_with_observer<F>(
 where
     F: Fn(InstallEvent) + Send + Sync + 'static,
 {
-    let (manifest, root) = resolve_installation(&options.selection, options.output).await?;
+    let request = options.selection.select_product()?;
+    let (manifest, root) = resolve_installation(&request, options.output).await?;
     install_resolved(manifest, root, options.download, observer).await
 }
 

@@ -1,4 +1,3 @@
-use super::DownloadProgress;
 use crate::terminal::styles::{error_style, extraction_completed_style, extraction_style};
 use indicatif::{MultiProgress, ProgressBar, ProgressStyle, style::TemplateError};
 use std::time::Duration;
@@ -13,11 +12,7 @@ pub(crate) struct ExtractionProgress {
 }
 
 impl ExtractionProgress {
-    pub(crate) fn new(download: &DownloadProgress) -> Result<Self, TemplateError> {
-        Self::with_multi(&download.multi_progress())
-    }
-
-    fn with_multi(multi: &MultiProgress) -> Result<Self, TemplateError> {
+    pub(super) fn with_multi(multi: &MultiProgress) -> Result<Self, TemplateError> {
         let bar = multi.add(ProgressBar::new_spinner());
         bar.set_style(extraction_style()?);
         bar.set_message("Preparing extraction");

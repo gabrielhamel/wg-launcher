@@ -1,7 +1,8 @@
 use super::InstallationEvent;
 use super::prefetch_budget::PrefetchBudget;
 use crate::Result;
-use crate::catalog::{Patch, PlannedPatch};
+use crate::catalog::PlannedPatch;
+use crate::installation::infrastructure::filesystem::cache::LocalPatch;
 use crate::installation::{DownloadOptions, DownloadReport, VolumeDownloader};
 use std::{path::PathBuf, sync::Arc};
 
@@ -40,6 +41,13 @@ impl PatchDownloads {
                     }
                 }
                 let progress = Arc::clone(&observer);
+                let local = match LocalPatch::from_plan(&planned, &cache) {
+                    Ok(local) => local,
+                    Err(error) => {
+                        let _ = reports_tx.send(Err(error.into()));
+                        return;
+                    }
+                };
                 let result = downloader
                     .download_with_observer(
                         planned.volumes,
@@ -55,7 +63,7 @@ impl PatchDownloads {
                     .send(
                         result
                             .map(|report| DownloadedPatch {
-                                patch: planned.patch,
+                                patch: local,
                                 report,
                             })
                             .map_err(Into::into),
@@ -103,6 +111,6 @@ pub(super) fn merge_download_report(total: &mut DownloadReport, patch: DownloadR
 
 /// A patch becomes ready for application together with its transfer result.
 pub(super) struct DownloadedPatch {
-    pub(super) patch: Patch,
+    pub(super) patch: LocalPatch,
     pub(super) report: DownloadReport,
 }

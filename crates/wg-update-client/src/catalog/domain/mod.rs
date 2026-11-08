@@ -8,6 +8,7 @@ pub(crate) mod release;
 mod selection;
 
 pub use build_selection::BuildSelection;
+pub(crate) use build_selection::SelectedProductRequest;
 pub use error::CatalogError;
 
 pub(crate) use selection::select_products;

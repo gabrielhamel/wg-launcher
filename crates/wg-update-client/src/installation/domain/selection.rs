@@ -1,6 +1,6 @@
 use super::PinnedManifest;
 use super::error::{InstallationError as Error, Result};
-use crate::catalog::{BuildSelection, Product};
+use crate::catalog::{Product, SelectedProductRequest};
 
 /// A known product, client type, and language, without discovery defaults or a catalog.
 pub(crate) struct ResolvedSelection<'a> {
@@ -11,13 +11,13 @@ pub(crate) struct ResolvedSelection<'a> {
 
 pub(crate) fn validate_cached_request(
     manifest: &PinnedManifest,
-    request: &BuildSelection,
+    request: &SelectedProductRequest<'_>,
 ) -> Result<()> {
     validate_cache(
         manifest,
-        &request.selected_product()?,
-        request.client_type.as_deref(),
-        request.language.as_deref(),
+        &request.product,
+        request.client_type,
+        request.language,
     )
 }
 

@@ -34,6 +34,7 @@ installation manages the copy on a person's machine.
 | Update target | The build chosen for comparison with the installed game. Its source is either the live catalog or the pinned manifest for unfinished work. A pinned target need not be the publisher's latest release. |
 | Prefetch budget | The limit on packages queued ahead of the patch currently being applied. A new patch may start below the limit even if finishing it exceeds the limit. |
 | Finalization | Record the completed build and remove temporary work and, when requested, cached packages after all patches succeed. |
+| Locked installation | Exclusive access to one installation folder. Download adopts compatible pinned work; execution resumes only an exactly matching release and restores its checkpoints. |
 | Installation session | One execution owning exclusive installation access, its layout, saved progress, and completed delta count. Its lock stays with blocking workers until they finish. |
 | Package retention | Whether successfully applied packages are released after each saved checkpoint and removed at final cleanup, or kept for reuse. |
 | Installation completion | Confirm every selected component has reached its target before creating the installed build identity. |
@@ -44,6 +45,7 @@ installation manages the copy on a person's machine.
 | Patch identity | The component, source version, and target version that identify the patch whose original files are preserved for retry. |
 | Patch workspace | Temporary files and preserved originals for the patch being applied. They remain available after failure until that patch is saved as complete. |
 | Patch contents | The files decoded from a patch: complete replacement files and delta files that change existing content. Replacements are installed before deltas are applied. |
+| Local patch | A planned patch bound to safe package paths in the installation cache. The same paths are used for verification, archive reading, and package release; binding paths alone does not verify their contents. |
 | Patch completion | Apply a patch successfully, save its checkpoint, then release its recovery files and, when cleanup is enabled, its downloaded packages. |
 | Selection mismatch | The product, region, edition, or language fields that make cached work incompatible with a request. Omitted edition and language accept the pinned choice. |
 | Pinned release mismatch | Saved work and a requested release differ in their build identity, product, component targets, patch chains, or other published details. The error names the differing fields; matching selection alone does not make the releases interchangeable. |
@@ -58,18 +60,19 @@ installation manages the copy on a person's machine.
 | `domain/patch_identity.rs` | Component transition identity, independent of its recovery-file encoding. |
 | `domain/installed_build.rs` | Installed identity, selection consistency, and comparison with a target build. |
 | `domain/pinned_manifest.rs`, `component_progress.rs` | Pinned release, starting versions, saved checkpoints, and checked completion. |
-| `domain/selection.rs` | Cache compatibility and structured mismatch facts. |
+| `domain/selection.rs`, `release_compatibility.rs` | Selection compatibility and the release differences that prevent resuming saved work. |
 | `application/` | Public workflows, options, reports, and observer contracts. |
 | `application/resolution.rs`, `update_target.rs` | Pinned-cache reuse, pending update precedence, live fallback, and starting-version seeding. |
 | `application/installed.rs`, `status_report.rs`, `plan.rs` | Validated state loading and consumer status/plan projections. |
-| `application/pipeline/session.rs` | Exclusive installation access, authoritative checkpoints, and execution totals. |
+| `application/access.rs` | Locked installation access, adopting matching downloads, and exact-release resume. |
+| `application/pipeline/session.rs` | Execution state holding locked access, authoritative checkpoints, and execution totals. |
 | `application/pipeline/mod.rs`, `execution_plan.rs` | Resolve remaining work under the session lock, own its consumer summary, and hand patches to execution once. |
 | `application/pipeline/extraction.rs`, `streaming.rs` | Local execution or overlapping downloads and patch application. |
 | `application/pipeline/patch.rs`, `finalization.rs` | Coordinate package execution, checkpoint/release ordering, installed-state writes, and successful cleanup. |
 | `application/pipeline/prefetch.rs`, `prefetch_budget.rs` | Download coordination, cancellation, and queued-byte policy. |
 | `infrastructure/transfer/` | `contracts.rs` owns options, events, and reports; `downloader.rs` owns concurrency, retries, and totals; `local.rs` and `attempt.rs` own cache preparation and HTTP attempts. |
 | `infrastructure/packages/` | Split-volume reading, archive decoding, replacement/delta classification, and application. |
-| `infrastructure/filesystem/` | Layout, locks, persistence, safe paths, patch workspaces, replacement, and cleanup. |
+| `infrastructure/filesystem/` | Layout, locks, persistence, safe paths, local patch bindings in `cache.rs`, patch workspaces, replacement, and cleanup. |
 
 ## Invariants
 
@@ -89,6 +92,9 @@ installation manages the copy on a person's machine.
 - Streaming overlaps later downloads with ordered patch execution. The prefetch
   budget limits bytes queued ahead of the applying patch; one complete patch may
   cross the threshold. Download and extraction use the same resolved steps.
+- Planned patches bind their resolved volumes to safe local paths once. Staged
+  extraction verifies declared patch sizes; archive reading retains filename ordering
+  for split volumes. Execution and package release consume those same paths.
 - Each patch is applied, checkpointed, then its recovery files and eligible packages
   are released. Failures retain uncheckpointed packages and original delta sources.
   Package retention controls both early release and final cache cleanup.

@@ -1,33 +1,29 @@
 use super::super::infrastructure::wgus::WgusClient;
 use crate::catalog::ComponentVersions;
-use crate::catalog::{BuildSelection, GameMetadata, Product, ResolvedRelease, required_volumes};
+use crate::catalog::{
+    GameMetadata, Product, ResolvedRelease, SelectedProductRequest, required_volumes,
+};
 use crate::{Error, Result};
 
-pub(crate) async fn resolve(selection: &BuildSelection) -> Result<ResolvedRelease> {
-    let product = selection.selected_product()?;
+pub(crate) async fn resolve(selection: &SelectedProductRequest<'_>) -> Result<ResolvedRelease> {
+    let product = &selection.product;
     let client = WgusClient::new()?;
-    if let Some(client_type) = selection.client_type.as_deref() {
+    if let Some(client_type) = selection.client_type {
         return client
-            .release_for_product(&product, client_type, selection.language.as_deref())
+            .release_for_product(product, client_type, selection.language)
             .await
             .map_err(Into::into);
     }
 
-    let metadata = client.metadata_for_product(&product).await?;
+    let metadata = client.metadata_for_product(product).await?;
     if let Some(default_client_type) = metadata.publisher_default_client_type() {
         return client
-            .release_for_product(&product, default_client_type, selection.language.as_deref())
+            .release_for_product(product, default_client_type, selection.language)
             .await
             .map_err(Into::into);
     }
 
-    resolve_smallest_installable_variant(
-        &client,
-        &product,
-        &metadata,
-        selection.language.as_deref(),
-    )
-    .await
+    resolve_smallest_installable_variant(&client, product, &metadata, selection.language).await
 }
 
 /// Resolve candidates in publisher order; equal sizes keep the first candidate,

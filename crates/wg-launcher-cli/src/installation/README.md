@@ -21,6 +21,7 @@ launcher.
 | Status | Show the installed version and whether an update is available. |
 | Update | Bring the game in the existing installation folder up to date. |
 | Progress | Information about ongoing downloads and the preparation of game files. |
+| Installation progress | One shared terminal surface coordinating sibling download and extraction displays through the full operation. |
 | Progress observer | A presentation adapter that receives workflow events and keeps the same progress display through success or failure. |
 | Download activity | Whether a package is queued, transferring, or complete; terminal bars display this state. |
 | Cache hit | A package already present locally that can be reused without downloading it again. |
@@ -33,7 +34,8 @@ adapters. Each adapter shares its progress state with the event callback and
 handles success or failure, keeping synchronization out of command handlers.
 
 `presentation/progress/` keeps download and extraction rendering separate while
-sharing one terminal display. Each download keeps its bar, byte position, and
-explicit queued, transferring, or completed activity together so concurrent events
+sharing one terminal display. `progress/installation.rs` owns that surface and
+coordinates both renderers; extraction does not depend on a download display.
+Each download keeps its bar, byte position, and explicit queued, transferring, or completed activity together so concurrent events
 and retries update the same entry. Completion and activity are read from that
 state rather than inferred from the terminal widget.

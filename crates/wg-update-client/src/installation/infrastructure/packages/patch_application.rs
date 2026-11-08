@@ -6,37 +6,31 @@ use super::{
     delta::apply_delta,
     error::{PackageError as Error, Result},
 };
-use crate::catalog::Patch;
 use crate::installation::{
     ExtractionEvent,
-    infrastructure::filesystem::{patch_workspace::PatchWorkspace, replacement::replace_file},
+    infrastructure::filesystem::{
+        cache::LocalPatch, patch_workspace::PatchWorkspace, replacement::replace_file,
+    },
 };
 use std::{fs, path::Path, sync::Arc};
 
 /// Decode full content safely before replacing each live game file.
 pub(crate) fn install_full_component(
-    patch: &Patch,
-    cache: &Path,
+    patch: &LocalPatch,
     game: &Path,
     workspace: &PatchWorkspace,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<()> {
     fs::create_dir_all(game)?;
-    decode_archive(
-        patch,
-        cache,
-        &workspace.archive(),
-        observer,
-        |relative, output| {
-            let target = game.join(relative);
-            if output.is_dir() {
-                fs::create_dir_all(target)?;
-            } else {
-                replace_file(output, &target, &workspace.replacement_backup())?;
-            }
-            Ok(())
-        },
-    )
+    decode_archive(patch, &workspace.archive(), observer, |relative, output| {
+        let target = game.join(relative);
+        if output.is_dir() {
+            fs::create_dir_all(target)?;
+        } else {
+            replace_file(output, &target, &workspace.replacement_backup())?;
+        }
+        Ok(())
+    })
 }
 
 pub(crate) fn apply_patch_directory(
@@ -84,19 +78,18 @@ pub(crate) fn apply_patch_directory(
 }
 
 pub(crate) fn apply_patch_contents(
-    patch: &Patch,
-    cache: &Path,
+    patch: &LocalPatch,
     game: &Path,
     workspace: &PatchWorkspace,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<usize> {
-    if patch.provides_full_component() {
-        install_full_component(patch, cache, game, workspace, observer)?;
+    if patch.patch.provides_full_component() {
+        install_full_component(patch, game, workspace, observer)?;
         return Ok(0);
     }
 
     let patch_dir = workspace.archive();
-    decode_patch_contents(patch, cache, workspace, observer)?;
+    decode_patch_contents(patch, workspace, observer)?;
     let applied_deltas = apply_patch_directory(&patch_dir, game, workspace, observer)?;
     workspace.clear_archive()?;
     Ok(applied_deltas)

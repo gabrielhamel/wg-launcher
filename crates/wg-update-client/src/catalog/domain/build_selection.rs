@@ -33,15 +33,28 @@ impl Default for BuildSelection {
 }
 
 impl BuildSelection {
-    pub(crate) fn selected_product(&self) -> Result<Product> {
+    pub(crate) fn select_product(&self) -> Result<SelectedProductRequest<'_>> {
         let game = self.game.as_deref().ok_or_else(|| {
             Error::InvalidProduct(
                 "a game must be selected before inspecting, downloading, or installing".into(),
             )
         })?;
-        Ok(
+        let product =
             super::select_products(self.products.as_deref(), Some(game), Some(&self.region))?
-                .remove(0),
-        )
+                .into_iter()
+                .next()
+                .expect("catalog selection requires a matching product");
+        Ok(SelectedProductRequest {
+            product,
+            client_type: self.client_type.as_deref(),
+            language: self.language.as_deref(),
+        })
     }
+}
+
+/// A validated product choice with edition and language still allowed to use defaults.
+pub(crate) struct SelectedProductRequest<'a> {
+    pub(crate) product: Product,
+    pub(crate) client_type: Option<&'a str>,
+    pub(crate) language: Option<&'a str>,
 }

@@ -1,13 +1,10 @@
 use super::plan::build_plan;
 use super::{BuildSelection, InstallPlan, resolution::resolve_installation};
-use crate::installation::domain::selection::validate_cached_request;
-use crate::installation::infrastructure::filesystem::records::{
-    load_pinned_manifest, save_manifest,
-};
+use crate::installation::infrastructure::filesystem::records::save_manifest;
 use crate::{
     Result,
     catalog::TransportVolume,
-    installation::infrastructure::filesystem::{InstallationLayout, InstallationLock},
+    installation::infrastructure::filesystem::InstallationLayout,
     installation::{DownloadEvent, DownloadOptions, DownloadReport, VolumeDownloader},
 };
 use serde::Serialize;
@@ -87,17 +84,11 @@ pub async fn download_with_observer<F>(
 where
     F: Fn(DownloadAssetsEvent) + Send + Sync + 'static,
 {
-    let (manifest, root) = resolve_installation(&options.selection, options.output).await?;
-    let storage = InstallationLayout::for_root(&root);
-    let _lock = InstallationLock::acquire(&storage)?;
-    // Discovery happens before locking; another workflow could have checkpointed
-    // this installation meanwhile. Read its authoritative manifest under the lock.
-    let manifest = if let Some(pending) = load_pinned_manifest(&storage.cache).await? {
-        validate_cached_request(&pending, &options.selection)?;
-        pending
-    } else {
-        manifest
-    };
+    let request = options.selection.select_product()?;
+    let (manifest, root) = resolve_installation(&request, options.output).await?;
+    let access = super::access::LockedInstallation::open(InstallationLayout::for_root(&root))?;
+    let manifest = access.adopt_matching_download(manifest, &request).await?;
+    let storage = &access.layout;
     let all_assets = manifest.required_volumes()?;
     let assets = select_download_volumes(all_assets, &options.parts);
     if assets.is_empty() {
@@ -107,7 +98,7 @@ where
     }
     let plan = build_plan(&manifest, root, &assets);
     observer(DownloadAssetsEvent::Planned(Box::new(plan.clone())));
-    save_manifest(&manifest, &storage)?;
+    save_manifest(&manifest, storage)?;
     let report = VolumeDownloader::new()?
         .download_with_observer(assets, &plan.cache, options.download, move |event| {
             observer(DownloadAssetsEvent::Progress(event));

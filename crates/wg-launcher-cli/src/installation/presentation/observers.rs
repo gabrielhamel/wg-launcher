@@ -1,7 +1,7 @@
 //! Presentation adapters own shared progress state and its event/finish lifecycle.
 
 use super::output::print_plan;
-use super::progress::{DownloadProgress, ExtractionProgress};
+use super::progress::{DownloadProgress, ExtractionProgress, InstallationProgress};
 use crate::terminal::human_bytes;
 use std::sync::{Arc, Mutex};
 use wg_update_client::{
@@ -10,7 +10,7 @@ use wg_update_client::{
 
 #[derive(Clone, Default)]
 pub(super) struct InstallObserver {
-    state: Arc<Mutex<Option<(DownloadProgress, ExtractionProgress)>>>,
+    state: Arc<Mutex<Option<InstallationProgress>>>,
 }
 
 impl InstallObserver {
@@ -29,55 +29,28 @@ impl InstallObserver {
                     plan.root.display(),
                 );
                 println!("  package cache: {}", plan.cache.display());
-                match DownloadProgress::new(
-                    plan.compressed_bytes,
-                    plan.packages
-                        .iter()
-                        .map(|asset| (asset.name.as_str(), asset.size)),
-                ) {
-                    Ok(download) => match ExtractionProgress::new(&download) {
-                        Ok(extraction) => {
-                            *self.state.lock().expect("progress lock") =
-                                Some((download, extraction));
-                        }
-                        Err(error) => {
-                            eprintln!("warning: terminal progress unavailable: {error}");
-                        }
-                    },
-                    Err(error) => {
-                        eprintln!("warning: terminal progress unavailable: {error}");
-                    }
+                match InstallationProgress::new(&plan) {
+                    Ok(progress) => *self.state.lock().expect("progress lock") = Some(progress),
+                    Err(error) => eprintln!("warning: terminal progress unavailable: {error}"),
                 }
             }
             InstallEvent::Progress(event) => {
-                let guard = self.state.lock().expect("progress lock");
-                let Some((download, extraction)) = guard.as_ref() else {
-                    return;
-                };
-                match event {
-                    wg_update_client::InstallationEvent::Download(event) => download.update(event),
-                    wg_update_client::InstallationEvent::Extraction(event) => {
-                        extraction.update(event)
-                    }
-                    wg_update_client::InstallationEvent::ReleasedPackages => {
-                        extraction.finish_patch();
-                    }
+                if let Some(progress) = self.state.lock().expect("progress lock").as_ref() {
+                    progress.update(event);
                 }
             }
         }
     }
 
     pub(super) fn finish_success(&self, report: &InstallationReport) {
-        if let Some((download, extraction)) = self.state.lock().expect("progress lock").as_ref() {
-            download.finish_success();
-            extraction.finish_success(&report.extraction);
+        if let Some(progress) = self.state.lock().expect("progress lock").as_ref() {
+            progress.finish_success(report);
         }
     }
 
     pub(super) fn finish_error(&self) {
-        if let Some((download, extraction)) = self.state.lock().expect("progress lock").as_ref() {
-            download.finish_error();
-            extraction.finish_error();
+        if let Some(progress) = self.state.lock().expect("progress lock").as_ref() {
+            progress.finish_error();
         }
     }
 }

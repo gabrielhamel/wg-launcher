@@ -19,6 +19,7 @@ pub struct InspectOptions {
 /// Returns an error for failed network requests, invalid protocol responses,
 /// unsupported client types or languages, or missing patch chains or web seeds.
 pub async fn inspect(options: InspectOptions) -> Result<InspectReport> {
-    let release = resolve(&options.selection).await?;
+    let request = options.selection.select_product()?;
+    let release = resolve(&request).await?;
     Ok(InspectReport::from_release(&release))
 }

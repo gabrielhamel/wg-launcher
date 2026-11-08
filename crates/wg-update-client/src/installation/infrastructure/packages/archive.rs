@@ -1,10 +1,8 @@
 use super::error::{PackageError as Error, Result};
 use super::volumes::MultiVolumeReader;
-use crate::catalog::Patch;
 use crate::installation::ExtractionEvent;
 use crate::installation::infrastructure::filesystem::{
-    patch_workspace::PatchWorkspace,
-    paths::{safe_archive_path, safe_relative_path},
+    cache::LocalPatch, patch_workspace::PatchWorkspace, paths::safe_archive_path,
 };
 use std::{
     fs,
@@ -16,30 +14,27 @@ use std::{
 
 /// Decode a delta patch into its workspace without changing live game files.
 pub(crate) fn decode_patch_contents(
-    patch: &Patch,
-    cache: &Path,
+    patch: &LocalPatch,
     workspace: &PatchWorkspace,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<()> {
-    decode_archive(patch, cache, &workspace.archive(), observer, |_, _| Ok(()))
+    decode_archive(patch, &workspace.archive(), observer, |_, _| Ok(()))
 }
 
 pub(super) fn decode_archive(
-    patch: &Patch,
-    cache: &Path,
+    patch: &LocalPatch,
     destination: &Path,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
     mut decoded_entry: impl FnMut(&Path, &Path) -> Result<()>,
 ) -> Result<()> {
     let mut volumes = patch
-        .volumes
-        .iter()
-        .map(|volume| safe_relative_path(&volume.name).map(|relative| cache.join(relative)))
-        .collect::<std::result::Result<Vec<_>, crate::installation::StorageError>>()?;
+        .volume_paths()
+        .map(Path::to_path_buf)
+        .collect::<Vec<_>>();
     volumes.sort();
     if volumes.is_empty() {
         return Err(crate::catalog::ReleaseError::MissingFullPatch {
-            part: patch.component_id.clone(),
+            part: patch.patch.component_id.clone(),
         }
         .into());
     }

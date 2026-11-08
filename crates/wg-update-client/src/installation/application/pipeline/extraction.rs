@@ -2,7 +2,7 @@ use super::InstallationPipeline;
 use super::patch::PatchProgress;
 use super::session::InstallationSession;
 use crate::Result;
-use crate::installation::infrastructure::filesystem::cache::verify_cache;
+use crate::installation::infrastructure::filesystem::cache::{LocalPatch, verify_cache};
 use crate::installation::{ExtractionEvent, ExtractionOptions, ExtractionReport};
 use std::sync::Arc;
 
@@ -12,27 +12,20 @@ pub(super) fn extract_sync(
     options: ExtractionOptions,
     observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<ExtractionReport> {
-    let cache = &session.layout.cache;
+    let cache = &session.access.layout.cache;
     observer(ExtractionEvent::CheckingCache {
         assets: session.manifest.release.volumes.len(),
     });
-    verify_cache(
-        &patches
-            .iter()
-            .map(|planned| &planned.patch)
-            .collect::<Vec<_>>(),
-        cache,
-    )?;
+    let patches = patches
+        .into_iter()
+        .map(|planned| LocalPatch::from_plan(&planned, cache))
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    verify_cache(&patches)?;
     session.prepare()?;
 
     let total = patches.len();
     for (index, patch) in patches.into_iter().enumerate() {
-        session.apply_patch(
-            &patch.patch,
-            PatchProgress { index, total },
-            options,
-            &observer,
-        )?;
+        session.apply_patch(&patch, PatchProgress { index, total }, options, &observer)?;
     }
     session.finalize(options, observer)
 }
