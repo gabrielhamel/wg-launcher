@@ -33,6 +33,10 @@ adding failure scenarios.
 Discovery regression coverage includes publisher-order tie breaking for equally
 sized variants and retention of the first missing-component-target error when
 every candidate fails. These checks resolve metadata without downloading packages.
+Custom-product staged installation checks that saved manifests retain their `assets`,
+patch `files`, `component_versions`, and `base_versions` fields. Cache rejection
+names mismatched products, client types, and languages without new service requests;
+the original pinned release can still be extracted offline afterward.
 
 ## Run end-to-end tests
 

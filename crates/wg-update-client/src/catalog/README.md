@@ -32,6 +32,8 @@ selection to prepare the game on someone's machine.
 | Patch source | What a patch starts from: a full component needs no earlier version; a delta needs a specific version. An unspecified saved source cannot establish a chain. |
 | Planned patch | One step selected for installation, kept together with the packages needed to apply it. |
 | Patch chain | The ordered steps needed to reach a component's target version. |
+| Component versions | The known version of each named component. A component with no recorded version starts at `0`; installation separately owns checkpoint precedence. |
+| Patch volume | A downloadable archive piece declared by a patch, before its HTTP address is resolved. |
 | Transport volume | One downloadable file, with a resolved HTTP URL. Several volumes can form one patch archive; these are distinct from game-owned assets. |
 | Package | A downloadable piece of a patch. One patch can require several packages. |
 | Published volume bytes | The compressed size of all volumes offered in a resolved release, including unused patch alternatives. |
@@ -62,8 +64,9 @@ target is reported separately from a missing full-install patch.
 
 Catalog entry points own WGUS client construction and reuse during resolution.
 Installation asks for a resolved release without constructing a protocol client.
-Internally, `TransportVolume` names a downloadable archive volume; saved releases
-retain the `assets` field and consumer reports retain their existing names.
-
 Internal size queries distinguish `published_volume_bytes()` from `required_volumes()`.
-Saved releases retain `assets`; consumer reports keep their existing field names.
+Listing and inspection have separate application modules: `list.rs` owns listing
+options, summaries, and warnings; `inspect.rs` owns read-only inspection. Internal
+release, patch, and planned-patch collections use `volumes` for transport pieces.
+Saved manifests retain `assets` and patch `files` keys, and public consumer reports
+retain their existing package names.

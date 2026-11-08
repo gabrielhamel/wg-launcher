@@ -7,8 +7,8 @@ use std::{fs, path::Path};
 
 pub(crate) fn remove_patch_volumes(cache: &Path, patch: &Patch) -> Result<u64> {
     let mut removed = 0;
-    for file in &patch.files {
-        let path = cache.join(safe_relative_path(&file.name)?);
+    for volume in &patch.volumes {
+        let path = cache.join(safe_relative_path(&volume.name)?);
         removed += fs::metadata(&path)?.len();
         fs::remove_file(&path)?;
         remove_empty_parents(path.parent(), cache)?;
@@ -31,8 +31,8 @@ fn remove_empty_parents(mut directory: Option<&Path>, cache: &Path) -> Result<()
 }
 
 pub(crate) fn verify_cache(patches: &[&Patch], cache: &Path) -> Result<()> {
-    for file in patches.iter().flat_map(|patch| &patch.files) {
-        let path = cache.join(safe_relative_path(&file.name)?);
+    for volume in patches.iter().flat_map(|patch| &patch.volumes) {
+        let path = cache.join(safe_relative_path(&volume.name)?);
         let actual = fs::metadata(&path)
             .map(|metadata| {
                 if metadata.is_file() {
@@ -42,10 +42,10 @@ pub(crate) fn verify_cache(patches: &[&Patch], cache: &Path) -> Result<()> {
                 }
             })
             .unwrap_or(0);
-        if actual != file.size {
+        if actual != volume.size {
             return Err(Error::IncompleteCache {
                 path,
-                expected: file.size,
+                expected: volume.size,
                 actual,
             });
         }

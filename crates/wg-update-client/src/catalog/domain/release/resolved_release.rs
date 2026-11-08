@@ -1,6 +1,6 @@
 use super::{Patch, TransportVolume, WebSeed};
+use crate::catalog::ComponentVersions;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 
 /// Resolved build identity, published patch chains, and transport assets.
 ///
@@ -21,13 +21,14 @@ pub struct ResolvedRelease {
     /// Selected client component identifiers.
     pub parts: Vec<String>,
     /// Target version of every selected component, including unchanged components.
-    pub component_versions: BTreeMap<String, String>,
+    pub component_versions: ComponentVersions,
     /// Published patch chain, including full-install and delta patches.
     pub patches: Vec<Patch>,
     /// Published HTTP seed endpoints; asset URLs use the first seed.
     pub web_seeds: Vec<WebSeed>,
     /// Resolved transport volumes across the published patches.
-    pub assets: Vec<TransportVolume>,
+    #[serde(rename = "assets")]
+    pub volumes: Vec<TransportVolume>,
 }
 
 impl ResolvedRelease {
@@ -43,7 +44,7 @@ impl ResolvedRelease {
             identity => "build identity", product => "product", host => "publisher endpoint",
             available_languages => "available languages", publisher_ids => "publisher identifiers",
             parts => "selected components", component_versions => "component targets",
-            patches => "patch chains", web_seeds => "download endpoints", assets => "transport volumes",
+            patches => "patch chains", web_seeds => "download endpoints", volumes => "transport volumes",
         );
         fields
     }
@@ -53,7 +54,7 @@ impl ResolvedRelease {
     /// This is a transport total, not required disk space or remaining network traffic;
     /// it does not subtract cached files or filter the installation chain.
     pub fn published_volume_bytes(&self) -> u64 {
-        self.assets.iter().map(|asset| asset.size).sum()
+        self.volumes.iter().map(|asset| asset.size).sum()
     }
 }
 

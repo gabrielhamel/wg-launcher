@@ -3,8 +3,8 @@
 use super::error::Result;
 use super::patch_chain_conversion::patch_chain_from_wire;
 use super::wire::{MetadataXml, PatchesXml};
+use crate::catalog::ComponentVersions;
 use crate::catalog::{ClientPart, ClientType, Executable, GameMetadata, Product, ResolvedRelease};
-use std::collections::BTreeMap;
 
 pub(super) fn release_from_wire(
     product: &Product,
@@ -13,7 +13,7 @@ pub(super) fn release_from_wire(
     selected: &ClientType,
     language: String,
     response: PatchesXml,
-    component_versions: &BTreeMap<String, String>,
+    component_versions: &ComponentVersions,
 ) -> Result<ResolvedRelease> {
     let chain = patch_chain_from_wire(
         product,
@@ -49,7 +49,7 @@ pub(super) fn release_from_wire(
         component_versions: chain.component_versions,
         patches,
         web_seeds: chain.web_seeds,
-        assets: chain.assets,
+        volumes: chain.volumes,
     })
 }
 

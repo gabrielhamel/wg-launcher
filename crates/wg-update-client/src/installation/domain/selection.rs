@@ -39,48 +39,65 @@ fn validate_cache(
     client_type: Option<&str>,
     language: Option<&str>,
 ) -> Result<()> {
-    let selected_region = &product.region;
-    let language_matches = language
-        .is_none_or(|language| language.eq_ignore_ascii_case(&manifest.release.identity.language));
-    let client_type_matches = client_type.is_none_or(|client_type| {
-        manifest
-            .release
-            .identity
-            .client_type
-            .eq_ignore_ascii_case(client_type)
-    });
-    if manifest.release.product == *product
-        && manifest.release.identity.region == *selected_region
-        && client_type_matches
-        && language_matches
-    {
+    let mut fields = Vec::new();
+    if manifest.release.product != *product {
+        fields.push(SelectionField::Product);
+    }
+    if manifest.release.identity.region != product.region {
+        fields.push(SelectionField::Region);
+    }
+    if client_type.is_some_and(|requested| {
+        !requested.eq_ignore_ascii_case(&manifest.release.identity.client_type)
+    }) {
+        fields.push(SelectionField::ClientType);
+    }
+    if language.is_some_and(|requested| {
+        !requested.eq_ignore_ascii_case(&manifest.release.identity.language)
+    }) {
+        fields.push(SelectionField::Language);
+    }
+    if fields.is_empty() {
         return Ok(());
     }
-    Err(Error::CachedSelectionMismatch {
-        cached: format!(
-            "{}/{}/{}{}",
-            manifest.release.identity.region,
-            manifest.release.identity.client_type,
-            manifest.release.identity.language,
-            product_description(&manifest.release.product)
-        ),
-        requested: format!(
-            "{}/{}/{}{}",
-            selected_region,
-            client_type.unwrap_or("publisher default or smallest variant"),
-            language.unwrap_or("publisher default"),
-            product_description(product)
-        ),
-    })
+    Err(Error::CachedSelectionMismatch(Box::new(
+        SelectionMismatch {
+            fields,
+            cached: SelectionDescription {
+                product: manifest.release.product.clone(),
+                region: manifest.release.identity.region.clone(),
+                client_type: Some(manifest.release.identity.client_type.clone()),
+                language: Some(manifest.release.identity.language.clone()),
+            },
+            requested: SelectionDescription {
+                product: product.clone(),
+                region: product.region.clone(),
+                client_type: client_type.map(str::to_owned),
+                language: language.map(str::to_owned),
+            },
+        },
+    )))
 }
 
-fn product_description(product: &crate::catalog::Product) -> String {
-    format!(
-        " ({}/{}: {}, {}, {})",
-        product.game(),
-        product.name,
-        product.host,
-        product.game_id,
-        product.channel
-    )
+/// The incompatible selection fields, kept as facts until the error is displayed.
+#[derive(Debug)]
+pub(super) enum SelectionField {
+    Product,
+    Region,
+    ClientType,
+    Language,
+}
+
+#[derive(Debug)]
+pub(super) struct SelectionDescription {
+    pub(super) product: Product,
+    pub(super) region: String,
+    pub(super) client_type: Option<String>,
+    pub(super) language: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct SelectionMismatch {
+    pub(super) fields: Vec<SelectionField>,
+    pub(super) cached: SelectionDescription,
+    pub(super) requested: SelectionDescription,
 }

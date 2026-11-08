@@ -98,11 +98,11 @@ impl InspectReport {
                     part: patch.part.clone(),
                     version_from: patch.source.version().map(str::to_owned),
                     version_to: patch.version_to.clone(),
-                    package_count: patch.files.len(),
-                    compressed_bytes: patch.files.iter().map(|file| file.size).sum(),
+                    package_count: patch.volumes.len(),
+                    compressed_bytes: patch.volumes.iter().map(|volume| volume.size).sum(),
                 })
                 .collect(),
-            package_count: release.assets.len(),
+            package_count: release.volumes.len(),
             compressed_bytes: release.published_volume_bytes(),
             default_output_directory: BuildInfo::from_release(release).default_output_directory(),
         }

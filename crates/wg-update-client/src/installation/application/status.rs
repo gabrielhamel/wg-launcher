@@ -1,5 +1,6 @@
-use super::comparison::build_status;
+use super::comparison::build_status_report;
 use super::installed::load_installed_build;
+use super::update_target::{UpdateTarget, UpdateTargetSource};
 use crate::Result;
 use crate::catalog::{BuildInfo, resolve_update_release};
 use serde::Serialize;
@@ -11,25 +12,6 @@ pub struct StatusOptions {
     /// Installation root containing the installed-build record; use `".".into()`
     /// explicitly for the current directory.
     pub path: PathBuf,
-}
-
-/// Source of the build chosen for comparison with an installation.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "snake_case")]
-pub enum UpdateTargetSource {
-    /// The publisher's current release, resolved from the live catalog.
-    LiveCatalog,
-    /// The saved release for unfinished work, which may differ from the live catalog.
-    PinnedManifest,
-}
-
-/// Build version chosen for comparison, together with how it was selected.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct UpdateTarget {
-    /// Publisher game build version; component versions are compared separately.
-    pub version: String,
-    /// Whether this target came from live discovery or unfinished local work.
-    pub source: UpdateTargetSource,
 }
 
 /// Recorded build identity and the version it was compared against.
@@ -73,7 +55,7 @@ pub async fn status(options: StatusOptions) -> Result<StatusReport> {
         &installed.component_versions,
     )
     .await?;
-    build_status(
+    build_status_report(
         path,
         &installed,
         &latest,

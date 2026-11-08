@@ -1,3 +1,4 @@
+use crate::catalog::ComponentVersions;
 mod conversion;
 mod error;
 mod patch_chain_conversion;
@@ -11,7 +12,7 @@ use crate::catalog::{GameMetadata, Product, ResolvedRelease};
 use conversion::{metadata_from_wire, normalize_language, release_from_wire};
 use request::{patch_chain_query, product_endpoint, redirect_product};
 use reqwest::Client;
-use std::{collections::BTreeMap, time::Duration};
+use std::time::Duration;
 use wire::{MetadataXml, PatchesXml};
 
 /// WGUS protocol version sent in metadata and patch-chain requests.
@@ -68,8 +69,13 @@ impl WgusClient {
         client_type: &str,
         language: Option<&str>,
     ) -> Result<ResolvedRelease> {
-        self.release_from_versions(product, client_type, language, &BTreeMap::new())
-            .await
+        self.release_from_versions(
+            product,
+            client_type,
+            language,
+            &ComponentVersions::default(),
+        )
+        .await
     }
 
     /// Resolves update packages using the installed version of each component.
@@ -85,7 +91,7 @@ impl WgusClient {
         product: &Product,
         client_type: &str,
         language: Option<&str>,
-        component_versions: &BTreeMap<String, String>,
+        component_versions: &ComponentVersions,
     ) -> Result<ResolvedRelease> {
         product.validate_identity()?;
         let mut resolved = product.clone();

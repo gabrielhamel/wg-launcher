@@ -41,6 +41,7 @@ installation manages the copy on a person's machine.
 | Patch workspace | Temporary files and preserved originals for the patch being applied. They remain available after failure until that patch is saved as complete. |
 | Patch contents | The files decoded from a patch: complete replacement files and delta files that change existing content. Replacements are installed before deltas are applied. |
 | Patch completion | Apply a patch successfully, save its checkpoint, then release its recovery files and, when cleanup is enabled, its downloaded packages. |
+| Selection mismatch | The product, region, edition, or language fields that make cached work incompatible with a request. Omitted edition and language accept the pinned choice. |
 | Pinned release mismatch | Saved work and a requested release differ in their build identity, product, component targets, patch chains, or other published details. The error names the differing fields; matching selection alone does not make the releases interchangeable. |
 | Checkpoint | Saved progress after a patch succeeds, so a retry can skip completed work. |
 | Resume / retry | Continue unfinished work, reusing completed steps and downloads where possible. |
@@ -93,3 +94,10 @@ live fallback, and starting-version seeding for updates. Status remains live-onl
 Shared observer events live in `application/progress.rs`; pipeline reports and
 execution options live in `application/pipeline/reports.rs`. Package directory
 classification delegates publisher filename recognition to `packages/delta_filename.rs`.
+
+Cache compatibility records the differing selection fields before error formatting;
+diagnostics name those fields and show both selections. Component progress uses the
+catalog's component-version value while retaining ownership of seeding and saved
+checkpoint precedence. Its JSON representation remains a component-to-version map.
+Shared update target and source types live beside target resolution; status report
+construction remains in `application/comparison.rs`.

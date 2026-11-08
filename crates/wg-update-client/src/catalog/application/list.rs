@@ -1,7 +1,6 @@
 use super::super::infrastructure::wgus::WgusClient;
-use super::resolution::resolve;
 use crate::Result;
-use crate::catalog::{BuildSelection, InspectReport, Product, required_volumes};
+use crate::catalog::{Product, required_volumes};
 use serde::Serialize;
 
 /// Configures discovery. By default every supported region is queried.
@@ -81,25 +80,6 @@ pub async fn list(options: ListOptions) -> Result<ListReport> {
     list_with_client(&WgusClient::new()?, options).await
 }
 
-/// Selects a build whose resolved WGUS release should be inspected.
-#[derive(Debug, Clone, Default)]
-pub struct InspectOptions {
-    /// Build to resolve; requires a game and otherwise uses EU, the publisher's
-    /// default client type (or smallest installable variant), and default language.
-    pub selection: BuildSelection,
-}
-
-/// Resolves a live build without downloading packages or changing files.
-///
-/// # Errors
-///
-/// Returns an error for failed network requests, invalid protocol responses,
-/// unsupported client types or languages, or missing patch chains or web seeds.
-pub async fn inspect(options: InspectOptions) -> Result<InspectReport> {
-    let release = resolve(&options.selection).await?;
-    Ok(InspectReport::from_release(&release))
-}
-
 async fn list_with_client(client: &WgusClient, options: ListOptions) -> Result<ListReport> {
     let products = crate::catalog::domain::select_products(
         options.products.as_deref(),
@@ -112,32 +92,15 @@ async fn list_with_client(client: &WgusClient, options: ListOptions) -> Result<L
     for product in products {
         let metadata = client.metadata_for_product(&product).await?;
         for client_type in &metadata.client_types {
-            match client
+            let resolved = client
                 .release_for_product(&product, &client_type.id, Some(&metadata.default_language))
                 .await
-            {
-                Ok(release) => match required_volumes(&release, &Default::default()) {
-                    Ok(assets) => builds.push(BuildSummary {
-                        game: product.game(),
-                        region: product.region.clone(),
-                        channel: release.identity.channel,
-                        platform: release.identity.platform,
-                        architecture: release.identity.architecture,
-                        client_type: release.identity.client_type,
-                        version: release.identity.version,
-                        metadata_version: release.identity.metadata_version,
-                        default_language: metadata.default_language.clone(),
-                        languages: release.available_languages,
-                        parts: release.parts,
-                        compressed_bytes: assets.iter().map(|asset| asset.size).sum(),
-                    }),
-                    Err(error) => warnings.push(ListWarning {
-                        game: product.game(),
-                        region: product.region.clone(),
-                        client_type: client_type.id.clone(),
-                        message: error.to_string(),
-                    }),
-                },
+                .map_err(crate::Error::from)
+                .and_then(|release| {
+                    BuildSummary::from_release(&product, &metadata.default_language, release)
+                });
+            match resolved {
+                Ok(build) => builds.push(build),
                 Err(error) => warnings.push(ListWarning {
                     game: product.game(),
                     region: product.region.clone(),
@@ -149,4 +112,28 @@ async fn list_with_client(client: &WgusClient, options: ListOptions) -> Result<L
     }
 
     Ok(ListReport { builds, warnings })
+}
+
+impl BuildSummary {
+    fn from_release(
+        product: &Product,
+        default_language: &str,
+        release: crate::catalog::ResolvedRelease,
+    ) -> Result<Self> {
+        let volumes = required_volumes(&release, &Default::default())?;
+        Ok(Self {
+            game: product.game(),
+            region: product.region.clone(),
+            channel: release.identity.channel,
+            platform: release.identity.platform,
+            architecture: release.identity.architecture,
+            client_type: release.identity.client_type,
+            version: release.identity.version,
+            metadata_version: release.identity.metadata_version,
+            default_language: default_language.to_owned(),
+            languages: release.available_languages,
+            parts: release.parts,
+            compressed_bytes: volumes.iter().map(|volume| volume.size).sum(),
+        })
+    }
 }

@@ -1,5 +1,6 @@
 use super::error::{InstallationError as Error, Result as InstallationResult};
 use super::{InstalledBuild, component_progress::ComponentProgress};
+use crate::catalog::ComponentVersions;
 use crate::catalog::{
     Patch, PlannedPatch, ReleaseError, ResolvedRelease, TransportVolume, ordered_patches,
     planned_patches, required_volumes,
@@ -26,7 +27,7 @@ impl From<ResolvedRelease> for PinnedManifest {
 
 impl PinnedManifest {
     /// Component versions reached locally, including saved patch completions.
-    pub(crate) fn reached_versions(&self) -> &std::collections::BTreeMap<String, String> {
+    pub(crate) fn reached_versions(&self) -> &ComponentVersions {
         self.progress.versions()
     }
 

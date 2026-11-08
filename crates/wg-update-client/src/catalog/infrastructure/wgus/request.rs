@@ -1,8 +1,8 @@
 //! WGUS query encoding and redirect targets; configured product identity stays unchanged.
 
 use super::{PROTOCOL_VERSION, conversion::normalize_language, error::Result, wire::MetadataXml};
+use crate::catalog::ComponentVersions;
 use crate::catalog::{ClientType, GameMetadata, Product};
-use std::collections::BTreeMap;
 use url::Url;
 
 const INSTALLATION_ID: &str = "wg-launcher";
@@ -12,7 +12,7 @@ pub(super) fn patch_chain_query(
     metadata: &GameMetadata,
     selected: &ClientType,
     language: &str,
-    component_versions: &BTreeMap<String, String>,
+    component_versions: &ComponentVersions,
 ) -> Vec<(String, String)> {
     let predefined = &wire.predefined_section;
     let wire_language = predefined
@@ -43,10 +43,7 @@ pub(super) fn patch_chain_query(
     for part in &selected.parts {
         query.push((
             format!("{}_current_version", part.id),
-            component_versions
-                .get(&part.id)
-                .cloned()
-                .unwrap_or_else(|| "0".to_owned()),
+            component_versions.version_or_zero(&part.id).to_owned(),
         ));
     }
     query

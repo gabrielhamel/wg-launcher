@@ -22,5 +22,6 @@ pub use extract::{ExtractEvent, ExtractOptions, ExtractOutcome, extract, extract
 pub use install::{InstallEvent, InstallOptions, InstallOutcome, install, install_with_observer};
 pub(crate) use installed::InstalledBuildError;
 pub use plan::{InstallPlan, PackageSummary};
-pub use status::{StatusOptions, StatusReport, UpdateTarget, UpdateTargetSource, status};
+pub use status::{StatusOptions, StatusReport, status};
 pub use update::{UpdateOptions, UpdateOutcome, update, update_with_observer};
+pub use update_target::{UpdateTarget, UpdateTargetSource};

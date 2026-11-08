@@ -1,4 +1,5 @@
 use super::PinnedManifest;
+use crate::catalog::ComponentVersions;
 use serde::{Deserialize, Serialize};
 
 /// Build identity serialized in `.wg-launcher/state.json`.
@@ -14,7 +15,7 @@ pub struct InstalledBuild {
     /// This is one product, never the full input catalog.
     pub product: crate::catalog::Product,
     /// Successfully installed version of each selected component.
-    pub component_versions: std::collections::BTreeMap<String, String>,
+    pub component_versions: ComponentVersions,
 }
 
 impl From<&PinnedManifest> for InstalledBuild {

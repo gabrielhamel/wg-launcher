@@ -1,10 +1,11 @@
 use super::error::{ReleaseError as Error, Result};
 use super::{Patch, ResolvedRelease};
-use std::collections::{BTreeMap, HashMap, HashSet};
+use crate::catalog::ComponentVersions;
+use std::collections::{HashMap, HashSet};
 
 pub(crate) fn ordered_patches<'a>(
     release: &'a ResolvedRelease,
-    base_versions: &BTreeMap<String, String>,
+    base_versions: &ComponentVersions,
 ) -> Result<Vec<&'a Patch>> {
     let mut ordered = Vec::new();
     for component in release.components() {
@@ -16,12 +17,12 @@ pub(crate) fn ordered_patches<'a>(
 impl<'a> super::resolved_release::ComponentRelease<'a> {
     pub(super) fn ordered_patches(
         &self,
-        base_versions: &BTreeMap<String, String>,
+        base_versions: &ComponentVersions,
     ) -> Result<Vec<&'a Patch>> {
         let mut ordered = Vec::new();
         let part = self.id;
         let target = self.target;
-        let mut version = base_versions.get(part).map(String::as_str).unwrap_or("0");
+        let mut version = base_versions.version_or_zero(part);
         let by_from = self
             .patches
             .iter()

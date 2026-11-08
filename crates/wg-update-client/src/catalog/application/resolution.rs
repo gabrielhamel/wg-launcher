@@ -1,4 +1,5 @@
 use super::super::infrastructure::wgus::WgusClient;
+use crate::catalog::ComponentVersions;
 use crate::catalog::{BuildSelection, GameMetadata, Product, ResolvedRelease, required_volumes};
 use crate::{Error, Result};
 
@@ -51,8 +52,8 @@ async fn resolve_smallest_installable_variant(
             .await
         {
             Ok(release) => match required_volumes(&release, &Default::default()) {
-                Ok(assets) => {
-                    let size = assets.iter().map(|asset| asset.size).sum();
+                Ok(volumes) => {
+                    let size = volumes.iter().map(|volume| volume.size).sum();
                     if best.as_ref().is_none_or(|(best_size, _)| size < *best_size) {
                         best = Some((size, release));
                     }
@@ -83,7 +84,7 @@ pub(crate) async fn resolve_update_release(
     product: &crate::catalog::Product,
     client_type: &str,
     language: &str,
-    component_versions: &std::collections::BTreeMap<String, String>,
+    component_versions: &ComponentVersions,
 ) -> Result<ResolvedRelease> {
     Ok(WgusClient::new()?
         .release_from_versions(product, client_type, Some(language), component_versions)

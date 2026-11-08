@@ -1,6 +1,10 @@
 //! Adapt an installation comparison to the consumer status report.
 
-use super::status::{StatusReport, UpdateTarget, UpdateTargetSource};
+use super::{
+    status::StatusReport,
+    update_target::{UpdateTarget, UpdateTargetSource},
+};
+use crate::catalog::ComponentVersions;
 use crate::{
     Result,
     catalog::{ResolvedRelease, required_volumes},
@@ -8,18 +12,18 @@ use crate::{
 };
 use std::path::PathBuf;
 
-pub(super) fn build_status(
+pub(super) fn build_status_report(
     path: PathBuf,
     installed: &InstalledBuild,
     target: &ResolvedRelease,
-    reached_versions: &std::collections::BTreeMap<String, String>,
+    reached_versions: &ComponentVersions,
     source: UpdateTargetSource,
 ) -> Result<StatusReport> {
     let update_available = installed.differs_from(target);
     let download_bytes = if update_available {
         required_volumes(target, reached_versions)?
             .iter()
-            .map(|asset| asset.size)
+            .map(|volume| volume.size)
             .sum()
     } else {
         0

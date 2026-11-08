@@ -42,7 +42,7 @@ impl PatchDownloads {
                 let progress = Arc::clone(&observer);
                 let result = downloader
                     .download_with_observer(
-                        planned.packages,
+                        planned.volumes,
                         cache.clone(),
                         options.clone(),
                         move |event| {

@@ -32,9 +32,9 @@ pub(super) fn decode_archive(
     mut decoded_entry: impl FnMut(&Path, &Path) -> Result<()>,
 ) -> Result<()> {
     let mut volumes = patch
-        .files
+        .volumes
         .iter()
-        .map(|file| safe_relative_path(&file.name).map(|relative| cache.join(relative)))
+        .map(|volume| safe_relative_path(&volume.name).map(|relative| cache.join(relative)))
         .collect::<std::result::Result<Vec<_>, crate::installation::StorageError>>()?;
     volumes.sort();
     if volumes.is_empty() {

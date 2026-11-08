@@ -1,7 +1,7 @@
 use super::status::StatusReport;
 use super::update_target::resolve_update_target;
 use super::{InstallEvent, InstallOutcome, install::install_resolved};
-use super::{comparison::build_status, installed::load_installed_build};
+use super::{comparison::build_status_report, installed::load_installed_build};
 use crate::installation::DownloadOptions;
 use crate::{Result, installation::infrastructure::filesystem::InstallationLayout};
 use serde::Serialize;
@@ -61,7 +61,7 @@ where
     let storage = InstallationLayout::for_root(&path);
     let installed = load_installed_build(&path).await?;
     let (manifest, target_source) = resolve_update_target(&installed, &storage).await?;
-    let status = build_status(
+    let status = build_status_report(
         path,
         &installed,
         &manifest.release,

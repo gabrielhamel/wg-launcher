@@ -33,19 +33,19 @@ pub struct InstallPlan {
 pub(super) fn build_plan(
     manifest: &PinnedManifest,
     root: PathBuf,
-    assets: &[TransportVolume],
+    volumes: &[TransportVolume],
 ) -> InstallPlan {
-    let compressed_bytes = assets.iter().map(|asset| asset.size).sum();
+    let compressed_bytes = volumes.iter().map(|volume| volume.size).sum();
     let cache = InstallationLayout::for_root(&root).cache;
     InstallPlan {
         build: BuildInfo::from_release(&manifest.release),
         root,
         cache,
-        packages: assets
+        packages: volumes
             .iter()
-            .map(|asset| PackageSummary {
-                name: asset.name.clone(),
-                size: asset.size,
+            .map(|volume| PackageSummary {
+                name: volume.name.clone(),
+                size: volume.size,
             })
             .collect(),
         compressed_bytes,

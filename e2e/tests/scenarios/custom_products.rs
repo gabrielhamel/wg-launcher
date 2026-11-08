@@ -76,6 +76,17 @@ fn custom_staged_installation_extracts_offline_and_refuses_another_product_cache
             game.to_str().unwrap(),
         ],
     ));
+    let manifest: serde_json::Value = serde_json::from_slice(
+        &fs::read(game.join(".wg-launcher/download/manifest.json")).unwrap(),
+    )
+    .unwrap();
+    // Internal domain names must preserve the portable saved manifest contract.
+    assert!(manifest["assets"].is_array());
+    assert!(manifest["patches"][0]["files"].is_array());
+    assert!(manifest["component_versions"].is_object());
+    assert!(manifest["base_versions"].is_object());
+    assert!(manifest.get("volumes").is_none());
+    assert!(manifest["patches"][0].get("volumes").is_none());
     let before = server.requests().len();
     failure(
         sandbox.run(
@@ -90,6 +101,30 @@ fn custom_staged_installation_extracts_offline_and_refuses_another_product_cache
         ),
         "cached build",
     );
+    for (flag, value, field) in [
+        ("--client-type", "other-edition", "client type"),
+        ("--language", "other-language", "language"),
+    ] {
+        failure(
+            sandbox.run(
+                &sandbox.path,
+                &[
+                    "install",
+                    "--game",
+                    "wot",
+                    "--product",
+                    config.to_str().unwrap(),
+                    "--region",
+                    "local",
+                    "--output",
+                    game.to_str().unwrap(),
+                    flag,
+                    value,
+                ],
+            ),
+            &format!("(different {field})"),
+        );
+    }
     let mut product: serde_json::Value =
         serde_json::from_slice(&fs::read(&config).unwrap()).unwrap();
     product[0]["game_id"] = "OTHER.GAME".into();
@@ -109,7 +144,7 @@ fn custom_staged_installation_extracts_offline_and_refuses_another_product_cache
                 game.to_str().unwrap(),
             ],
         ),
-        "cached build",
+        "(different product)",
     );
     assert_eq!(server.requests().len(), before);
     fs::remove_file(config).unwrap();

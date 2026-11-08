@@ -12,7 +12,8 @@ pub struct Patch {
     /// Target component version after this patch.
     pub version_to: String,
     /// Transport volumes that together form this patch archive.
-    pub files: Vec<PatchFile>,
+    #[serde(rename = "files")]
+    pub volumes: Vec<PatchVolume>,
     /// Optional publisher torrent hash; not used for download verification.
     pub torrent_hash: Option<String>,
     /// Published torrent URLs; the downloader uses HTTP assets instead.
@@ -28,7 +29,7 @@ impl Patch {
 
 /// A transport archive volume listed in a patch.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct PatchFile {
+pub struct PatchVolume {
     /// Relative transport volume path, not a game-owned inner `.pkg` asset.
     pub name: String,
     /// Expected compressed volume size in bytes.

@@ -2,17 +2,18 @@
 
 use super::error::{Result, WgusError as Error};
 use super::wire::{self, PatchesChainXml, WebSeedsXml};
+use crate::catalog::ComponentVersions;
 use crate::catalog::{
-    ClientType, Patch, PatchFile, PatchSource, Product, TransportVolume, WebSeed,
+    ClientType, Patch, PatchSource, PatchVolume, Product, TransportVolume, WebSeed,
 };
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use url::Url;
 
 pub(super) struct ConvertedPatchChain {
     pub(super) patches: Vec<Patch>,
-    pub(super) assets: Vec<TransportVolume>,
+    pub(super) volumes: Vec<TransportVolume>,
     pub(super) web_seeds: Vec<WebSeed>,
-    pub(super) component_versions: BTreeMap<String, String>,
+    pub(super) component_versions: ComponentVersions,
 }
 
 pub(super) fn patch_chain_from_wire(
@@ -20,14 +21,14 @@ pub(super) fn patch_chain_from_wire(
     selected: &ClientType,
     chain: Option<PatchesChainXml>,
     seeds: WebSeedsXml,
-    component_versions: &BTreeMap<String, String>,
+    component_versions: &ComponentVersions,
 ) -> Result<ConvertedPatchChain> {
     let chain = match chain {
         Some(chain) => chain,
         None if selected
             .parts
             .iter()
-            .all(|part| component_versions.contains_key(&part.id)) =>
+            .all(|part| component_versions.get(&part.id).is_some()) =>
         {
             wire::PatchesChainXml {
                 patches: Vec::new(),
@@ -49,7 +50,7 @@ pub(super) fn patch_chain_from_wire(
     let seed = web_seeds.first();
 
     let mut patches = Vec::with_capacity(chain.patches.len());
-    let mut assets = Vec::new();
+    let mut resolved_volumes = Vec::new();
     let mut latest_version_by_part = component_versions
         .iter()
         .map(|(part, version)| (part.clone(), version.clone()))
@@ -61,30 +62,30 @@ pub(super) fn patch_chain_from_wire(
             &patch.version_to,
             &mut latest_version_by_part,
         );
-        let files = patch
+        let volumes = patch
             .files
             .files
             .into_iter()
-            .map(|file| PatchFile {
-                name: file.name,
-                size: file.size,
-                unpacked_size: file.unpacked_size,
-                diffs_size: file.diffs_size,
+            .map(|volume| PatchVolume {
+                name: volume.name,
+                size: volume.size,
+                unpacked_size: volume.unpacked_size,
+                diffs_size: volume.diffs_size,
             })
             .collect::<Vec<_>>();
-        for file in &files {
-            assets.push(TransportVolume {
+        for volume in &volumes {
+            resolved_volumes.push(TransportVolume {
                 part: patch.part.clone(),
                 source: source.clone(),
                 version_to: patch.version_to.clone(),
-                name: file.name.clone(),
+                name: volume.name.clone(),
                 url: seed
                     .ok_or_else(|| Error::MissingWebSeed(product.game_id.clone()))?
                     .url
-                    .join(&file.name)?,
-                size: file.size,
-                unpacked_size: file.unpacked_size,
-                diffs_size: file.diffs_size,
+                    .join(&volume.name)?,
+                size: volume.size,
+                unpacked_size: volume.unpacked_size,
+                diffs_size: volume.diffs_size,
             });
         }
         let torrent_hash = patch
@@ -107,7 +108,7 @@ pub(super) fn patch_chain_from_wire(
             part: patch.part,
             source,
             version_to: patch.version_to,
-            files,
+            volumes,
             torrent_hash,
             torrent_urls,
         });
@@ -128,7 +129,7 @@ pub(super) fn patch_chain_from_wire(
         .collect::<std::result::Result<_, crate::catalog::ReleaseError>>()?;
     Ok(ConvertedPatchChain {
         patches,
-        assets,
+        volumes: resolved_volumes,
         web_seeds,
         component_versions,
     })

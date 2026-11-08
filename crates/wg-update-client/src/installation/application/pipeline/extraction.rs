@@ -18,7 +18,7 @@ pub(super) fn extract_sync(
 ) -> Result<ExtractionReport> {
     let cache = &storage.cache;
     observer(ExtractionEvent::CheckingCache {
-        assets: manifest.release.assets.len(),
+        assets: manifest.release.volumes.len(),
     });
     let mut manifest = super::resume_manifest(manifest.clone(), storage)?;
     let patches = manifest

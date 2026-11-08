@@ -112,10 +112,13 @@ crates/
         domain/               Built-ins, products, selections, release/patch rules
           build_identity.rs   Shared published identity, flattened in saved records
           release/resolved_release.rs  Published release and validated component views
+          release/component_versions.rs  Known component versions and the missing-component baseline
           release/patch_chain.rs  Version traversal and full-package fallback
           release/transport_volume.rs  Downloadable transport volumes and HTTP seeds
-          release/package_plan.rs  Own the volume index and resolve selected steps to packages
+          release/package_plan.rs  Own the volume index and resolve selected steps to volumes
         application/          list, inspect, and live build/update release resolution
+          list.rs             Listing options, build summaries, and per-variant warnings
+          inspect.rs          Read-only inspection options and workflow
           resolution.rs       Own WGUS clients and resolve explicit/default variants, smallest variants, and updates
           reports.rs          Consumer build identity and inspection/patch summaries
           directory_name.rs   Suggested directory names shared by inspect and installation
@@ -128,13 +131,15 @@ crates/
       installation/           Local installation lifecycle context
         mod.rs                Context entry points and exported contracts
         domain/               Installed identity, pinned manifests, compatibility, checkpoints
+          selection.rs        Cache compatibility and structured selection mismatches
+          error.rs            Installation consistency errors and mismatch diagnostics
           component_progress.rs  Starting versions and saved patch completions
           installed_build.rs  Saved identity, consistency, selection, and build comparison
         application/          download, extract, install, status, update
           progress.rs         Shared package execution and installation observer events
-          update_target.rs    Pending target precedence, live fallback, and starting versions
+          update_target.rs    Shared update target/source, pending precedence, live fallback, and starting versions
           installed.rs        Shared validated installed-record loading
-          comparison.rs       Compare targets and estimate packages from explicit starting versions
+          comparison.rs       Build status reports and estimate volumes from explicit starting versions
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
           pipeline/           InstallationPipeline and checkpoint resumption
