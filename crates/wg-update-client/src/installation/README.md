@@ -37,7 +37,7 @@ installation manages the copy on a person's machine.
 | Installation session | One execution owning exclusive installation access, its layout, saved progress, and completed delta count. Its lock stays with blocking workers until they finish. |
 | Package retention | Whether successfully applied packages are released after each saved checkpoint and removed at final cleanup, or kept for reuse. |
 | Installation completion | Confirm every selected component has reached its target before creating the installed build identity. |
-| Execution plan | The remaining ordered patches and their resolved volumes, selected after the session restores checkpoints under its lock. Its summary supplies the public installation plan. |
+| Execution plan | The remaining ordered patches and their resolved volumes, selected after the session restores checkpoints under its lock. The pipeline owns it until execution consumes the pipeline and receives the remaining patches. Its summary supplies the public installation plan. |
 | Installation pipeline | Coordinates package downloads and patch application, including the lock, saved progress, and final cleanup. |
 | Delta filename | A publisher filename whose extension, version segment, and hexadecimal checksum segment identify a delta and its target game package. Recognition checks naming syntax, not checksum correctness; unrecognized names remain replacement files. |
 | Delta | Changes that need an existing game file, rather than another complete copy of that file. |
@@ -61,8 +61,8 @@ installation manages the copy on a person's machine.
 | `application/` | Public workflows, options, reports, and observer contracts. |
 | `application/resolution.rs`, `update_target.rs` | Pinned-cache reuse, pending update precedence, live fallback, and starting-version seeding. |
 | `application/installed.rs`, `comparison.rs`, `plan.rs` | Validated state loading and consumer status/plan projections. |
-| `application/pipeline/session.rs` | Exclusive installation access, authoritative checkpoints, execution plan, and execution totals. |
-| `application/pipeline/execution_plan.rs` | Resolve remaining work once and project its consumer summary. |
+| `application/pipeline/session.rs` | Exclusive installation access, authoritative checkpoints, and execution totals. |
+| `application/pipeline/mod.rs`, `execution_plan.rs` | Resolve remaining work under the session lock, own its consumer summary, and hand patches to execution once. |
 | `application/pipeline/extraction.rs`, `streaming.rs` | Local execution or overlapping downloads and patch application. |
 | `application/pipeline/patch.rs`, `finalization.rs` | Apply/checkpoint/release ordering, installed-state writes, and successful cleanup. |
 | `application/pipeline/prefetch.rs`, `prefetch_budget.rs` | Download coordination, cancellation, and queued-byte policy. |
@@ -77,9 +77,9 @@ installation manages the copy on a person's machine.
   its initial build identity after updates.
 - Status and update validate installed identity before discovery. Status compares
   with the live catalog; update prefers a pending manifest and retains its selection.
-- A session acquires the mutation lock, restores authoritative saved checkpoints,
-  then resolves its execution plan. Install and extract publish the summary of that
-  same plan before progress. Package-only downloads retain their component filter
+- A session acquires the mutation lock and restores authoritative saved checkpoints.
+  The pipeline then resolves and owns the execution plan under that lock. Install
+  and extract publish the summary of that same plan before progress. Package-only downloads retain their component filter
   and pin the complete manifest.
 - Starting versions seed missing checkpoints; saved completions take precedence.
   A component view supplies its target to planning and installation completion.
@@ -97,7 +97,9 @@ installation manages the copy on a person's machine.
   not verified identity. Inner game-owned `.pkg` files remain packed.
 - Blocking workers retain the session lock if their awaiting future is dropped.
   Extraction failure cancels pending downloads before exclusive access is released.
-  Background worker failures retain their technical causes.
+  Background worker failures retain their technical causes. Prefetch readiness
+  announces the applying position before awaiting its packages; cancellation waits for the
+  producer to stop before the lock is released.
 - Finalization validates completion, counts files, writes installed identity, and
   removes temporary work and eligible cache data. `files_before_finalization`
   includes existing game files and launcher metadata, not just newly extracted files.

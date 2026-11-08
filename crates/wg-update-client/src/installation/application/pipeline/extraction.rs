@@ -8,6 +8,7 @@ use std::sync::Arc;
 
 pub(super) fn extract_sync(
     mut session: InstallationSession,
+    patches: Vec<crate::catalog::PlannedPatch>,
     options: ExtractionOptions,
     observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<ExtractionReport> {
@@ -15,7 +16,6 @@ pub(super) fn extract_sync(
     observer(ExtractionEvent::CheckingCache {
         assets: session.manifest.release.volumes.len(),
     });
-    let patches = std::mem::take(&mut session.execution_plan.patches);
     verify_cache(
         &patches
             .iter()
@@ -77,9 +77,9 @@ impl InstallationPipeline {
     where
         F: Fn(ExtractionEvent) + Send + Sync + 'static,
     {
-        let session = self.session;
+        let (session, patches) = self.into_execution();
         let observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = Arc::new(observer);
-        tokio::task::spawn_blocking(move || extract_sync(session, options, observer))
+        tokio::task::spawn_blocking(move || extract_sync(session, patches, options, observer))
             .await
             .map_err(crate::installation::PipelineError::WorkerFailed)?
     }

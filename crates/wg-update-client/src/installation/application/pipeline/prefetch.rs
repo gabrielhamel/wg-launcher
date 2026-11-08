@@ -74,7 +74,8 @@ impl PatchDownloads {
         }
     }
 
-    pub(super) async fn next(&mut self, index: usize) -> Result<DownloadedPatch> {
+    /// Announce the applying position to release prefetch capacity, then await its packages.
+    pub(super) async fn ready_for_application(&mut self, index: usize) -> Result<DownloadedPatch> {
         self.applying_patch.send_replace(index);
         match self.reports.recv().await {
             Some(result) => result,
@@ -88,7 +89,8 @@ impl PatchDownloads {
         }
     }
 
-    pub(super) async fn stop(&mut self) {
+    /// Cancel the download producer and wait for it to stop before releasing the lock.
+    pub(super) async fn cancel_and_wait(&mut self) {
         self.tasks.shutdown().await;
     }
 }

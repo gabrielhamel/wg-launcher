@@ -145,7 +145,7 @@ crates/
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
           pipeline/           InstallationPipeline execution strategies
-            session.rs        Owned lock, layout, restored checkpoints, execution plan, and finalization
+            session.rs        Owned lock, layout, restored checkpoints, execution totals, and finalization
             execution_plan.rs  Remaining patches resolved under the lock and their consumer summary
             reports.rs        Execution totals, public options, and internal package-retention policy
             extraction.rs     Apply already downloaded patches
@@ -195,7 +195,7 @@ crates/
         infrastructure/       Release HTTP, archives, ownership detection, replacement
           release.rs          Discover published launcher releases
           artifact.rs         Prepare an extracted candidate from a checksum-verified archive
-          executable.rs       Extracted/verified candidate types, executable verification, and replacement
+          executable.rs       Extracted/verified candidates, version-output parsing, verification, and replacement
           http.rs             Shared HTTPS, redirect, and bounded-transfer policy
         presentation/         Command handlers, notices, update instructions, event rendering
           error.rs            Render typed failures with terminal recovery guidance
@@ -247,10 +247,11 @@ checkpoints; only installation advances those checkpoints. The shared internal `
 the configured product. The persistence adapter retains the existing flat JSON
 fields through Serde flattening.
 
-The session resolves one execution plan after restoring checkpoints under its lock.
-Both its observer summary and local/streaming execution use those selected patches
-and volumes. Component views associate targets with patch steps for planning and
-completion checks. Internal application IDs and resolved hostnames retain the saved
+The pipeline resolves and owns one execution plan after the session restores
+checkpoints under its lock. Its observer summary uses those selected patches and
+volumes. Starting local or streaming execution consumes the pipeline and hands
+the remaining patches to execution once, alongside the session. Component views
+associate targets with patch steps for planning and completion checks. Internal application IDs and resolved hostnames retain the saved
 `game_id` and `host` keys.
 
 Patch sources distinguish full content from changes to a specific version, while

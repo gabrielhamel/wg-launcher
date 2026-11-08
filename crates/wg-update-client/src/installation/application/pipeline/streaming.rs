@@ -37,10 +37,9 @@ impl InstallationPipeline {
     where
         F: Fn(InstallationEvent) + Send + Sync + 'static,
     {
-        let mut session = self.session;
+        let (mut session, patches) = self.into_execution();
         let cache = session.layout.cache.clone();
         let _lock = session.retain_lock();
-        let patches = std::mem::take(&mut session.execution_plan.patches);
         let observer: Arc<dyn Fn(InstallationEvent) + Send + Sync> = Arc::new(observer);
         let extraction_observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = {
             let observer = Arc::clone(&observer);
@@ -69,7 +68,7 @@ impl InstallationPipeline {
         let pending_downloads = &mut downloads;
         let result = async move {
             for index in 0..total {
-                let downloaded = pending_downloads.next(index).await?;
+                let downloaded = pending_downloads.ready_for_application(index).await?;
                 merge_download_report(&mut report.download, downloaded.report);
                 let patch = downloaded.patch;
 
@@ -97,7 +96,7 @@ impl InstallationPipeline {
         .await;
         // Wait for cancellation before releasing the installation lock. The
         // JoinSet also aborts the producer if this entire future is dropped.
-        downloads.stop().await;
+        downloads.cancel_and_wait().await;
         let (session, mut report) = result?;
 
         report.extraction = tokio::task::spawn_blocking(move || {

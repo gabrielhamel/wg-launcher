@@ -45,8 +45,10 @@ explicit from release selection through extraction.
 
 `prepare_candidate` names the complete artifact preparation operation. It returns
 an `ExtractedCandidate`; executable verification consumes it and returns a
-`VerifiedCandidate`. Replacement accepts only that verified value. The staging
-directory remains beside the current executable until the operation finishes.
+`VerifiedCandidate`. The executable adapter parses the supported `--version` output
+formats; release comparison remains in the domain. Replacement accepts only that
+verified value. The staging directory remains beside the current executable until
+the operation finishes.
 
 The context's `progress.rs` owns shared stages, events, and the observer contract.
 Application orchestration, infrastructure adapters, and terminal presentation all

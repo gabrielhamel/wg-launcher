@@ -15,19 +15,3 @@ impl Release {
         self.version.cmp_precedence(current).is_gt()
     }
 }
-
-pub(crate) fn candidate_version(stdout: &str) -> Option<&str> {
-    let mut lines = stdout.lines();
-    let first = lines.next().unwrap_or_default();
-    // Released CLIs use the original one-line format; newer builds use status rows.
-    if first == "wg-launcher" {
-        lines
-            .next()
-            .and_then(|line| line.strip_prefix("Installed:"))
-            .map(str::trim)
-    } else {
-        first
-            .strip_prefix("wg-launcher ")
-            .and_then(|line| line.split_whitespace().next())
-    }
-}

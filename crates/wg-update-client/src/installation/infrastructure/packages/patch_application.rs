@@ -14,7 +14,7 @@ use crate::installation::{
 use std::{fs, path::Path, sync::Arc};
 
 /// Decode full content safely before replacing each live game file.
-pub(crate) fn install_full_patch(
+pub(crate) fn install_full_component(
     patch: &Patch,
     cache: &Path,
     game: &Path,

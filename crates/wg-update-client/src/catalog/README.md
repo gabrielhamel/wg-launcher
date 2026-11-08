@@ -31,7 +31,7 @@ selection to prepare the game on someone's machine.
 | Language | The language chosen for the game content. |
 | Component / part | A named portion of the game, such as its main content or a language pack. Both words refer to the same thing. |
 | Patch | One step that brings a component from a starting version to a target version. It may provide the full component or changes to an existing one. |
-| Full-install patch | A patch providing a complete component, without requiring an existing component version. WGUS represents its starting version as `0`. |
+| Full-install patch | A patch providing a complete component, without requiring an existing component version. WGUS represents its starting version as `0`. It can also replace a component during an update. |
 | Delta patch | A patch changing an existing component from one version to another. |
 | Patch source | What a patch starts from: a full component needs no earlier version; a delta needs a specific version. An unspecified saved source cannot establish a chain. |
 | Planned patch | One step selected for installation, kept together with the packages needed to apply it. |
@@ -55,7 +55,7 @@ selection to prepare the game on someone's machine.
 | `domain/release/patch_chain.rs` | Version traversal, cycle detection, and full-package fallback. |
 | `domain/release/package_plan.rs` | Resolve selected steps to transport volumes through a release-wide index. |
 | `application/` | Listing, inspection, release resolution, consumer reports, and suggested directory names. |
-| `infrastructure/wgus/` | HTTP/XML, query encoding, redirects, language normalization, and response conversion. |
+| `infrastructure/wgus/` | HTTP/XML, query encoding, redirects, language normalization, and response conversion. Patch conversion names absent-chain handling, seed parsing, transport URL resolution, torrent parsing, and component target collection separately. |
 
 ## Invariants
 

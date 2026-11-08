@@ -68,7 +68,7 @@ pub(crate) async fn verify(
         .await
         .map_err(|_| ExecutableError::Timeout)??;
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let version = super::super::domain::candidate_version(&stdout);
+    let version = candidate_version(&stdout);
     if !output.status.success() || version != Some(expected.to_string().as_str()) {
         return Err(ExecutableError::VersionMismatch.into());
     }
@@ -78,4 +78,21 @@ pub(crate) async fn verify(
 pub(crate) fn replace(binary: VerifiedCandidate) -> Result<()> {
     self_replace::self_replace(&binary.path).map_err(ExecutableError::Replacement)?;
     Ok(())
+}
+
+/// Read the version from the supported launcher executable output formats.
+fn candidate_version(stdout: &str) -> Option<&str> {
+    let mut lines = stdout.lines();
+    let first = lines.next().unwrap_or_default();
+    // Released CLIs use the original one-line format; newer builds use status rows.
+    if first == "wg-launcher" {
+        lines
+            .next()
+            .and_then(|line| line.strip_prefix("Installed:"))
+            .map(str::trim)
+    } else {
+        first
+            .strip_prefix("wg-launcher ")
+            .and_then(|line| line.split_whitespace().next())
+    }
 }

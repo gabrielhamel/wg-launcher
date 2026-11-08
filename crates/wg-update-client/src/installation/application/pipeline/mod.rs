@@ -21,6 +21,7 @@ pub use reports::{ExtractionOptions, ExtractionReport, InstallationReport};
 /// An error can leave partially changed game files; no whole-install rollback is provided.
 pub(crate) struct InstallationPipeline {
     session: session::InstallationSession,
+    execution_plan: execution_plan::ExecutionPlan,
 }
 
 impl InstallationPipeline {
@@ -32,13 +33,29 @@ impl InstallationPipeline {
         let layout = crate::installation::infrastructure::filesystem::InstallationLayout::for_root(
             root.as_ref(),
         );
+        let session = session::InstallationSession::resume(manifest, layout)?;
+        let execution_plan = execution_plan::ExecutionPlan::resolve(
+            &session.manifest,
+            session.layout.root().to_path_buf(),
+        )?;
         Ok(Self {
-            session: session::InstallationSession::resume(manifest, layout)?,
+            session,
+            execution_plan,
         })
     }
 
     pub(crate) fn plan(&self) -> &crate::installation::InstallPlan {
-        &self.session.execution_plan.summary
+        &self.execution_plan.summary
+    }
+
+    /// Consume the planned pipeline once, handing its remaining patches to execution.
+    fn into_execution(
+        self,
+    ) -> (
+        session::InstallationSession,
+        Vec<crate::catalog::PlannedPatch>,
+    ) {
+        (self.session, self.execution_plan.patches)
     }
 }
 

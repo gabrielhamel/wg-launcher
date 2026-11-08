@@ -22,7 +22,7 @@ pub struct Patch {
 
 impl Patch {
     /// Whether this patch supplies a complete component instead of changing an existing one.
-    pub(crate) fn is_full_install(&self) -> bool {
+    pub(crate) fn provides_full_component(&self) -> bool {
         self.source == PatchSource::Full
     }
 }

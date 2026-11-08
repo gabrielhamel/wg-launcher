@@ -8,7 +8,7 @@ use crate::installation::infrastructure::{
     },
     packages::{
         archive::decode_patch_contents,
-        patch_application::{apply_patch_directory, install_full_patch},
+        patch_application::{apply_patch_directory, install_full_component},
     },
 };
 use crate::installation::{ExtractionEvent, ExtractionOptions, PinnedManifest};
@@ -65,8 +65,8 @@ fn apply_patch_contents(
     workspace: &PatchWorkspace,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<usize> {
-    if patch.is_full_install() {
-        install_full_patch(patch, cache, game, workspace, observer)?;
+    if patch.provides_full_component() {
+        install_full_component(patch, cache, game, workspace, observer)?;
         return Ok(0);
     }
 
