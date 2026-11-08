@@ -26,6 +26,7 @@ selection to prepare the game on someone's machine.
 | Patch transitions | Published patch steps grouped by their starting version. A required step must have exactly one successor; unused alternatives do not affect planning. |
 | Volume binding | Match a selected archive declaration to one download source by filename, component, source version, and target version, then confirm its compressed and optional archive sizes agree. Ambiguous sources are rejected. |
 | Planned volume | One selected transport volume whose identity and archive sizes have been checked against its patch declaration. |
+| Release contents | The selected components, their target versions, published patches, and download sources kept together as one immutable set. Planning checks the chain actually needed. |
 | Resolved release | The selected published build, its component targets, and the packages the publisher offers. It contains no local installation progress. |
 | Discovered product | One product together with its metadata response, reused when choosing and resolving variants. A publisher redirect discovers fresh metadata at the redirected endpoint while retaining the configured product identity. |
 | Selected product request | A validated product choice, with edition and language still allowed to use publisher defaults. Discovery and cache matching use this same choice. |
@@ -58,7 +59,7 @@ selection to prepare the game on someone's machine.
 | `domain/product.rs`, `builtin.rs`, and selection modules | Product validation, built-in offerings, and resolving a build selection request to a selected product request. |
 | `domain/build_identity.rs` | Published application, version, edition, language, and payload target. |
 | `domain/release/patch_identity.rs` | Shared transition identity for patch/volume matching and installation recovery. |
-| `domain/release/resolved_release.rs` | Published build data, separate from local progress. |
+| `domain/release/resolved_release.rs` | Published build data and immutable release contents, separate from local progress. |
 | `domain/release/component_release.rs` | Component-facing target validation, completion checks, and ordered patch selection; delegates chain traversal to a focused helper. |
 | `domain/release/patch_chain.rs` | Version traversal, required-transition ambiguity rejection, cycle detection, and full-package fallback. |
 | `domain/release/package_plan.rs`, `volume_index.rs` | Assemble selected patch plans and bind their declarations through one release-wide volume index. |
@@ -74,7 +75,7 @@ selection to prepare the game on someone's machine.
   targets and missing volumes for selected steps, while leaving unused publisher
   alternatives alone. Each planned volume is one transport description validated
   against its archive declaration; local cache binding does not depend on parallel
-  lists. Planned patch bindings cannot be independently changed by callers. The saved release keeps its flat collections. Duplicate names cannot
+  lists. Planned patch bindings cannot be independently changed by callers. Release contents can only be replaced together; consumers receive read-only views. The saved release keeps its flat collections. Duplicate names cannot
   silently overwrite another source.
 - Discovery reuses one metadata response per product across variant selection and
   resolution. Redirect hops fetch their own metadata; there is no persistent or

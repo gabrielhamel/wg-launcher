@@ -138,7 +138,7 @@ impl BuildSummary {
             metadata_version: release.identity.metadata_version,
             default_language: default_language.to_owned(),
             languages: release.available_languages,
-            parts: release.component_ids,
+            parts: release.contents.component_ids().to_vec(),
             compressed_bytes: volumes.iter().map(|volume| volume.size).sum(),
         })
     }

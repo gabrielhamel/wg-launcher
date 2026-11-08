@@ -4,7 +4,9 @@ use super::error::Result;
 use super::patch_chain_conversion::patch_chain_from_wire;
 use super::wire::{MetadataXml, PatchesXml};
 use crate::catalog::ComponentVersions;
-use crate::catalog::{ClientPart, ClientType, Executable, GameMetadata, Product, ResolvedRelease};
+use crate::catalog::{
+    ClientPart, ClientType, Executable, GameMetadata, Product, ReleaseContents, ResolvedRelease,
+};
 
 pub(super) fn release_from_wire(
     product: &Product,
@@ -45,11 +47,13 @@ pub(super) fn release_from_wire(
         resolved_hostname,
         available_languages: metadata.supported_languages,
         publisher_ids: metadata.publisher_ids,
-        component_ids: selected.parts.iter().map(|part| part.id.clone()).collect(),
-        component_versions: chain.component_versions,
-        patches,
+        contents: ReleaseContents::new(
+            selected.parts.iter().map(|part| part.id.clone()).collect(),
+            chain.component_versions,
+            patches,
+            chain.volumes,
+        ),
         web_seeds: chain.web_seeds,
-        volumes: chain.volumes,
     })
 }
 

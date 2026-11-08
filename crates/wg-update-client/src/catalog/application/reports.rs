@@ -90,9 +90,10 @@ impl InspectReport {
         Self {
             build: BuildInfo::from_release(release),
             available_languages: release.available_languages.clone(),
-            parts: release.component_ids.clone(),
+            parts: release.contents.component_ids().to_vec(),
             patches: release
-                .patches
+                .contents
+                .patches()
                 .iter()
                 .map(|patch| PatchSummary {
                     part: patch.component_id.clone(),
@@ -102,7 +103,7 @@ impl InspectReport {
                     compressed_bytes: patch.volumes.iter().map(|volume| volume.size).sum(),
                 })
                 .collect(),
-            package_count: release.volumes.len(),
+            package_count: release.contents.volumes().len(),
             compressed_bytes: release.published_volume_bytes(),
             default_output_directory: BuildInfo::from_release(release).default_output_directory(),
         }

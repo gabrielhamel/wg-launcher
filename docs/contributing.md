@@ -112,7 +112,7 @@ crates/
         domain/               Built-ins, products, selections, release/patch rules
           build_identity.rs   Shared published identity, flattened in saved records
           build_selection.rs  Public discovery input and the validated selected product request
-          release/resolved_release.rs  Published release data and component enumeration
+          release/resolved_release.rs  Published build identity, immutable release contents, and component enumeration
           release/component_release.rs  Component-facing validation, completion, and ordered patch selection
           release/component_versions.rs  Known component versions and the missing-component baseline
           release/patch_identity.rs  Borrowed component transition identity for volume matching and recovery
@@ -146,7 +146,7 @@ crates/
         application/          download, extract, install, status, update
           progress.rs         Shared package execution and installation observer events
           transfer.rs         Public download options, observer events, and reports
-          update_target.rs    Shared update target/source, pending precedence, live fallback, and starting versions
+          update_target.rs    Resolved update target, origin, status projection, pending precedence, and starting versions
           installed.rs        Shared validated installed-record loading
           status_report.rs    Build status reports and estimate volumes from explicit starting versions
           resolution.rs       Pinned-cache reuse and live-resolution coordination
@@ -229,12 +229,13 @@ crates/
         application/          FileService release preparation, startup, and lifetime coordination
         infrastructure/       HTTP/ranges, filesystem mapping, access logs
           http/               HTTP adapter and response-description dispatch
-            routing.rs        Interpret request paths as release resources without filesystem lookup
-            release.rs        ReleaseHandler routes requests, resolves content, and constructs HTTP responses
             server.rs         Connection lifetime and shutdown
             request.rs        Request parsing
             representation.rs  Bytes/file/missing responses and content-type classification
             response.rs       Resolved ranges, headers, and streamed bodies
+          wgus/               WGUS release HTTP adapter, separate from transport mechanics
+            mod.rs            ReleaseHandler resolves content and constructs HTTP responses
+            routing.rs        Interpret request paths as release resources without filesystem lookup
           filesystem.rs       Release loading and safe relative package-file lookup
         presentation/         Service CLI arguments and startup output
 e2e/                          Independent black-box system test package

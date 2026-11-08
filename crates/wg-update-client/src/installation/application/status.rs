@@ -1,8 +1,7 @@
 use super::installed::load_installed_build;
-use super::status_report::build_status_report;
-use super::update_target::{UpdateTarget, UpdateTargetSource};
+use super::update_target::{ResolvedUpdateTarget, UpdateTarget};
 use crate::Result;
-use crate::catalog::{BuildInfo, resolve_update_release};
+use crate::catalog::BuildInfo;
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -48,18 +47,6 @@ pub struct StatusReport {
 pub async fn status(options: StatusOptions) -> Result<StatusReport> {
     let path = std::path::absolute(options.path)?;
     let installed = load_installed_build(&path).await?;
-    let latest = resolve_update_release(
-        &installed.product,
-        &installed.identity.client_type,
-        &installed.identity.language,
-        &installed.component_versions,
-    )
-    .await?;
-    build_status_report(
-        path,
-        &installed,
-        &latest,
-        &installed.component_versions,
-        UpdateTargetSource::LiveCatalog,
-    )
+    let target = ResolvedUpdateTarget::live(&installed).await?;
+    target.status_report(path, &installed)
 }

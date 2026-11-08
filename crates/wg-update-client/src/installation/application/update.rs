@@ -1,7 +1,7 @@
+use super::installed::load_installed_build;
 use super::status::StatusReport;
 use super::update_target::resolve_update_target;
 use super::{InstallEvent, InstallOutcome, install::install_resolved};
-use super::{installed::load_installed_build, status_report::build_status_report};
 use crate::installation::DownloadOptions;
 use crate::{Result, installation::infrastructure::filesystem::InstallationLayout};
 use serde::Serialize;
@@ -60,22 +60,21 @@ where
     let path = std::path::absolute(options.path)?;
     let storage = InstallationLayout::for_root(&path);
     let installed = load_installed_build(&path).await?;
-    let (manifest, target_source) = resolve_update_target(&installed, &storage).await?;
-    let status = build_status_report(
-        path,
-        &installed,
-        &manifest.release,
-        manifest.reached_versions(),
-        target_source,
-    )?;
+    let target = resolve_update_target(&installed, &storage).await?;
+    let status = target.status_report(path, &installed)?;
     if !status.update_available {
         return Ok(UpdateOutcome {
             status,
             installation: None,
         });
     }
-    let installation =
-        install_resolved(manifest, status.path.clone(), options.download, observer).await?;
+    let installation = install_resolved(
+        target.into_manifest(),
+        status.path.clone(),
+        options.download,
+        observer,
+    )
+    .await?;
     Ok(UpdateOutcome {
         status,
         installation: Some(installation),

@@ -33,7 +33,7 @@ pub(crate) fn install_full_component(
     })
 }
 
-pub(crate) fn apply_patch_directory(
+pub(crate) fn apply_decoded_patch_contents(
     patch_dir: &Path,
     game: &Path,
     workspace: &PatchWorkspace,
@@ -83,14 +83,19 @@ pub(crate) fn apply_patch_contents(
     workspace: &PatchWorkspace,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<usize> {
-    if patch.patch().provides_full_component() {
-        install_full_component(patch, game, workspace, observer)?;
-        return Ok(0);
+    match &patch.patch().source {
+        crate::catalog::PatchSource::Full => {
+            install_full_component(patch, game, workspace, observer)?;
+            return Ok(0);
+        }
+        crate::catalog::PatchSource::Version(_) => {}
+        // Preserve the existing saved-source policy: inspect decoded files for deltas.
+        crate::catalog::PatchSource::Unspecified => {}
     }
 
     let patch_dir = workspace.archive();
     decode_patch_contents(patch, workspace, observer)?;
-    let applied_deltas = apply_patch_directory(&patch_dir, game, workspace, observer)?;
+    let applied_deltas = apply_decoded_patch_contents(&patch_dir, game, workspace, observer)?;
     workspace.clear_archive()?;
     Ok(applied_deltas)
 }

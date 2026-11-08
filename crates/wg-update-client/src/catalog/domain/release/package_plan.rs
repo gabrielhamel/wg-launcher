@@ -50,7 +50,7 @@ pub(crate) fn planned_patches(
     release: &ResolvedRelease,
     base_versions: &ComponentVersions,
 ) -> Result<Vec<PlannedPatch>> {
-    let volumes = VolumeIndex::new(&release.volumes);
+    let volumes = VolumeIndex::new(release.contents.volumes());
     let mut planned = Vec::new();
     for component in release.components() {
         for patch in component?.ordered_patches(base_versions)? {

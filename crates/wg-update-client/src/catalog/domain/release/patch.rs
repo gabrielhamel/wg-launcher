@@ -21,13 +21,6 @@ pub struct Patch {
     pub torrent_urls: Vec<Url>,
 }
 
-impl Patch {
-    /// Whether this patch supplies a complete component instead of changing an existing one.
-    pub(crate) fn provides_full_component(&self) -> bool {
-        self.source == PatchSource::Full
-    }
-}
-
 /// A transport archive volume listed in a patch.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct PatchVolume {

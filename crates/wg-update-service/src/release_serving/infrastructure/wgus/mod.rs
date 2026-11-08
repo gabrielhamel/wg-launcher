@@ -1,13 +1,12 @@
 //! Route release requests and describe their content through safe filesystem lookup.
 
-use super::{
-    Request,
-    routing::{ReleaseResource, ReleaseRoutes},
-};
+mod routing;
+
+use self::routing::{ReleaseResource, ReleaseRoutes};
 use crate::release_serving::domain::RoutePrefix;
 use crate::release_serving::infrastructure::{
     filesystem,
-    http::{ContentType, HttpResponse},
+    http::{ContentType, HttpResponse, Request},
 };
 use std::path::PathBuf;
 

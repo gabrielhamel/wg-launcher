@@ -101,3 +101,44 @@ pub struct SelectionMismatch {
     pub(super) cached: SelectionDescription,
     pub(super) requested: SelectionDescription,
 }
+
+impl std::fmt::Display for SelectionDescription {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}/{}/{} ({}/{}: {}, {}, {})",
+            self.region,
+            self.client_type
+                .as_deref()
+                .unwrap_or("publisher default or smallest variant"),
+            self.language.as_deref().unwrap_or("publisher default"),
+            self.product.game(),
+            self.product.name,
+            self.product.service_base_url(),
+            self.product.application_id(),
+            self.product.channel
+        )
+    }
+}
+
+impl std::fmt::Display for SelectionMismatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "the cached build is {} but the requested build is {} (different ",
+            self.cached, self.requested
+        )?;
+        for (index, field) in self.fields.iter().enumerate() {
+            if index > 0 {
+                write!(f, ", ")?;
+            }
+            f.write_str(match field {
+                SelectionField::Product => "product",
+                SelectionField::Region => "region",
+                SelectionField::ClientType => "client type",
+                SelectionField::Language => "language",
+            })?;
+        }
+        f.write_str("); use matching options or a different output directory")
+    }
+}

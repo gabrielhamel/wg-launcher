@@ -34,6 +34,7 @@ installation manages the copy on a person's machine.
 | Status | A comparison of the recorded installation with what the publisher currently offers. |
 | Update | Bring an existing installation to the required build while keeping its folder and selection. |
 | Build comparison | Whether the recorded build or component versions differ from the target, independent of the packages needed to reach it. |
+| Resolved update target | The chosen release and local component progress kept together with whether they came from live discovery or unfinished work. It supplies the status comparison and then hands its pinned manifest to execution. |
 | Update target | The build chosen for comparison with the installed game. Its source is either the live catalog or the pinned manifest for unfinished work. A pinned target need not be the publisher's latest release. |
 | Prefetch budget | The limit on packages queued ahead of the patch currently being applied. A new patch may start below the limit even if finishing it exceeds the limit. |
 | Finalization | Record the completed build and remove temporary work and, when requested, cached packages after all patches succeed. |
@@ -64,9 +65,9 @@ installation manages the copy on a person's machine.
 | Catalog `domain/release/patch_identity.rs` | Shared component transition identity; installation owns only its recovery-file encoding. |
 | `domain/installed_build.rs` | Installed identity, selection consistency, and comparison with a target build. |
 | `domain/pinned_manifest.rs`, `component_progress.rs` | Pinned release, starting versions, saved checkpoints, and checked completion. |
-| `domain/selection.rs`, `release_compatibility.rs` | Selection compatibility and one exhaustive comparison returning typed release differences for both resume decisions and diagnostics. |
+| `domain/selection.rs`, `release_compatibility.rs` | Selection compatibility and diagnostics beside their types; release comparison returns typed differences for resume decisions and diagnostics. |
 | `application/` | Public workflows, options, reports, and observer contracts. |
-| `application/resolution.rs`, `update_target.rs` | Pinned-cache reuse, pending update precedence, live fallback, and starting-version seeding. |
+| `application/resolution.rs`, `update_target.rs` | Pinned-cache reuse and resolved update targets owning pending precedence, live fallback, starting-version seeding, and status projection. |
 | `application/installed.rs`, `status_report.rs`, `plan.rs` | Validated state loading and consumer status/plan projections. |
 | `application/access.rs` | Locked installation access, adopting matching downloads, exact-release resume, and record writes requiring the lock owner. |
 | `application/pipeline/session.rs` | Execution state holding locked access, authoritative checkpoints, and execution totals. |
@@ -121,6 +122,6 @@ installation manages the copy on a person's machine.
   progress uses `base_versions`, and active patch identity is an array. Records
   load/save values; domain and application code own compatibility and resume rules.
 
-Package execution owns full-component versus delta strategies through
+Package execution explicitly distinguishes full, versioned, and unspecified patch sources, preserving decoded-file classification for unspecified sources. It owns full-component versus delta strategies through
 `infrastructure/packages/patch_application.rs`. The pipeline calls that entry point
 before persisting checkpoints and releasing recovery sources and packages.

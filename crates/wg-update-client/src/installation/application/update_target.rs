@@ -27,30 +27,70 @@ pub struct UpdateTarget {
     pub source: UpdateTargetSource,
 }
 
+/// A chosen release, its local progress, and its discovery origin kept together.
+pub(super) struct ResolvedUpdateTarget {
+    manifest: PinnedManifest,
+    source: UpdateTargetSource,
+}
+
+impl ResolvedUpdateTarget {
+    fn new(
+        mut manifest: PinnedManifest,
+        source: UpdateTargetSource,
+        installed: &InstalledBuild,
+    ) -> Self {
+        // A package-only download may pin a full chain. Preserve saved checkpoints
+        // while supplying installed versions for components not yet checkpointed.
+        manifest.seed_missing_component_versions(installed);
+        Self { manifest, source }
+    }
+
+    pub(super) async fn live(installed: &InstalledBuild) -> Result<Self> {
+        let release = resolve_update_release(
+            &installed.product,
+            &installed.identity.client_type,
+            &installed.identity.language,
+            &installed.component_versions,
+        )
+        .await?;
+        Ok(Self::new(
+            release.into(),
+            UpdateTargetSource::LiveCatalog,
+            installed,
+        ))
+    }
+
+    pub(super) fn status_report(
+        &self,
+        path: std::path::PathBuf,
+        installed: &InstalledBuild,
+    ) -> Result<super::status::StatusReport> {
+        super::status_report::build_status_report(
+            path,
+            installed,
+            &self.manifest.release,
+            self.manifest.reached_versions(),
+            self.source,
+        )
+    }
+
+    pub(super) fn into_manifest(self) -> PinnedManifest {
+        self.manifest
+    }
+}
+
 pub(super) async fn resolve_update_target(
     installed: &InstalledBuild,
     storage: &InstallationLayout,
-) -> Result<(PinnedManifest, UpdateTargetSource)> {
-    let (mut manifest, target_source) = if let Some(pending) = load_pinned_manifest(storage).await?
-    {
+) -> Result<ResolvedUpdateTarget> {
+    if let Some(pending) = load_pinned_manifest(storage).await? {
         validate_cached_selection(&pending, &installed.selection())?;
-        (pending, UpdateTargetSource::PinnedManifest)
+        Ok(ResolvedUpdateTarget::new(
+            pending,
+            UpdateTargetSource::PinnedManifest,
+            installed,
+        ))
     } else {
-        (
-            crate::installation::PinnedManifest::from(
-                resolve_update_release(
-                    &installed.product,
-                    &installed.identity.client_type,
-                    &installed.identity.language,
-                    &installed.component_versions,
-                )
-                .await?,
-            ),
-            UpdateTargetSource::LiveCatalog,
-        )
-    };
-    // A package-only download may have pinned a full installation chain. Start
-    // that chain at the installed versions, retaining any completed checkpoints.
-    manifest.seed_missing_component_versions(installed);
-    Ok((manifest, target_source))
+        ResolvedUpdateTarget::live(installed).await
+    }
 }

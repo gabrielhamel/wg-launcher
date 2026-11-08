@@ -34,9 +34,9 @@ release on someone's machine belongs to the launcher.
 | Access log | A record of requests received by the service, useful for understanding what launchers asked for. |
 
 The application prepares release metadata and starts an HTTP release handler.
-`infrastructure/http/routing.rs` interprets a path as a `ReleaseResource`
+`infrastructure/wgus/routing.rs` interprets a path as a `ReleaseResource`
 without filesystem access or content-type classification.
-`infrastructure/http/release.rs` owns `ReleaseHandler`: it routes requests,
+`infrastructure/wgus/mod.rs` owns `ReleaseHandler`: it routes requests,
 supplies prepared XML or asks the filesystem adapter to resolve a package, and
 builds HTTP response descriptions. The filesystem adapter enforces containment
 inside the package folder without constructing HTTP responses.
@@ -46,7 +46,7 @@ shutdown, `request.rs` parses incoming messages, and `response.rs` resolves resp
 ranges and streams bodies. `representation.rs` owns response descriptions and
 XML/JSON/binary content types. `mod.rs` serves those descriptions without knowing
 whether the requested resource was metadata, a patch chain, or a package.
-Those release-specific HTTP decisions stay in `release.rs` and `routing.rs`.
+Release-specific HTTP decisions stay in the sibling `infrastructure/wgus/` adapter, separate from connection and streaming mechanics.
 
 `domain/address.rs` owns validated route prefixes and public origins, API route
 construction, and product-host composition. Startup converts string options into

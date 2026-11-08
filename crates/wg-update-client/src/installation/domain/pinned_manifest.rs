@@ -44,7 +44,7 @@ impl PinnedManifest {
         Ok(InstalledBuild {
             identity: self.release.identity.clone(),
             product: self.release.product.clone(),
-            component_versions: self.release.component_versions.clone(),
+            component_versions: self.release.contents.component_versions().clone(),
         })
     }
 

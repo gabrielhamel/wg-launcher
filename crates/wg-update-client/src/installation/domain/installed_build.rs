@@ -46,6 +46,6 @@ impl InstalledBuild {
 
     pub(crate) fn differs_from(&self, target: &crate::catalog::ResolvedRelease) -> bool {
         self.identity.version != target.identity.version
-            || self.component_versions != target.component_versions
+            || &self.component_versions != target.contents.component_versions()
     }
 }

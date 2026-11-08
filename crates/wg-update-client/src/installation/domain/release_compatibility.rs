@@ -61,11 +61,8 @@ pub(super) fn compare_releases(
         resolved_hostname,
         available_languages,
         publisher_ids,
-        component_ids,
-        component_versions,
-        patches,
+        contents,
         web_seeds,
-        volumes,
     } = release;
     let mut fields = Vec::new();
     macro_rules! compare {
@@ -76,8 +73,21 @@ pub(super) fn compare_releases(
     compare!(
         identity => BuildIdentity, product => Product, resolved_hostname => PublisherEndpoint,
         available_languages => AvailableLanguages, publisher_ids => PublisherIdentifiers,
-        component_ids => SelectedComponents, component_versions => ComponentTargets,
-        patches => PatchChains, web_seeds => DownloadEndpoints, volumes => TransportVolumes,
     );
+    if contents.component_ids() != other.contents.component_ids() {
+        fields.push(ReleaseField::SelectedComponents);
+    }
+    if contents.component_versions() != other.contents.component_versions() {
+        fields.push(ReleaseField::ComponentTargets);
+    }
+    if contents.patches() != other.contents.patches() {
+        fields.push(ReleaseField::PatchChains);
+    }
+    if web_seeds != &other.web_seeds {
+        fields.push(ReleaseField::DownloadEndpoints);
+    }
+    if contents.volumes() != other.contents.volumes() {
+        fields.push(ReleaseField::TransportVolumes);
+    }
     ReleaseDifferences(fields)
 }

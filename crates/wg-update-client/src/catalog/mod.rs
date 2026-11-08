@@ -12,8 +12,8 @@ pub(crate) use application::{resolve, resolve_update_release};
 pub(crate) use domain::release::package_plan::{PlannedPatch, planned_patches};
 pub(crate) use domain::release::{
     ClientPart, ClientType, ComponentVersions, Executable, GameMetadata, Patch, PatchIdentity,
-    PatchSource, PatchVolume, ReleaseError, ResolvedRelease, TransportVolume, WebSeed,
-    required_volumes,
+    PatchSource, PatchVolume, ReleaseContents, ReleaseError, ResolvedRelease, TransportVolume,
+    WebSeed, required_volumes,
 };
 pub(crate) use domain::{BuildIdentity, CatalogError, SelectedProductRequest};
 pub use domain::{BuildSelection, Game, Product, Region};

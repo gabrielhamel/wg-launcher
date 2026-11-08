@@ -2,6 +2,7 @@ use super::domain::{PublicOrigin, ReleaseError, RoutePrefix, render_text};
 use super::infrastructure::{
     access_log, filesystem,
     http::{self, Request, ServerHandle},
+    wgus::ReleaseHandler,
 };
 use std::{io, net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -49,7 +50,7 @@ impl FileService {
         };
         let metadata = render_text(metadata, &public_url, METADATA_FILE)?;
         let patch_chain = render_text(patch_chain, &public_url, PATCH_CHAIN_FILE)?;
-        let release = http::ReleaseHandler::new(&prefix, metadata, patch_chain, packages);
+        let release = ReleaseHandler::new(&prefix, metadata, patch_chain, packages);
         let access_log = access_log::open(options.access_log)?;
         let handler = Arc::new(move |request: &Request| {
             access_log::record(&access_log, request);

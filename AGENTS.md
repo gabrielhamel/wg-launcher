@@ -425,8 +425,8 @@ the CLI.
   `domain/` owns URL/prefix constraints and template rendering with local errors;
   `application/` owns `FileService` configuration/startup/lifetime coordination;
   `infrastructure/` owns HTTP parsing, ranges, filesystem mapping and access logs;
-  `http/` owns release routing and response construction as well as
-  server lifetime, request parsing, and response streaming;
+  `infrastructure/wgus/` owns release routing and response construction;
+  `infrastructure/http/` owns server lifetime, request parsing, and response streaming;
   `presentation/` owns CLI parsing and startup output.
 - `packaging/`: release-only Debian package/index signing and WinGet manifest
   generation; generated versions derive from the tagged source or release manifest.

@@ -14,7 +14,7 @@ pub(super) fn extract_sync(
 ) -> Result<ExtractionReport> {
     let cache = &session.access.layout().cache;
     observer(ExtractionEvent::CheckingCache {
-        assets: session.manifest.release.volumes.len(),
+        assets: session.manifest.release.contents.volumes().len(),
     });
     let patches = patches
         .into_iter()

@@ -18,5 +18,6 @@ pub use metadata::{ClientPart, ClientType, Executable, GameMetadata};
 pub use package_plan::required_volumes;
 pub(crate) use patch::PatchSource;
 pub use patch::{Patch, PatchVolume};
+pub(crate) use resolved_release::ReleaseContents;
 pub use resolved_release::ResolvedRelease;
 pub use transport_volume::{TransportVolume, WebSeed};
