@@ -1,7 +1,7 @@
 //! Install decoded replacements before applying source-dependent deltas.
 
 use super::{
-    archive::decode_archive,
+    archive::{decode_archive, decode_patch_contents},
     contents::PatchContents,
     delta::apply_delta,
     error::{PackageError as Error, Result},
@@ -80,5 +80,24 @@ pub(crate) fn apply_patch_directory(
         })?;
         applied_deltas += 1;
     }
+    Ok(applied_deltas)
+}
+
+pub(crate) fn apply_patch_contents(
+    patch: &Patch,
+    cache: &Path,
+    game: &Path,
+    workspace: &PatchWorkspace,
+    observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
+) -> Result<usize> {
+    if patch.provides_full_component() {
+        install_full_component(patch, cache, game, workspace, observer)?;
+        return Ok(0);
+    }
+
+    let patch_dir = workspace.archive();
+    decode_patch_contents(patch, cache, workspace, observer)?;
+    let applied_deltas = apply_patch_directory(&patch_dir, game, workspace, observer)?;
+    workspace.clear_archive()?;
     Ok(applied_deltas)
 }

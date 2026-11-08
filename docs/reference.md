@@ -154,9 +154,10 @@ diagnostics; implementation-specific error types are internal.
 
 `ExtractionReport.files_before_finalization` counts regular files beneath the
 installation root before state writes and cleanup. It includes pre-existing game
-files, launcher metadata, and any cached packages still present. It does not count
-newly extracted files. The `ExtractionEvent::Completed.files` value uses the same
-count.
+files, launcher metadata, and any cached packages still present. It does not
+measure how many files this operation installed. CLI completion messages explicitly
+include launcher metadata in this count. `ExtractionEvent::Completed.files` uses
+the same count.
 
 **API migration (breaking):** rename `ExtractionReport.installed_files` to
 `files_before_finalization`, including the field in serialized reports. Its value

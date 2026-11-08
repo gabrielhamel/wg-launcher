@@ -43,7 +43,7 @@ pub(super) fn finalize_installation(
 }
 
 /// Count the whole tree before state writes and cleanup, including existing game
-/// files and launcher metadata; it does not count newly extracted files.
+/// files and launcher metadata; it does not measure files installed by this operation.
 fn count_files_before_finalization(install_root: &Path) -> Result<usize> {
     Ok(walk_files(install_root)?.len())
 }

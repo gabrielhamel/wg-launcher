@@ -7,13 +7,10 @@ use crate::installation::infrastructure::{
         cache::remove_patch_volumes, patch_workspace::PatchWorkspace, records::save_manifest,
         storage::InstallationLayout,
     },
-    packages::{
-        archive::decode_patch_contents,
-        patch_application::{apply_patch_directory, install_full_component},
-    },
+    packages::apply_patch_contents,
 };
 use crate::installation::{ExtractionEvent, ExtractionOptions, PinnedManifest};
-use std::{path::Path, sync::Arc};
+use std::sync::Arc;
 
 /// Position in the remaining chain; the index is zero-based until presented to an observer.
 pub(super) struct PatchProgress {
@@ -57,23 +54,4 @@ pub(super) fn apply_and_checkpoint_patch(
 pub(super) struct PatchCompletion {
     pub(super) applied_deltas: usize,
     pub(super) released_package_bytes: u64,
-}
-
-fn apply_patch_contents(
-    patch: &Patch,
-    cache: &Path,
-    game: &Path,
-    workspace: &PatchWorkspace,
-    observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
-) -> Result<usize> {
-    if patch.provides_full_component() {
-        install_full_component(patch, cache, game, workspace, observer)?;
-        return Ok(0);
-    }
-
-    let patch_dir = workspace.archive();
-    decode_patch_contents(patch, cache, workspace, observer)?;
-    let applied_deltas = apply_patch_directory(&patch_dir, game, workspace, observer)?;
-    workspace.clear_archive()?;
-    Ok(applied_deltas)
 }

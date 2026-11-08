@@ -51,9 +51,9 @@ selection to prepare the game on someone's machine.
 | `domain/product.rs`, `builtin.rs`, and selection modules | Product validation, built-in offerings, and selection rules. |
 | `domain/build_identity.rs` | Published application, version, edition, language, and payload target. |
 | `domain/release/resolved_release.rs` | Published build data, separate from local progress. |
-| `domain/release/component_release.rs` | Component targets, associated patch steps and transport volumes, and target-reached checks. |
+| `domain/release/component_release.rs` | Component-facing target validation, completion checks, and planning; delegates chain traversal and volume lookup to focused helpers. |
 | `domain/release/patch_chain.rs` | Version traversal, cycle detection, and full-package fallback. |
-| `domain/release/package_plan.rs` | Resolve each component’s selected steps to transport volumes using its volume index. |
+| `domain/release/package_plan.rs` | Assemble release plans and resolve selected patches through a transport-volume index. |
 | `application/` | Listing, inspection, release resolution, consumer reports, and suggested directory names. |
 | `infrastructure/wgus/` | HTTP/XML, query encoding, redirects, language normalization, and response conversion. Patch conversion names absent-chain handling, seed parsing, transport URL resolution, torrent parsing, and component target collection separately. |
 

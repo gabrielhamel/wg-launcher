@@ -1,6 +1,5 @@
 mod content;
 mod routing;
-pub(crate) use content::{ContentKind, ReleaseContent};
 
 use super::domain::{PublicOrigin, ReleaseError, RoutePrefix, render_text};
 use super::infrastructure::{

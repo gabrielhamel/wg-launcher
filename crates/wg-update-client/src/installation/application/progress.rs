@@ -73,7 +73,9 @@ pub enum ExtractionEvent {
     CleaningCache,
     /// Extraction and requested cleanup completed successfully.
     Completed {
-        /// Files counted before state writes and cleanup; see [`crate::ExtractionReport::files_before_finalization`].
+        /// All regular files beneath the installation root before state writes and cleanup,
+        /// including pre-existing game files and launcher metadata, rather than files
+        /// installed by this operation. See [`crate::ExtractionReport::files_before_finalization`].
         files: usize,
         /// Delta files applied during this operation.
         deltas: usize,

@@ -15,8 +15,9 @@ release on someone's machine belongs to the launcher.
 | Publisher | The person or organisation making game content available. |
 | Release | A prepared offering of game content and the information describing how to obtain it. |
 | Release resource | The metadata, patch chain, or relative package path requested, before checking whether its content exists. |
-| Release content | The metadata, patch chain, or file selected for a request, or the fact that none exists. HTTP headers are chosen separately. |
-| Content kind | Whether a served file contains XML, JSON, or binary data. This describes its representation, rather than its role in a game patch. |
+| Release content | The prepared metadata, patch chain, or package file selected for a request. |
+| HTTP response description | The bytes or file to serve and its content type, or a missing-resource result. It does not expose game-release roles to the HTTP adapter. |
+| Content type | Whether a served file contains XML, JSON, or binary data. This describes its representation, rather than its role in a game patch. |
 | Release folder | The local collection of release descriptions and packages that the service makes available. |
 | Product | The game offering a launcher asks about, identified by its publisher and application identity. |
 | Application identity | The publisher's name for the game offering being requested. |
@@ -33,16 +34,17 @@ release on someone's machine belongs to the launcher.
 
 The application separates route interpretation from content lookup.
 `application/routing.rs` interprets a path as a `ReleaseResource` without filesystem
-access. `application/content.rs` supplies the prepared XML or asks the filesystem
-adapter to resolve a package, producing `ReleaseContent` without HTTP request or
-response models. The HTTP adapter parses requests, translates the selected content
-into MIME types and status codes, and handles ranges, headers, and streaming.
+access or content-type classification. `application/content.rs` supplies prepared
+XML or asks the filesystem adapter to resolve a package, then builds an HTTP
+response description with bytes, a file path, or a missing-resource result.
 The filesystem adapter resolves relative package paths and enforces containment
 inside the package folder, without constructing HTTP responses.
 
 The HTTP adapter lives in `infrastructure/http/`: `server.rs` owns connections and
 shutdown, `request.rs` parses incoming messages, and `response.rs` resolves response
-ranges and streams bodies. `mod.rs` maps release content to those responses.
+ranges and streams bodies. `representation.rs` owns response descriptions and
+XML/JSON/binary content types. `mod.rs` serves those descriptions without knowing
+whether the requested resource was metadata, a patch chain, or a package.
 
 `domain/address.rs` owns validated route prefixes and public origins, API route
 construction, and product-host composition. Startup converts string options into

@@ -42,34 +42,33 @@ pub(crate) fn planned_patches(
     Ok(planned)
 }
 
-impl super::ComponentRelease<'_> {
-    /// Validate the volumes of the selected steps, leaving unused publisher
-    /// alternatives alone. Planning does not change the persisted release.
-    fn planned_patches(&self, base_versions: &ComponentVersions) -> Result<Vec<PlannedPatch>> {
-        let volumes = self
-            .transport_volumes
-            .iter()
-            .map(|volume| (volume.name.as_str(), volume))
-            .collect::<HashMap<_, _>>();
-        self.ordered_patches(base_versions)?
-            .into_iter()
-            .map(|patch| {
-                let volumes = patch
-                    .volumes
-                    .iter()
-                    .map(|volume| {
-                        volumes
-                            .get(volume.name.as_str())
-                            .copied()
-                            .cloned()
-                            .ok_or_else(|| Error::MissingPatchAsset(volume.name.clone()))
-                    })
-                    .collect::<Result<Vec<_>>>()?;
-                Ok(PlannedPatch {
-                    patch: patch.clone(),
-                    volumes,
+/// Look up transport volumes only for selected patches; unused alternatives stay unchecked.
+pub(super) fn resolve_patch_volumes(
+    patches: Vec<&Patch>,
+    transport_volumes: &[TransportVolume],
+) -> Result<Vec<PlannedPatch>> {
+    let volumes = transport_volumes
+        .iter()
+        .map(|volume| (volume.name.as_str(), volume))
+        .collect::<HashMap<_, _>>();
+    patches
+        .into_iter()
+        .map(|patch| {
+            let volumes = patch
+                .volumes
+                .iter()
+                .map(|volume| {
+                    volumes
+                        .get(volume.name.as_str())
+                        .copied()
+                        .cloned()
+                        .ok_or_else(|| Error::MissingPatchAsset(volume.name.clone()))
                 })
+                .collect::<Result<Vec<_>>>()?;
+            Ok(PlannedPatch {
+                patch: patch.clone(),
+                volumes,
             })
-            .collect()
-    }
+        })
+        .collect()
 }

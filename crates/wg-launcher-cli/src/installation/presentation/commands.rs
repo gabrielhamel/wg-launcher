@@ -63,7 +63,7 @@ pub(crate) async fn run_extract(args: ExtractArgs) -> Result<(), Box<dyn std::er
         Ok(outcome) => {
             progress.finish_success(&outcome.report);
             println!(
-                "complete: {} files counted before cleanup, {} deltas applied",
+                "complete: {} files in installation before finalization (including launcher metadata), {} deltas applied",
                 outcome.report.files_before_finalization, outcome.report.applied_deltas,
             );
             Ok(())

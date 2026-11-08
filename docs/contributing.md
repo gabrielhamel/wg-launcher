@@ -112,11 +112,11 @@ crates/
         domain/               Built-ins, products, selections, release/patch rules
           build_identity.rs   Shared published identity, flattened in saved records
           release/resolved_release.rs  Published release data and component enumeration
-          release/component_release.rs  Associate component targets, steps, and transport volumes; target validation and completion checks
+          release/component_release.rs  Component-facing validation, completion, and planning; delegate traversal and volume lookup
           release/component_versions.rs  Known component versions and the missing-component baseline
           release/patch_chain.rs  Version traversal and full-package fallback
           release/transport_volume.rs  Downloadable transport volumes and HTTP seeds
-          release/package_plan.rs  Resolve selected component steps to indexed transport volumes
+          release/package_plan.rs  Assemble release plans and look up selected patch volumes
         application/          list, inspect, and live build/update release resolution
           list.rs             Listing options, build summaries, and per-variant warnings
           inspect.rs          Read-only inspection options and workflow
@@ -154,9 +154,12 @@ crates/
             prefetch.rs       Async patch download coordination and cancellation
             prefetch_budget.rs  Byte-budget policy for queued patches
             streaming.rs      Overlapping downloads and ordered patch execution
-            patch.rs          Apply a patch, persist its checkpoint, then release packages
+            patch.rs          Call package execution, persist its checkpoint, then release sources and packages
         infrastructure/
           transfer/           Resumable HTTP package downloads
+            mod.rs            Entry point and contract exports
+            contracts.rs      Download options, observer events, and reports
+            downloader.rs     Concurrent downloads, retries, and outcome aggregation
             local.rs          Cache reuse, partial-file preparation, and promotion
             attempt.rs        One HTTP attempt and structured transfer outcomes
           packages/           Transport archives, delta application, throttled output progress
@@ -164,7 +167,7 @@ crates/
             volumes.rs        Read split transport volumes as one seekable archive
             contents.rs       Classify replacement files and typed deltas before execution
             delta_filename.rs  Interpret publisher delta filenames and target package paths
-            patch_application.rs  Install full patches or decoded replacements and source-dependent deltas
+            patch_application.rs  Own full/delta strategies, decoded-content cleanup, replacements, and source-dependent deltas
             delta.rs          Reconstruct and replace a single file using a delta
           filesystem/         Installation filesystem adapters
             storage.rs        InstallationLayout owns the root and derived paths; explicit staging preparation
@@ -213,11 +216,12 @@ crates/
           address.rs          Validated route prefixes and public origins
         application/          FileService startup, routing, and lifetime coordination
           routing.rs          Interpret request paths as release resources without filesystem lookup
-          content.rs          Resolve resource content using safe package lookup
+          content.rs          Resolve resources using safe package lookup and describe HTTP responses
         infrastructure/       HTTP/ranges, filesystem mapping, access logs
-          http/               HTTP adapter and release-content response dispatch
+          http/               HTTP adapter and response-description dispatch
             server.rs         Connection lifetime and shutdown
             request.rs        Request parsing
+            representation.rs  Bytes/file/missing responses and content-type classification
             response.rs       Resolved ranges, headers, and streamed bodies
           filesystem.rs       Release loading and safe relative package-file lookup
         presentation/         Service CLI arguments and startup output

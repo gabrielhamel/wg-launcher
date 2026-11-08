@@ -2,7 +2,8 @@
 
 use super::error::{Result, TransferError as Error};
 use super::{
-    DownloadEvent, FileOutcome, VolumeDownloader,
+    DownloadEvent, VolumeDownloader,
+    downloader::FileOutcome,
     local::{self, DownloadPreparation, VolumePaths},
 };
 use crate::catalog::TransportVolume;

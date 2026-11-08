@@ -138,7 +138,7 @@ impl ExtractionProgress {
         }
     }
 
-    fn finish_bar(&self, files: usize, deltas: usize, cache_removed: bool) {
+    fn finish_bar(&self, files_before_finalization: usize, deltas: usize, cache_removed: bool) {
         self.bar.disable_steady_tick();
         self.bar.set_style(extraction_completed_style());
         let cleanup = if cache_removed {
@@ -147,7 +147,7 @@ impl ExtractionProgress {
             ""
         };
         self.bar.finish_with_message(format!(
-            "✓ Installation ready ({files} files counted before cleanup, {deltas} deltas applied{cleanup})"
+            "✓ Installation ready ({files_before_finalization} files in installation before finalization (including launcher metadata), {deltas} deltas applied{cleanup})"
         ));
     }
 

@@ -65,9 +65,9 @@ installation manages the copy on a person's machine.
 | `application/pipeline/session.rs` | Exclusive installation access, authoritative checkpoints, and execution totals. |
 | `application/pipeline/mod.rs`, `execution_plan.rs` | Resolve remaining work under the session lock, own its consumer summary, and hand patches to execution once. |
 | `application/pipeline/extraction.rs`, `streaming.rs` | Local execution or overlapping downloads and patch application. |
-| `application/pipeline/patch.rs`, `finalization.rs` | Apply/checkpoint/release ordering, installed-state writes, and successful cleanup. |
+| `application/pipeline/patch.rs`, `finalization.rs` | Coordinate package execution, checkpoint/release ordering, installed-state writes, and successful cleanup. |
 | `application/pipeline/prefetch.rs`, `prefetch_budget.rs` | Download coordination, cancellation, and queued-byte policy. |
-| `infrastructure/transfer/` | Cache reuse, partial-file promotion, resumable HTTP transfer, and retries. |
+| `infrastructure/transfer/` | `contracts.rs` owns options, events, and reports; `downloader.rs` owns concurrency, retries, and totals; `local.rs` and `attempt.rs` own cache preparation and HTTP attempts. |
 | `infrastructure/packages/` | Split-volume reading, archive decoding, replacement/delta classification, and application. |
 | `infrastructure/filesystem/` | Layout, locks, persistence, safe paths, patch workspaces, replacement, and cleanup. |
 
@@ -107,3 +107,7 @@ installation manages the copy on a person's machine.
 - Persistence retains the existing JSON layout: the release is flat, component
   progress uses `base_versions`, and active patch identity is an array. Records
   load/save values; domain and application code own compatibility and resume rules.
+
+Package execution owns full-component versus delta strategies through
+`infrastructure/packages/patch_application.rs`. The pipeline calls that entry point
+before persisting checkpoints and releasing recovery sources and packages.
