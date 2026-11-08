@@ -121,7 +121,8 @@ crates/
         infrastructure/wgus/  WGUS transport and response translation
           mod.rs              HTTP exchange, redirect loop, and release resolution
           request.rs          WGUS query encoding, language mapping, endpoints, redirect targets
-          conversion.rs       Wire-to-domain metadata/releases and publisher normalization
+          conversion.rs       Release assembly and metadata conversion
+          patch_chain_conversion.rs  Publisher chain normalization, targets, and package URLs
           wire.rs             XML response representations
       installation/           Local installation lifecycle context
         mod.rs                Context entry points and exported contracts
@@ -136,7 +137,8 @@ crates/
           pipeline/           InstallationPipeline, checkpoint resumption, and shared contracts
             extraction.rs     Apply already downloaded patches
             finalization.rs   Record the installed build and clean up successful work
-            prefetch.rs       Prefetch budget policy and async patch download coordination
+            prefetch.rs       Async patch download coordination and cancellation
+            prefetch_budget.rs  Byte-budget policy for queued patches
             streaming.rs      Overlapping downloads and ordered patch execution
             patch.rs          Apply a patch, persist its checkpoint, then release packages
         infrastructure/
@@ -190,7 +192,10 @@ crates/
         application/          FileService startup, routing, and lifetime coordination
           routing.rs          Select application-owned release content independently of HTTP
         infrastructure/       HTTP/ranges, filesystem mapping, access logs
-          http.rs             Request parsing, ranges, headers, and streamed responses
+          http/               HTTP adapter and release-content response dispatch
+            server.rs         Connection lifetime and shutdown
+            request.rs        Request parsing
+            response.rs       Resolved ranges, headers, and streamed bodies
           filesystem.rs       Release loading and safe relative package-file lookup
         presentation/         Service CLI arguments and startup output
 e2e/                          Independent black-box system test package
@@ -222,7 +227,9 @@ retaining the saved `version_from` string or null representation. Planned patche
 keep each step with its resolved packages; prefetch delivers the patch with its
 transfer result instead of coordinating separate patch and package lists.
 Component release views validate and group each selected component target with
-its patches, preserving publisher order and the saved release format. Build
+its patches and a shared package index, preserving publisher order and the saved
+release format. Each component resolves selected patches to their required
+packages before execution. Build
 comparison is independent of package estimation: status supplies installed versions,
 while update supplies saved component progress. Shared pipeline finalization writes
 the installed identity and cleans up after all patches succeed. Prefetch policy

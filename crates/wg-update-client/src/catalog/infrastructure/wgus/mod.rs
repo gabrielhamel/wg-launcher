@@ -1,5 +1,6 @@
 mod conversion;
 mod error;
+mod patch_chain_conversion;
 mod request;
 mod wire;
 

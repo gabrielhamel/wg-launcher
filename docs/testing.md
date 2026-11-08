@@ -46,9 +46,15 @@ cargo test -p wg-launcher-e2e --locked
 
 The server-crossing installation scenarios also check that full patches retain
 empty directories and nested payloads in integrated and offline staged workflows.
+They also install full-plus-delta chains with omitted source versions in both
+workflows, checking component-specific normalization, pinned JSON, payload bytes,
+and cleanup.
 
 The dedicated server-crossing category also verifies parallel services receive
-distinct ports and preserve their address when restarted:
+distinct ports and preserve their address when restarted. `service/http.rs` also
+checks full and HEAD responses, valid and rejected resumed ranges, empty files,
+missing packages, and unsupported methods against the real service after CLI
+discovery:
 
 ```console
 cargo test -p wg-launcher-e2e --locked scenarios::service
@@ -80,15 +86,6 @@ cargo test -p wg-launcher-e2e --locked scenarios::cli_update
 The tap's separate workflow installs the published formula on Apple Silicon
 macOS, Intel macOS, and Linux x64, then verifies that self-update refuses the
 Homebrew-owned executable.
-
-Server-only CLI and HTTP contract tests belong to the service package:
-
-```console
-cargo test -p wg-update-service --locked
-```
-
-These start `wg-update-service`, verify fail-fast input validation, request the
-WGUS metadata route, and resume a package from a byte offset.
 
 The entry point is [tests/e2e.rs](../e2e/tests/e2e.rs).
 Scenarios are grouped by category in

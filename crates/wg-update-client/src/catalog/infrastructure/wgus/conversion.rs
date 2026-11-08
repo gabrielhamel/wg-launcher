@@ -1,13 +1,10 @@
 //! Translate WGUS wire responses into catalog releases, without network or local state.
 
-use super::error::{Result, WgusError as Error};
-use super::wire::{self, MetadataXml, PatchesXml};
-use crate::catalog::{
-    Asset, ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile, PatchSource,
-    Product, ResolvedRelease, WebSeed,
-};
-use std::collections::{BTreeMap, HashMap};
-use url::Url;
+use super::error::Result;
+use super::patch_chain_conversion::patch_chain_from_wire;
+use super::wire::{MetadataXml, PatchesXml};
+use crate::catalog::{ClientPart, ClientType, Executable, GameMetadata, Product, ResolvedRelease};
+use std::collections::BTreeMap;
 
 pub(super) fn release_from_wire(
     product: &Product,
@@ -18,98 +15,14 @@ pub(super) fn release_from_wire(
     response: PatchesXml,
     component_versions: &BTreeMap<String, String>,
 ) -> Result<ResolvedRelease> {
-    let chain = match response.patches_chain {
-        Some(chain) => chain,
-        None if selected
-            .parts
-            .iter()
-            .all(|part| component_versions.contains_key(&part.id)) =>
-        {
-            wire::PatchesChainXml {
-                patches: Vec::new(),
-            }
-        }
-        None => return Err(Error::MissingPatchChain(product.game_id.to_owned())),
-    };
-    let web_seeds = response
-        .web_seeds
-        .urls
-        .into_iter()
-        .map(|seed| {
-            Ok(WebSeed {
-                url: Url::parse(seed.url.trim())?,
-                name: seed.name,
-                threads: seed.threads,
-            })
-        })
-        .collect::<Result<Vec<_>>>()?;
-    let seed = web_seeds.first();
-
-    let mut patches = Vec::with_capacity(chain.patches.len());
-    let mut assets = Vec::new();
-    let mut latest_version_by_part = component_versions
-        .iter()
-        .map(|(part, version)| (part.clone(), version.clone()))
-        .collect::<HashMap<_, _>>();
-    for patch in chain.patches {
-        let source = inferred_patch_source(
-            patch.version_from,
-            &patch.part,
-            &patch.version_to,
-            &mut latest_version_by_part,
-        );
-        let files = patch
-            .files
-            .files
-            .into_iter()
-            .map(|file| PatchFile {
-                name: file.name,
-                size: file.size,
-                unpacked_size: file.unpacked_size,
-                diffs_size: file.diffs_size,
-            })
-            .collect::<Vec<_>>();
-        for file in &files {
-            assets.push(Asset {
-                part: patch.part.clone(),
-                source: source.clone(),
-                version_to: patch.version_to.clone(),
-                name: file.name.clone(),
-                url: seed
-                    .ok_or_else(|| Error::MissingWebSeed(product.game_id.clone()))?
-                    .url
-                    .join(&file.name)?,
-                size: file.size,
-                unpacked_size: file.unpacked_size,
-                diffs_size: file.diffs_size,
-            });
-        }
-        let torrent_hash = patch
-            .torrent
-            .as_ref()
-            .and_then(|torrent| torrent.hash.clone());
-        let torrent_urls = patch
-            .torrent
-            .map(|torrent| {
-                torrent
-                    .urls
-                    .urls
-                    .into_iter()
-                    .map(|url| Url::parse(&url).map_err(Error::from))
-                    .collect::<Result<Vec<_>>>()
-            })
-            .transpose()?
-            .unwrap_or_default();
-        patches.push(Patch {
-            part: patch.part,
-            source,
-            version_to: patch.version_to,
-            files,
-            torrent_hash,
-            torrent_urls,
-        });
-    }
-
+    let chain = patch_chain_from_wire(
+        product,
+        selected,
+        response.patches_chain,
+        response.web_seeds,
+        component_versions,
+    )?;
+    let patches = chain.patches;
     let version = response
         .version_name
         .filter(|version| !version.trim().is_empty())
@@ -133,22 +46,10 @@ pub(super) fn release_from_wire(
         available_languages: metadata.supported_languages,
         publisher_ids: metadata.publisher_ids,
         parts: selected.parts.iter().map(|part| part.id.clone()).collect(),
-        component_versions: selected
-            .parts
-            .iter()
-            .map(|part| {
-                latest_version_by_part
-                    .get(&part.id)
-                    .cloned()
-                    .map(|version| (part.id.clone(), version))
-                    .ok_or_else(|| crate::catalog::ReleaseError::MissingFullPatch {
-                        part: part.id.clone(),
-                    })
-            })
-            .collect::<std::result::Result<_, crate::catalog::ReleaseError>>()?,
+        component_versions: chain.component_versions,
         patches,
-        web_seeds,
-        assets,
+        web_seeds: chain.web_seeds,
+        assets: chain.assets,
     })
 }
 
@@ -210,17 +111,4 @@ pub(super) fn metadata_from_wire(wire: &MetadataXml) -> GameMetadata {
 
 pub(super) fn normalize_language(language: &str) -> String {
     language.trim().replace('_', "-").to_ascii_uppercase()
-}
-
-fn inferred_patch_source(
-    explicit: Option<String>,
-    part: &str,
-    version_to: &str,
-    latest_version_by_part: &mut HashMap<String, String>,
-) -> PatchSource {
-    let version_from = explicit
-        .or_else(|| latest_version_by_part.get(part).cloned())
-        .unwrap_or_else(|| "0".to_owned());
-    latest_version_by_part.insert(part.to_owned(), version_to.to_owned());
-    version_from.into()
 }

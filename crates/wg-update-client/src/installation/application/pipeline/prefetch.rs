@@ -1,4 +1,5 @@
 use super::InstallationEvent;
+use super::prefetch_budget::PrefetchBudget;
 use crate::Result;
 use crate::catalog::{Patch, PlannedPatch};
 use crate::installation::{AssetDownloader, DownloadOptions, DownloadReport};
@@ -11,7 +12,7 @@ pub(super) const DOWNLOAD_PREFETCH_BYTES: u64 = 8 * 1024 * 1024 * 1024;
 pub(super) struct PatchDownloads {
     tasks: tokio::task::JoinSet<()>,
     reports: tokio::sync::mpsc::UnboundedReceiver<Result<DownloadedPatch>>,
-    current: tokio::sync::watch::Sender<usize>,
+    applying_patch: tokio::sync::watch::Sender<usize>,
 }
 
 impl PatchDownloads {
@@ -24,26 +25,17 @@ impl PatchDownloads {
         prefetch_bytes: u64,
     ) -> Self {
         let (reports_tx, reports) = tokio::sync::mpsc::unbounded_channel();
-        let (current, mut current_rx) = tokio::sync::watch::channel(0_usize);
+        let (applying_patch, mut applying_patch_rx) = tokio::sync::watch::channel(0_usize);
         let mut tasks = tokio::task::JoinSet::new();
         tasks.spawn(async move {
-            let sizes = patches
-                .iter()
-                .map(|planned| {
-                    planned
-                        .packages
-                        .iter()
-                        .map(|asset| u128::from(asset.size))
-                        .sum::<u128>()
-                })
-                .collect::<Vec<_>>();
+            let budget = PrefetchBudget::new(&patches, prefetch_bytes);
             for (index, planned) in patches.into_iter().enumerate() {
                 loop {
-                    let current = *current_rx.borrow_and_update();
-                    if can_prefetch_patch(&sizes, current, index, prefetch_bytes) {
+                    let applying_patch = *applying_patch_rx.borrow_and_update();
+                    if budget.allows(applying_patch, index) {
                         break;
                     }
-                    if current_rx.changed().await.is_err() {
+                    if applying_patch_rx.changed().await.is_err() {
                         return;
                     }
                 }
@@ -78,12 +70,12 @@ impl PatchDownloads {
         Self {
             tasks,
             reports,
-            current,
+            applying_patch,
         }
     }
 
     pub(super) async fn next(&mut self, index: usize) -> Result<DownloadedPatch> {
-        self.current.send_replace(index);
+        self.applying_patch.send_replace(index);
         match self.reports.recv().await {
             Some(result) => result,
             None => {
@@ -111,14 +103,4 @@ pub(super) fn merge_download_report(total: &mut DownloadReport, patch: DownloadR
 pub(super) struct DownloadedPatch {
     pub(super) patch: Patch,
     pub(super) report: DownloadReport,
-}
-
-/// The current patch is always allowed. Later patches may start while the packages
-/// already queued ahead of extraction are below the budget. The new patch's own
-/// size is excluded so a single large patch can cross the budget and still finish.
-fn can_prefetch_patch(sizes: &[u128], current: usize, next: usize, budget: u64) -> bool {
-    let queued_bytes = sizes[current.saturating_add(1).min(next)..next]
-        .iter()
-        .sum::<u128>();
-    next <= current || queued_bytes < u128::from(budget)
 }

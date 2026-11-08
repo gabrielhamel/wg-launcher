@@ -30,7 +30,14 @@ struct DownloadState {
 struct FileProgress {
     bar: ProgressBar,
     position: u64,
-    active: bool,
+    activity: FileActivity,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum FileActivity {
+    Queued,
+    Transferring,
+    Completed,
 }
 
 impl DownloadProgress {
@@ -103,19 +110,17 @@ impl DownloadProgress {
                 state.start_file(&name);
                 state.set_position(&name, downloaded);
             }
-            DownloadEvent::Completed { name, size } => {
-                state.ensure_file(&name, size);
-                state.set_position(&name, size);
-                state.finish_file(&name);
-            }
-            DownloadEvent::Skipped { name, size } => {
+            DownloadEvent::Completed { name, size } | DownloadEvent::Skipped { name, size } => {
                 state.ensure_file(&name, size);
                 state.set_position(&name, size);
                 state.finish_file(&name);
             }
         }
         if state.files.len() == state.asset_count
-            && state.files.values().all(|file| file.bar.is_finished())
+            && state
+                .files
+                .values()
+                .all(|file| file.activity == FileActivity::Completed)
         {
             state.finish_success();
         } else {
@@ -132,7 +137,7 @@ impl DownloadProgress {
         let state = self.state.lock().expect("download progress lock");
         for file in state.files.values() {
             let bar = &file.bar;
-            if !bar.is_finished() {
+            if file.activity != FileActivity::Completed {
                 bar.set_style(state.error_style.clone());
                 bar.abandon_with_message(format!("✗ {}", bar.message()));
             }
@@ -147,7 +152,10 @@ impl DownloadProgress {
 
 impl DownloadState {
     fn refresh_activity(&mut self) {
-        let downloading = self.files.values().any(|file| file.active);
+        let downloading = self
+            .files
+            .values()
+            .any(|file| file.activity == FileActivity::Transferring);
         if downloading == self.downloading {
             return;
         }
@@ -182,15 +190,15 @@ impl DownloadState {
             FileProgress {
                 bar,
                 position: 0,
-                active: false,
+                activity: FileActivity::Queued,
             },
         );
     }
 
     fn start_file(&mut self, name: &str) {
         let file = self.files.get_mut(name).expect("known download");
-        if !file.active {
-            file.active = true;
+        if file.activity != FileActivity::Transferring {
+            file.activity = FileActivity::Transferring;
             file.bar.set_style(self.file_style.clone());
             file.bar.reset_eta();
             file.bar.enable_steady_tick(Duration::from_millis(100));
@@ -199,7 +207,7 @@ impl DownloadState {
 
     fn finish_file(&mut self, name: &str) {
         let file = self.files.get_mut(name).expect("known download");
-        file.active = false;
+        file.activity = FileActivity::Completed;
         file.bar.disable_steady_tick();
         file.bar.finish_and_clear();
         self.multi.remove(&file.bar);

@@ -322,7 +322,7 @@ uses:
 - application ID: `MT.RU.PRODUCTION`
 - CLI region: `ru` (alias `russia`)
 
-Lesta's install chain omits `version_from` on patches. `crates/wg-update-client/src/catalog/infrastructure/wgus/conversion.rs`
+Lesta's install chain omits `version_from` on patches. `crates/wg-update-client/src/catalog/infrastructure/wgus/patch_chain_conversion.rs`
 normalizes that compatible representation: the first patch for a component
 starts at `0`, and a later patch starts at the previous patch's `version_to`.
 Preserve the explicit value when a publisher provides one. This normalization
@@ -371,8 +371,9 @@ the CLI.
   resolution, including publisher-default/smallest-variant selection.
 - `crates/wg-update-client/src/catalog/infrastructure/wgus/`: WGUS-compatible HTTP/XML,
   private wire representations, redirects, and publisher-specific normalization.
-  `mod.rs` owns transport and redirects; `conversion.rs` translates wire metadata
-  and patch chains into resolved releases.
+  `mod.rs` owns transport and redirects; `conversion.rs` assembles release identity
+  and metadata, while `patch_chain_conversion.rs` normalizes publisher chains and
+  resolves component targets and transport packages.
 - `crates/wg-update-client/src/installation/`: local installation lifecycle bounded
   context. `mod.rs` exposes its workflows, models, and observer contracts.
 - `crates/wg-update-client/src/installation/domain/`: installed identity, pinned
@@ -386,6 +387,7 @@ the CLI.
   `extraction.rs` owns local execution and finalization; `streaming.rs` owns
   overlapping downloads and ordered patch execution.
   `patch.rs` owns shared patch application, checkpointing, and package release.
+  `prefetch_budget.rs` owns byte-budget rules; `prefetch.rs` owns async download coordination.
   Preserve locking, prefetch overlap, checkpoint-before-release ordering, and cancellation.
 - `crates/wg-update-client/src/installation/infrastructure/transfer/`: resumable HTTP transfer.
 - `crates/wg-update-client/src/installation/infrastructure/packages/`: transport archive
@@ -422,6 +424,7 @@ the CLI.
   `domain/` owns URL/prefix constraints and template rendering with local errors;
   `application/` owns `FileService` configuration/startup/lifetime coordination;
   `infrastructure/` owns HTTP parsing, ranges, filesystem mapping and access logs;
+  `http/` separates server lifetime, request parsing, and response streaming;
   `presentation/` owns CLI parsing and startup output.
 - `packaging/`: release-only Debian package/index signing and WinGet manifest
   generation; generated versions derive from the tagged source or release manifest.

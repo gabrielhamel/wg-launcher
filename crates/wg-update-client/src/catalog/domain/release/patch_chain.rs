@@ -8,13 +8,24 @@ pub(crate) fn ordered_patches<'a>(
 ) -> Result<Vec<&'a Patch>> {
     let mut ordered = Vec::new();
     for component in release.components() {
-        let component = component?;
-        let part = component.id;
-        let target = component.target;
+        ordered.extend(component?.ordered_patches(base_versions)?);
+    }
+    Ok(ordered)
+}
+
+impl<'a> super::resolved_release::ComponentRelease<'a> {
+    pub(super) fn ordered_patches(
+        &self,
+        base_versions: &BTreeMap<String, String>,
+    ) -> Result<Vec<&'a Patch>> {
+        let mut ordered = Vec::new();
+        let part = self.id;
+        let target = self.target;
         let mut version = base_versions.get(part).map(String::as_str).unwrap_or("0");
-        let by_from = component
+        let by_from = self
             .patches
-            .into_iter()
+            .iter()
+            .copied()
             .filter_map(|patch| patch.source.version().map(|from| (from, patch)))
             .collect::<HashMap<_, _>>();
         // A publisher may replace an obsolete delta chain with a full package.
@@ -40,6 +51,6 @@ pub(crate) fn ordered_patches<'a>(
             ordered.push(next);
             version = &next.version_to;
         }
+        Ok(ordered)
     }
-    Ok(ordered)
 }

@@ -62,7 +62,9 @@ replaced; delta contents stay in the patch workspace until application. Split-vo
 reading lives separately from archive decoding and replacement policy.
 
 Shared finalization records successful work for both local extraction and streaming
-installation. Prefetch budget decisions are separate from async download coordination.
+installation. `pipeline/prefetch_budget.rs` owns the byte-budget rule and names the applying
+and candidate patch positions. `pipeline/prefetch.rs` owns async download
+coordination and cancellation.
 Background worker failures retain their technical causes and are distinguished from
 a download coordinator ending before every planned patch is ready. Installation
 storage describes paths without reading or creating files; preparation and locking

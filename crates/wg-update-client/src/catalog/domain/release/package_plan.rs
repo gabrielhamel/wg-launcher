@@ -1,11 +1,8 @@
 //! Resolve the transport packages for a selected patch chain.
 
+use super::error::{ReleaseError as Error, Result};
 use super::{Asset, Patch, ResolvedRelease};
-use super::{
-    error::{ReleaseError as Error, Result},
-    patch_chain::ordered_patches,
-};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 /// Clones the transport assets required by the ordered installation chain.
 ///
@@ -37,29 +34,39 @@ pub(crate) fn planned_patches(
     release: &ResolvedRelease,
     base_versions: &BTreeMap<String, String>,
 ) -> Result<Vec<PlannedPatch>> {
-    let by_name = release
-        .assets
-        .iter()
-        .map(|asset| (asset.name.as_str(), asset))
-        .collect::<HashMap<_, _>>();
-    ordered_patches(release, base_versions)?
-        .into_iter()
-        .map(|patch| {
-            let packages = patch
-                .files
-                .iter()
-                .map(|file| {
-                    by_name
-                        .get(file.name.as_str())
-                        .copied()
-                        .cloned()
-                        .ok_or_else(|| Error::MissingPatchAsset(file.name.clone()))
+    let mut planned = Vec::new();
+    for component in release.components() {
+        planned.extend(component?.planned_patches(base_versions)?);
+    }
+    Ok(planned)
+}
+
+impl super::resolved_release::ComponentRelease<'_> {
+    /// Validate the packages of the selected steps, leaving unused publisher
+    /// alternatives alone. Planning does not change the persisted release.
+    fn planned_patches(
+        &self,
+        base_versions: &BTreeMap<String, String>,
+    ) -> Result<Vec<PlannedPatch>> {
+        self.ordered_patches(base_versions)?
+            .into_iter()
+            .map(|patch| {
+                let packages = patch
+                    .files
+                    .iter()
+                    .map(|file| {
+                        self.packages
+                            .get(file.name.as_str())
+                            .copied()
+                            .cloned()
+                            .ok_or_else(|| Error::MissingPatchAsset(file.name.clone()))
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                Ok(PlannedPatch {
+                    patch: patch.clone(),
+                    packages,
                 })
-                .collect::<Result<Vec<_>>>()?;
-            Ok(PlannedPatch {
-                patch: patch.clone(),
-                packages,
             })
-        })
-        .collect()
+            .collect()
+    }
 }

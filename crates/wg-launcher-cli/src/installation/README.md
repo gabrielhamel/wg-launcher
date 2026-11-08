@@ -21,6 +21,7 @@ launcher.
 | Status | Show the installed version and whether an update is available. |
 | Update | Bring the game in the existing installation folder up to date. |
 | Progress | Information about ongoing downloads and the preparation of game files. |
+| Download activity | Whether a package is queued, transferring, or complete; terminal bars display this state. |
 | Cache hit | A package already present locally that can be reused without downloading it again. |
 | Summary | The result of completed work, including downloads, reused packages, and cleanup. |
 
@@ -29,4 +30,6 @@ call the client library, and render results; the library owns the workflow rules
 
 `presentation/progress/` keeps download and extraction rendering separate while
 sharing one terminal display. Each download keeps its bar, byte position, and
-activity together so concurrent events and retries update the same entry.
+explicit queued, transferring, or completed activity together so concurrent events
+and retries update the same entry. Completion and activity are read from that
+state rather than inferred from the terminal widget.

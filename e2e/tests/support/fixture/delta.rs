@@ -8,6 +8,18 @@ pub struct DeltaFixture {
 }
 
 impl DeltaFixture {
+    /// Model a publisher that omits every patch source in its full install chain.
+    pub fn omit_patch_sources(&mut self) {
+        let route = "updates/api/v1/patches_chain/";
+        let xml = String::from_utf8(self.resources[route].clone()).unwrap();
+        self.resources.insert(
+            route.into(),
+            xml.replace("<version_from>0</version_from>", "")
+                .replace("<version_from>1.0</version_from>", "")
+                .into_bytes(),
+        );
+    }
+
     /// WGUS-compatible delta-only response with an omitted source version.
     pub fn use_delta_only_chain(&mut self) {
         let xml = format!(

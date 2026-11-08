@@ -1,6 +1,9 @@
 use super::{Asset, Patch, WebSeed};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 
 /// Resolved build identity, published patch chains, and transport assets.
 ///
@@ -46,6 +49,7 @@ pub(super) struct ComponentRelease<'a> {
     pub(super) id: &'a str,
     pub(super) target: &'a str,
     pub(super) patches: Vec<&'a Patch>,
+    pub(super) packages: Arc<HashMap<&'a str, &'a Asset>>,
 }
 
 impl ResolvedRelease {
@@ -53,7 +57,13 @@ impl ResolvedRelease {
     pub(super) fn components(
         &self,
     ) -> impl Iterator<Item = super::error::Result<ComponentRelease<'_>>> {
-        self.parts.iter().map(|part| {
+        let packages = Arc::new(
+            self.assets
+                .iter()
+                .map(|asset| (asset.name.as_str(), asset))
+                .collect::<HashMap<_, _>>(),
+        );
+        self.parts.iter().map(move |part| {
             let target = self
                 .component_versions
                 .get(part)
@@ -61,6 +71,7 @@ impl ResolvedRelease {
             Ok(ComponentRelease {
                 id: part,
                 target,
+                packages: Arc::clone(&packages),
                 patches: self
                     .patches
                     .iter()

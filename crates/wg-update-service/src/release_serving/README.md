@@ -24,6 +24,7 @@ release on someone's machine belongs to the launcher.
 | Package | A downloadable piece of a patch. |
 | Service address | The location launchers use to discover the release and request its packages. |
 | Resumed download | A download that asks for the remaining portion of a package instead of starting over. |
+| Response range | The complete body or remaining bytes selected for a response, including its offset and length. |
 | Access log | A record of requests received by the service, useful for understanding what launchers asked for. |
 
 The application release routes select release content without HTTP request or
@@ -31,3 +32,7 @@ response models. The HTTP adapter parses requests, translates the selected conte
 into MIME types and status codes, and handles ranges, headers, and streaming.
 The filesystem adapter resolves relative package paths and enforces containment
 inside the package folder, without constructing HTTP responses.
+
+The HTTP adapter lives in `infrastructure/http/`: `server.rs` owns connections and
+shutdown, `request.rs` parses incoming messages, and `response.rs` resolves response
+ranges and streams bodies. `mod.rs` maps release content to those responses.

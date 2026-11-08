@@ -4,6 +4,7 @@ mod extraction;
 mod finalization;
 mod patch;
 mod prefetch;
+mod prefetch_budget;
 mod streaming;
 mod types;
 

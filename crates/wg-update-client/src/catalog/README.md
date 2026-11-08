@@ -40,10 +40,14 @@ The catalog application resolves update releases from a product, client type,
 language, and known component versions. Installation owns local progress and
 pending-manifest precedence. WGUS request encoding and redirect targets remain
 inside the protocol adapter; redirects preserve the configured product identity.
+`conversion.rs` assembles release identity and metadata; `patch_chain_conversion.rs`
+normalizes source versions and resolves packages, seeds, and component targets.
 
 Build identity is shared internally by resolved releases and installed records.
 Consumer reports project that identity without exposing persistence models. Patch
 chain selection visits validated component releases in publisher order, keeping each
-component target and its patches together without changing saved release data.
+component target and its patches together with a shared package lookup, without changing saved release data.
+Each component resolves its selected steps to complete planned patches and rejects
+missing packages before execution.
 It owns version traversal and full-package fallback; package planning resolves
 the transport volumes for those selected steps.
