@@ -1,7 +1,10 @@
-use super::super::domain::ownership::PackageManager;
+use super::super::domain::ownership::{ExecutableOwnership, PackageManager};
 
-pub(crate) fn unsupported_reason(manager: Option<PackageManager>, stderr: bool) -> Option<String> {
-    manager.map(|manager| managed_reason(manager, stderr))
+pub(crate) fn unsupported_reason(ownership: ExecutableOwnership, stderr: bool) -> Option<String> {
+    match ownership {
+        ExecutableOwnership::Managed(manager) => Some(managed_reason(manager, stderr)),
+        ExecutableOwnership::Direct | ExecutableOwnership::Unresolved => None,
+    }
 }
 
 pub(crate) fn managed_reason(manager: PackageManager, stderr: bool) -> String {
@@ -12,22 +15,21 @@ pub(crate) fn managed_reason(manager: PackageManager, stderr: bool) -> String {
     )
 }
 
-pub(crate) fn update_instruction(manager: Option<PackageManager>, stderr: bool) -> String {
-    manager.map_or_else(
-        || {
-            format!(
-                "Run {} to update the CLI.",
-                styled_command("wg-launcher self-update", stderr)
-            )
-        },
-        |manager| {
+pub(crate) fn update_instruction(ownership: ExecutableOwnership, stderr: bool) -> String {
+    match ownership {
+        // Preserve the existing fallback when ownership discovery cannot resolve the executable.
+        ExecutableOwnership::Direct | ExecutableOwnership::Unresolved => format!(
+            "Run {} to update the CLI.",
+            styled_command("wg-launcher self-update", stderr)
+        ),
+        ExecutableOwnership::Managed(manager) => {
             let name = manager_name(manager);
             format!(
                 "Self-update not supported for this {name} installation. {}",
                 instruction(manager, stderr)
             )
-        },
-    )
+        }
+    }
 }
 
 fn styled_command(text: &str, stderr: bool) -> String {

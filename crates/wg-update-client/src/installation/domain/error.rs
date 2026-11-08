@@ -12,7 +12,7 @@ pub enum InstallationError {
     )]
     PinnedReleaseMismatch {
         /// Release fields whose values differ from the saved work.
-        differences: String,
+        differences: super::release_compatibility::ReleaseDifferences,
     },
     /// The product saved with the installation is invalid.
     #[error(

@@ -1,6 +1,7 @@
 //! Stable, shared download and extraction bars for the terminal.
 
 mod download;
+mod download_accounting;
 mod extraction;
 mod installation;
 

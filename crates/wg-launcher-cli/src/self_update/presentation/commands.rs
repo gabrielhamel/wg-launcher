@@ -9,13 +9,13 @@ pub(crate) fn notify_if_newer(release: Option<&Release>) {
         output::print_cli_update(
             CURRENT,
             &release.version.to_string(),
-            &distribution::update_instruction(application::installation_manager(), true),
+            &distribution::update_instruction(application::executable_ownership(), true),
         );
     }
 }
 
 pub(crate) async fn print_version() {
-    let manager = application::installation_manager();
+    let ownership = application::executable_ownership();
     let latest = application::check().await;
     let update_available = latest.as_ref().is_some_and(application::is_newer);
     let version = latest.as_ref().map(|release| release.version.to_string());
@@ -23,9 +23,9 @@ pub(crate) async fn print_version() {
         CURRENT,
         version.as_deref(),
         update_available,
-        &distribution::update_instruction(manager, false),
+        &distribution::update_instruction(ownership, false),
     );
-    if let Some(reason) = distribution::unsupported_reason(manager, false) {
+    if let Some(reason) = distribution::unsupported_reason(ownership, false) {
         println!("{reason}");
     }
 }

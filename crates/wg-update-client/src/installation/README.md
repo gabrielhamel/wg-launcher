@@ -45,9 +45,10 @@ installation manages the copy on a person's machine.
 | Patch identity | The component, source version, and target version that identify the patch whose original files are preserved for retry. |
 | Patch workspace | Temporary files and preserved originals for the patch being applied. They remain available after failure until that patch is saved as complete. |
 | Patch contents | The files decoded from a patch: complete replacement files and delta files that change existing content. Replacements are installed before deltas are applied. |
-| Local patch | A planned patch bound to safe package paths in the installation cache. The same paths are used for verification, archive reading, and package release; binding paths alone does not verify their contents. |
+| Local patch | A planned patch bound to safe package paths in the installation cache. Each planned volume supplies its own declaration and download source. The same paths are used for verification, archive reading, and package release; binding paths alone does not verify their contents. |
 | Patch completion | Apply a patch successfully, save its checkpoint, then release its recovery files and, when cleanup is enabled, its downloaded packages. |
 | Selection mismatch | The product, region, edition, or language fields that make cached work incompatible with a request. Omitted edition and language accept the pinned choice. |
+| Release differences | The published fields that differ between requested and saved work. The same comparison decides whether work can resume and explains why it cannot. |
 | Pinned release mismatch | Saved work and a requested release differ in their build identity, product, component targets, patch chains, or other published details. The error names the differing fields; matching selection alone does not make the releases interchangeable. |
 | Checkpoint | Saved progress after a patch succeeds, so a retry can skip completed work. |
 | Resume / retry | Continue unfinished work, reusing completed steps and downloads where possible. |
@@ -60,7 +61,7 @@ installation manages the copy on a person's machine.
 | `domain/patch_identity.rs` | Component transition identity, independent of its recovery-file encoding. |
 | `domain/installed_build.rs` | Installed identity, selection consistency, and comparison with a target build. |
 | `domain/pinned_manifest.rs`, `component_progress.rs` | Pinned release, starting versions, saved checkpoints, and checked completion. |
-| `domain/selection.rs`, `release_compatibility.rs` | Selection compatibility and the release differences that prevent resuming saved work. |
+| `domain/selection.rs`, `release_compatibility.rs` | Selection compatibility and one exhaustive comparison returning typed release differences for both resume decisions and diagnostics. |
 | `application/` | Public workflows, options, reports, and observer contracts. |
 | `application/resolution.rs`, `update_target.rs` | Pinned-cache reuse, pending update precedence, live fallback, and starting-version seeding. |
 | `application/installed.rs`, `status_report.rs`, `plan.rs` | Validated state loading and consumer status/plan projections. |

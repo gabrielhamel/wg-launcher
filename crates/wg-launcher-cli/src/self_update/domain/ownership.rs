@@ -1,5 +1,14 @@
 use std::path::Path;
 
+/// Ownership discovered for the running executable.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum ExecutableOwnership {
+    Direct,
+    Managed(PackageManager),
+    /// The executable could not be located or its path could not be resolved.
+    Unresolved,
+}
+
 /// The owner responsible for updating a managed launcher installation.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum PackageManager {

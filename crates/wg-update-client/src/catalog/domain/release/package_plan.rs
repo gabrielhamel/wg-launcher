@@ -1,7 +1,7 @@
 //! Resolve the transport volumes for a selected patch chain.
 
 use super::error::{ReleaseError as Error, Result};
-use super::{Patch, ResolvedRelease, TransportVolume};
+use super::{Patch, PatchVolume, ResolvedRelease, TransportVolume};
 use crate::catalog::ComponentVersions;
 use std::collections::HashMap;
 
@@ -20,7 +20,7 @@ pub fn required_volumes(
 ) -> Result<Vec<TransportVolume>> {
     Ok(planned_patches(release, base_versions)?
         .into_iter()
-        .flat_map(|planned| planned.volumes)
+        .flat_map(|planned| planned.volumes.into_iter().map(|volume| volume.transport))
         .collect())
 }
 
@@ -28,7 +28,14 @@ pub fn required_volumes(
 #[derive(Debug, Clone)]
 pub(crate) struct PlannedPatch {
     pub(crate) patch: Patch,
-    pub(crate) volumes: Vec<TransportVolume>,
+    pub(crate) volumes: Vec<PlannedVolume>,
+}
+
+/// A selected volume keeps its declared archive contract beside its HTTP source.
+#[derive(Debug, Clone)]
+pub(crate) struct PlannedVolume {
+    pub(crate) declaration: PatchVolume,
+    pub(crate) transport: TransportVolume,
 }
 
 pub(crate) fn planned_patches(
@@ -61,7 +68,10 @@ pub(super) fn resolve_patch_volumes(
                     volumes
                         .get(volume.name.as_str())
                         .copied()
-                        .cloned()
+                        .map(|transport| PlannedVolume {
+                            declaration: volume.clone(),
+                            transport: transport.clone(),
+                        })
                         .ok_or_else(|| Error::MissingPatchAsset(volume.name.clone()))
                 })
                 .collect::<Result<Vec<_>>>()?;

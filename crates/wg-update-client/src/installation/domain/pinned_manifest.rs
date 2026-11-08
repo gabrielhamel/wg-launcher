@@ -68,14 +68,10 @@ impl PinnedManifest {
     }
 
     pub(crate) fn resume_from(mut self, pending: Self) -> InstallationResult<Self> {
-        if self.release != pending.release {
-            return Err(Error::PinnedReleaseMismatch {
-                differences: super::release_compatibility::differing_release_fields(
-                    &self.release,
-                    &pending.release,
-                )
-                .join(", "),
-            });
+        let differences =
+            super::release_compatibility::compare_releases(&self.release, &pending.release);
+        if !differences.is_empty() {
+            return Err(Error::PinnedReleaseMismatch { differences });
         }
         // Persisted checkpoints are authoritative when retrying an original plan.
         self.progress.restore_saved_checkpoints(pending.progress);

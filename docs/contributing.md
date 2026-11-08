@@ -117,7 +117,7 @@ crates/
           release/component_versions.rs  Known component versions and the missing-component baseline
           release/patch_chain.rs  Version traversal and full-package fallback
           release/transport_volume.rs  Downloadable transport volumes and HTTP seeds
-          release/package_plan.rs  Assemble release plans and look up selected patch volumes
+          release/package_plan.rs  Pair selected volume declarations with resolved download sources
         application/          list, inspect, and live build/update release resolution
           list.rs             Listing options, build summaries, and per-variant warnings
           inspect.rs          Read-only inspection options and workflow
@@ -134,7 +134,7 @@ crates/
         mod.rs                Context entry points and exported contracts
         domain/               Installed identity, pinned manifests, compatibility, checkpoints
           selection.rs        Cache compatibility and structured selection mismatches
-          release_compatibility.rs  Published release differences preventing saved-work resume
+          release_compatibility.rs  Exhaustive typed release comparison for resume decisions and diagnostics
           error.rs            Installation consistency errors and mismatch diagnostics
           component_progress.rs  Starting versions and saved patch completions
           installed_build.rs  Saved identity, consistency, selection, and build comparison
@@ -194,10 +194,12 @@ crates/
           observers.rs        Typed adapters owning shared progress and success/failure handling
           progress/           Shared display with separate download/extraction renderers
             installation.rs   InstallationProgress owns their terminal surface and coordinates both renderers
+            download.rs       Stable download bars and styles
+            download_accounting.rs  Package positions, lifecycle transitions, and completion without terminal widgets
       self_update/            CLI executable update context
         domain/               Release comparison and ownership/path rules
           artifact.rs         Select archive/checksum pair from an explicit host target
-          ownership.rs        Typed package-manager ownership and path rules
+          ownership.rs        Direct, managed, or unresolved executable ownership and path rules
         progress.rs           Shared self-update stages, events, and observer contract
         application/          Release checks, ownership discovery, executable update workflow and outcomes
           error.rs            Exhaustive SelfUpdateError contract retaining concrete causes

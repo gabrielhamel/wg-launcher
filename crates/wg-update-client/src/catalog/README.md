@@ -23,6 +23,7 @@ selection to prepare the game on someone's machine.
 | Region | The publisher's label for an offering, such as Europe or worldwide. |
 | Channel | A stream of releases, such as the regular game or a public test. |
 | Component release | A view associating one selected component with its target, published patches, and transport volumes. Planning requires a target; completion checks whether that target was reached. |
+| Planned volume | One selected archive volume, keeping its declared size and archive metadata together with its resolved download source. |
 | Resolved release | The selected published build, its component targets, and the packages the publisher offers. It contains no local installation progress. |
 | Selected product request | A validated product choice, with edition and language still allowed to use publisher defaults. Discovery and cache matching use this same choice. |
 | Build selection request | A discovery request that can leave edition or language to publisher defaults and optionally supply a replacement catalog. |
@@ -65,7 +66,7 @@ selection to prepare the game on someone's machine.
   constructing a WGUS client.
 - Component views visit selections in publisher order. Planning rejects missing
   targets and missing volumes for selected steps, while leaving unused publisher
-  alternatives alone. The saved release keeps its flat collections.
+  alternatives alone. Each planned volume pairs its archive declaration with its resolved download source; local cache binding does not depend on parallel lists. The saved release keeps its flat collections.
 - Explicit client variants take precedence. Otherwise resolution chooses a valid
   publisher default, then the smallest installable variant. Equal sizes retain
   publisher order; total failure retains the first resolution or planning error.

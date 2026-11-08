@@ -22,16 +22,14 @@ struct LocalVolume {
 
 impl LocalPatch {
     pub(crate) fn from_plan(planned: &PlannedPatch, cache: &Path) -> Result<Self> {
-        // Planning resolves one transport volume per declared patch volume, in order.
-        // Keep the patch's declared sizes as the cache verification contract.
+        // Each planned volume carries the declared size used for cache verification.
         let volumes = planned
             .volumes
             .iter()
-            .zip(&planned.patch.volumes)
-            .map(|(resolved, declared)| {
+            .map(|volume| {
                 Ok(LocalVolume {
-                    path: cache.join(safe_relative_path(&resolved.name)?),
-                    expected_bytes: declared.size,
+                    path: cache.join(safe_relative_path(&volume.transport.name)?),
+                    expected_bytes: volume.declaration.size,
                 })
             })
             .collect::<Result<Vec<_>>>()?;

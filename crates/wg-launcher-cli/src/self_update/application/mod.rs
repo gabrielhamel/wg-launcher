@@ -7,7 +7,7 @@ use super::Result;
 use super::domain::{
     Release,
     artifact::{HostTarget, ReleaseArtifact},
-    ownership::PackageManager,
+    ownership::{ExecutableOwnership, PackageManager},
 };
 use super::infrastructure::{artifact, distribution, executable, release};
 use super::progress::{Observer, SelfUpdateEvent, SelfUpdateStage};
@@ -20,8 +20,8 @@ pub(crate) enum SelfUpdateOutcome {
 }
 
 /// Resolve executable ownership once for an application interaction.
-pub(crate) fn installation_manager() -> Option<PackageManager> {
-    distribution::manager()
+pub(crate) fn executable_ownership() -> ExecutableOwnership {
+    distribution::ownership()
 }
 
 pub(crate) async fn check() -> Option<Release> {
@@ -36,7 +36,7 @@ pub(crate) async fn run(observer: &Observer<'_>) -> Result<SelfUpdateOutcome> {
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::CheckingRelease))?;
     let release = release::latest().await;
     observer(SelfUpdateEvent::ReleaseChecked)?;
-    if let Some(manager) = installation_manager() {
+    if let ExecutableOwnership::Managed(manager) = executable_ownership() {
         return Ok(SelfUpdateOutcome::Managed(manager));
     }
     let release = release.map_err(|cause| SelfUpdateError::ReleaseCheck(Box::new(cause)))?;

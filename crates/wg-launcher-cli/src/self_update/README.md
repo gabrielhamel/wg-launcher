@@ -21,8 +21,9 @@ game versions belong to [installation](../installation/README.md).
 | Self-update failure | A typed reason an update could not finish, retaining its technical cause and rendered as recovery guidance at the terminal. |
 | Self-update outcome | Whether the launcher was updated, was already current, or must be updated through its package manager. |
 | Self-update | Replace the launcher with a verified newer release. |
+| Executable ownership | Whether the launcher has no detected package manager, is managed by a named package manager, or could not have its executable path resolved. Unresolved ownership retains the existing direct-update fallback. |
 | Direct installation | A launcher copy installed without a package manager taking responsibility for it. |
-| Package manager | The owner responsible for updating a managed launcher. Detection returns that ownership; terminal presentation chooses its name and update instructions. |
+| Package manager | The owner responsible for updating a managed launcher. Detection returns explicit executable ownership; terminal presentation chooses its name and update instructions. |
 | Managed installation | A launcher copy maintained by a package manager, such as Homebrew or APT. Updates go through that manager. |
 | Candidate preparation | Download the selected archive, verify its published checksum, and extract the launcher for executable verification. |
 | Candidate | The downloaded launcher being checked before it can replace the current one. |

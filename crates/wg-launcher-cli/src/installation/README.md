@@ -23,6 +23,7 @@ launcher.
 | Progress | Information about ongoing downloads and the preparation of game files. |
 | Installation progress | One shared terminal surface coordinating sibling download and extraction displays through the full operation. |
 | Progress observer | A presentation adapter that receives workflow events and keeps the same progress display through success or failure. |
+| Download accounting | The package positions, activity transitions, and completion facts used to update the terminal display. It contains no terminal widgets. |
 | Download activity | Whether a package is queued, transferring, or complete; terminal bars display this state. |
 | Cache hit | A package already present locally that can be reused without downloading it again. |
 | Summary | The result of completed work, including downloads, reused packages, and cleanup. |
@@ -36,6 +37,10 @@ handles success or failure, keeping synchronization out of command handlers.
 `presentation/progress/` keeps download and extraction rendering separate while
 sharing one terminal display. `progress/installation.rs` owns that surface and
 coordinates both renderers; extraction does not depend on a download display.
-Each download keeps its bar, byte position, and explicit queued, transferring, or completed activity together so concurrent events
-and retries update the same entry. Completion and activity are read from that
-state rather than inferred from the terminal widget.
+`progress/download_accounting.rs` owns package positions and queued, transferring,
+or completed activity. It translates download events into facts for the renderer,
+including byte increments and activity transitions. The existing positive-increment
+accounting is preserved when a retry resets a package position.
+`progress/download.rs` owns stable bars and styles; it reads completion and activity
+from the accounting model. Both remain protected by the display's shared lock so
+concurrent events update the same package entry consistently.
