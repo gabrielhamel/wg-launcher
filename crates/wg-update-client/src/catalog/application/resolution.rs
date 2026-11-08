@@ -1,13 +1,10 @@
-use crate::catalog::{
-    BuildSelection, GameMetadata, Product, ResolvedRelease, WgusClient, installation_assets,
-};
+use super::super::infrastructure::wgus::WgusClient;
+use crate::catalog::{BuildSelection, GameMetadata, Product, ResolvedRelease, installation_assets};
 use crate::{Error, Result};
 
-pub(crate) async fn resolve(
-    client: &WgusClient,
-    selection: &BuildSelection,
-) -> Result<ResolvedRelease> {
+pub(crate) async fn resolve(selection: &BuildSelection) -> Result<ResolvedRelease> {
     let product = selection.selected_product()?;
+    let client = WgusClient::new()?;
     if let Some(client_type) = selection.client_type.as_deref() {
         return client
             .release_for_product(&product, client_type, selection.language.as_deref())
@@ -23,8 +20,13 @@ pub(crate) async fn resolve(
             .map_err(Into::into);
     }
 
-    resolve_smallest_installable_variant(client, &product, &metadata, selection.language.as_deref())
-        .await
+    resolve_smallest_installable_variant(
+        &client,
+        &product,
+        &metadata,
+        selection.language.as_deref(),
+    )
+    .await
 }
 
 /// Resolve candidates in publisher order; equal sizes keep the first candidate,

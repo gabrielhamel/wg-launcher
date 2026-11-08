@@ -1,15 +1,43 @@
 //! Install decoded replacements before applying source-dependent deltas.
 
 use super::{
+    archive::decode_archive,
     contents::PatchContents,
     delta::apply_delta,
     error::{PackageError as Error, Result},
 };
+use crate::catalog::Patch;
 use crate::installation::{
     ExtractionEvent,
     infrastructure::filesystem::{patch_workspace::PatchWorkspace, replacement::replace_file},
 };
-use std::{path::Path, sync::Arc};
+use std::{fs, path::Path, sync::Arc};
+
+/// Decode full content safely before replacing each live game file.
+pub(crate) fn install_full_patch(
+    patch: &Patch,
+    cache: &Path,
+    game: &Path,
+    workspace: &PatchWorkspace,
+    observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
+) -> Result<()> {
+    fs::create_dir_all(game)?;
+    decode_archive(
+        patch,
+        cache,
+        &workspace.archive(),
+        observer,
+        |relative, output| {
+            let target = game.join(relative);
+            if output.is_dir() {
+                fs::create_dir_all(target)?;
+            } else {
+                replace_file(output, &target, &workspace.replacement_backup())?;
+            }
+            Ok(())
+        },
+    )
+}
 
 pub(crate) fn apply_patch_directory(
     patch_dir: &Path,

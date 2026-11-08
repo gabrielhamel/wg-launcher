@@ -5,7 +5,7 @@ use super::{
     AssetDownloader, DownloadEvent, FileOutcome,
     local::{self, DownloadPreparation, VolumePaths},
 };
-use crate::catalog::Asset;
+use crate::catalog::TransportVolume;
 use futures_util::StreamExt;
 use reqwest::{StatusCode, header};
 use std::{path::Path, sync::Arc};
@@ -17,7 +17,7 @@ use tokio::{
 impl AssetDownloader {
     pub(super) async fn download_once(
         &self,
-        asset: &Asset,
+        asset: &TransportVolume,
         output: &Path,
         observer: Arc<dyn Fn(DownloadEvent) + Send + Sync>,
     ) -> Result<FileOutcome> {
@@ -45,7 +45,7 @@ impl AssetDownloader {
 
     async fn transfer_from(
         &self,
-        asset: &Asset,
+        asset: &TransportVolume,
         paths: VolumePaths,
         mut resumed_at: u64,
         observer: &Arc<dyn Fn(DownloadEvent) + Send + Sync>,

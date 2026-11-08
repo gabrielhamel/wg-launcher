@@ -16,7 +16,7 @@ fn killed_after_checkpoint_before_package_release_retries_without_reapplying() {
     fs::create_dir(&blocker).unwrap();
     crate::support::failure(
         recovery.sandbox.run(&recovery.game, &["extract"]),
-        "archive",
+        "cannot replace",
     );
     fs::remove_dir(blocker).unwrap();
     // Slow only ordinary filesystem cleanup, without production fault hooks.

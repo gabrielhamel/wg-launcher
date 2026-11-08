@@ -14,7 +14,7 @@ fn blocked_destination_keeps_packages_and_recovers_offline() {
     let before = recovery.server.requests();
     failure(
         recovery.sandbox.run(&recovery.game, &["extract"]),
-        "archive",
+        "cannot replace",
     );
     assert_eq!(fs::read(blocked.join("user-file")).unwrap(), b"preserve me");
     assert!(recovery.cache().join("client.wgpkg").is_file());

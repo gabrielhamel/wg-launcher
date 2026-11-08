@@ -13,6 +13,7 @@ installation manages the copy on a person's machine.
 | Term | Meaning here |
 | --- | --- |
 | Installation | One local copy of a game, together with the information needed to maintain it. |
+| Installation layout | The game folder and all launcher-owned paths derived from it, passed together so filesystem work uses one consistent location. |
 | Installation folder | The folder containing that game and its saved installation information. Moving the complete folder keeps them together. |
 | Selection | The chosen game, region, channel, client type, and language. |
 | Resolved selection | The known product, client type, and language of an installation, with no unanswered discovery choices. |
@@ -58,9 +59,11 @@ and resumed transfer explicit without changing retry or cleanup behavior.
 
 The pipeline decides how saved checkpoints resume a manifest and when a completed
 manifest becomes installed identity. Filesystem records only load and save those
-values. Package execution exposes separate full-patch installation and staged
-patch decoding operations: full content is decoded before each live file is
-replaced; delta contents stay in the patch workspace until application. Split-volume
+values. Package application owns full-patch replacement and source-dependent delta execution.
+Archive decoding reports each fully decoded entry without deciding where live game
+files are installed. Full content is decoded before each live file is replaced;
+delta contents stay in the patch workspace until application. Storage failures
+retain their technical causes rather than becoming decoder error strings. Split-volume
 reading lives separately from archive decoding and replacement policy.
 
 Shared finalization records successful work for both local extraction and streaming
@@ -69,8 +72,9 @@ and candidate patch positions. `pipeline/prefetch.rs` owns async download
 coordination and cancellation.
 Background worker failures retain their technical causes and are distinguished from
 a download coordinator ending before every planned patch is ready. Installation
-storage describes paths without reading or creating files; preparation and locking
-perform the filesystem operations.
+layout describes the root and derived paths without reading or creating files.
+Preparation, locking, patch execution, and finalization receive that layout
+instead of independent root and storage arguments.
 
 Component progress exposes the versions reached locally, including saved patch
 completions. Restoring saved checkpoints explicitly gives those values precedence.

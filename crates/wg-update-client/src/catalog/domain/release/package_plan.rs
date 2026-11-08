@@ -1,7 +1,7 @@
 //! Resolve the transport packages for a selected patch chain.
 
 use super::error::{ReleaseError as Error, Result};
-use super::{Asset, Patch, ResolvedRelease};
+use super::{Patch, ResolvedRelease, TransportVolume};
 use std::collections::{BTreeMap, HashMap};
 
 /// Clones the transport assets required by the ordered installation chain.
@@ -16,7 +16,7 @@ use std::collections::{BTreeMap, HashMap};
 pub fn installation_assets(
     release: &ResolvedRelease,
     base_versions: &BTreeMap<String, String>,
-) -> Result<Vec<Asset>> {
+) -> Result<Vec<TransportVolume>> {
     Ok(planned_patches(release, base_versions)?
         .into_iter()
         .flat_map(|planned| planned.packages)
@@ -27,7 +27,7 @@ pub fn installation_assets(
 #[derive(Debug, Clone)]
 pub(crate) struct PlannedPatch {
     pub(crate) patch: Patch,
-    pub(crate) packages: Vec<Asset>,
+    pub(crate) packages: Vec<TransportVolume>,
 }
 
 pub(crate) fn planned_patches(
@@ -52,7 +52,7 @@ impl super::resolved_release::ComponentRelease<'_> {
     fn planned_patches(
         &self,
         base_versions: &BTreeMap<String, String>,
-        packages: &HashMap<&str, &Asset>,
+        packages: &HashMap<&str, &TransportVolume>,
     ) -> Result<Vec<PlannedPatch>> {
         self.ordered_patches(base_versions)?
             .into_iter()

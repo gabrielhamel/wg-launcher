@@ -1,7 +1,7 @@
 //! Inspect cached volumes and prepare resumable files, without making HTTP requests.
 
 use super::error::{Result, TransferError as Error};
-use crate::catalog::Asset;
+use crate::catalog::TransportVolume;
 use crate::installation::infrastructure::filesystem::paths::safe_relative_path;
 use std::path::{Path, PathBuf};
 use tokio::fs;
@@ -36,7 +36,7 @@ impl VolumePaths {
     }
 }
 
-pub(super) async fn prepare(asset: &Asset, output: &Path) -> Result<DownloadPreparation> {
+pub(super) async fn prepare(asset: &TransportVolume, output: &Path) -> Result<DownloadPreparation> {
     let target = output.join(safe_relative_path(&asset.name)?);
     if let Ok(metadata) = fs::metadata(&target).await {
         if metadata.len() == asset.size {

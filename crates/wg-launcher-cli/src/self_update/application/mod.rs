@@ -71,7 +71,7 @@ pub(crate) async fn run(observer: &Observer<'_>) -> Result<SelfUpdateOutcome> {
         environment: if cfg!(target_env = "gnu") { "gnu" } else { "" },
     };
     let artifact = ReleaseArtifact::for_host(&release, &host)?;
-    let binary = artifact::download(&release, &artifact, work.path(), observer).await?;
+    let binary = artifact::prepare_candidate(&release, &artifact, work.path(), observer).await?;
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::VerifyingExecutable))?;
     executable::verify(&binary, &release.version).await?;
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::ReplacingExecutable))?;

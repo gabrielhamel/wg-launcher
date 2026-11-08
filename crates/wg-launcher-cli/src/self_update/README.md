@@ -23,6 +23,7 @@ game versions belong to [installation](../installation/README.md).
 | Direct installation | A launcher copy installed without a package manager taking responsibility for it. |
 | Package manager | The owner responsible for updating a managed launcher. Detection returns that ownership; terminal presentation chooses its name and update instructions. |
 | Managed installation | A launcher copy maintained by a package manager, such as Homebrew or APT. Updates go through that manager. |
+| Candidate preparation | Download the selected archive, verify its published checksum, and extract the launcher for executable verification. |
 | Candidate | The downloaded launcher being checked before it can replace the current one. |
 | Verification | Checks that the downloaded launcher matches the published release and reports the expected version. |
 | Host target | Explicit operating system, processor architecture, and build environment used to select a compatible launcher archive. |
@@ -35,3 +36,7 @@ Artifact selection and verification return concrete failure types beside their
 owning rules and adapters. The application retains discovery causes; presentation
 renders failures and recovery instructions. Archive format remains explicit from
 release selection through extraction.
+
+`prepare_candidate` names the complete artifact preparation operation. It returns
+the extracted launcher path; the application then verifies the executable version
+and replaces the current direct installation.

@@ -5,7 +5,6 @@ use crate::installation::ExtractionEvent;
 use crate::installation::infrastructure::filesystem::{
     patch_workspace::PatchWorkspace,
     paths::{safe_archive_path, safe_relative_path},
-    replacement::replace_file,
 };
 use std::{
     fs,
@@ -14,32 +13,6 @@ use std::{
     sync::Arc,
     time::{Duration, Instant},
 };
-
-/// Decode full content safely before replacing each live game file.
-pub(crate) fn install_full_patch(
-    patch: &Patch,
-    cache: &Path,
-    game: &Path,
-    workspace: &PatchWorkspace,
-    observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
-) -> Result<()> {
-    fs::create_dir_all(game)?;
-    decode_archive(
-        patch,
-        cache,
-        &workspace.archive(),
-        observer,
-        |relative, output| {
-            let target = game.join(relative);
-            let result = if output.is_dir() {
-                fs::create_dir_all(target).map_err(crate::installation::StorageError::from)
-            } else {
-                replace_file(output, &target, &workspace.replacement_backup())
-            };
-            result.map_err(|error| sevenz_rust::Error::other(error.to_string()))
-        },
-    )
-}
 
 /// Decode a delta patch into its workspace without changing live game files.
 pub(crate) fn decode_patch_contents(
@@ -51,12 +24,12 @@ pub(crate) fn decode_patch_contents(
     decode_archive(patch, cache, &workspace.archive(), observer, |_, _| Ok(()))
 }
 
-fn decode_archive(
+pub(super) fn decode_archive(
     patch: &Patch,
     cache: &Path,
     destination: &Path,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
-    mut install: impl FnMut(&Path, &Path) -> std::result::Result<(), sevenz_rust::Error>,
+    mut decoded_entry: impl FnMut(&Path, &Path) -> Result<()>,
 ) -> Result<()> {
     let mut volumes = patch
         .files
@@ -74,7 +47,7 @@ fn decode_archive(
     let reader = MultiVolumeReader::open(&volumes)?;
     let length = reader.length;
     let mut archive = sevenz_rust::SevenZReader::new(reader, length, Default::default())
-        .map_err(|error| Error::ArchiveExtraction(error.to_string()))?;
+        .map_err(Error::ArchiveExtraction)?;
     let total = archive
         .archive()
         .files
@@ -83,14 +56,16 @@ fn decode_archive(
         .count();
     fs::create_dir_all(destination)?;
     let mut index = 0;
-    archive
-        .for_each_entries(|entry, reader| {
-            let relative = safe_archive_path(entry.name())
-                .map_err(|error| sevenz_rust::Error::other(error.to_string()))?;
+    let mut entry_failure = None;
+    let result = archive.for_each_entries(|entry, reader| {
+        // The decoder callback requires its own error type. Keep our typed
+        // cause separately rather than flattening storage failures to text.
+        let mut extract_entry = || -> Result<bool> {
+            let relative = safe_archive_path(entry.name())?;
             let target = destination.join(&relative);
             if entry.is_directory() {
                 let result = sevenz_rust::default_entry_extract_fn(entry, reader, &target)?;
-                install(&relative, &target)?;
+                decoded_entry(&relative, &target)?;
                 return Ok(result);
             }
             index += 1;
@@ -111,11 +86,19 @@ fn decode_archive(
                 last_update: Instant::now(),
             };
             let result = sevenz_rust::default_entry_extract_fn(entry, &mut progress, &target)?;
-            install(&relative, &target)?;
+            decoded_entry(&relative, &target)?;
             notify(progress.extracted);
             Ok(result)
+        };
+        extract_entry().map_err(|error| {
+            entry_failure = Some(error);
+            sevenz_rust::Error::other("archive entry processing failed")
         })
-        .map_err(|error| Error::ArchiveExtraction(error.to_string()))
+    });
+    if let Some(error) = entry_failure {
+        return Err(error);
+    }
+    result.map_err(Error::ArchiveExtraction)
 }
 
 struct ExtractionReader<'a> {

@@ -2,20 +2,19 @@
 
 use crate::Result;
 use crate::installation::infrastructure::filesystem::{
-    paths::walk_files, records::save_installed_build, storage::InstallationStorage,
+    paths::walk_files, records::save_installed_build, storage::InstallationLayout,
 };
 use crate::installation::{ExtractionEvent, ExtractionOptions, ExtractionReport, PinnedManifest};
 use std::{fs, path::Path, sync::Arc};
 
 pub(super) fn finalize_installation(
     manifest: &PinnedManifest,
-    install_root: &Path,
-    storage: &InstallationStorage,
+    storage: &InstallationLayout,
     options: ExtractionOptions,
     applied_deltas: usize,
     observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<ExtractionReport> {
-    let files_before_finalization = count_files_before_finalization(install_root)?;
+    let files_before_finalization = count_files_before_finalization(storage.root())?;
     let mut report = ExtractionReport {
         files_before_finalization,
         applied_deltas,

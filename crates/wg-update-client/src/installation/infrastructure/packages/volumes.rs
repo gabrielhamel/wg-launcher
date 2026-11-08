@@ -28,7 +28,9 @@ impl MultiVolumeReader {
             starts.push(length);
             lengths.push(file_length);
             length = length.checked_add(file_length).ok_or_else(|| {
-                Error::ArchiveExtraction("archive volume sizes overflow u64".to_owned())
+                Error::ArchiveExtraction(sevenz_rust::Error::other(
+                    "archive volume sizes overflow u64",
+                ))
             })?;
             files.push(file);
         }

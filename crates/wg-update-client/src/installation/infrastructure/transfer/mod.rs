@@ -3,7 +3,7 @@ mod error;
 mod local;
 
 use self::error::{Result, TransferError as Error};
-use crate::catalog::Asset;
+use crate::catalog::TransportVolume;
 pub use error::TransferError;
 use futures_util::{StreamExt, stream};
 use reqwest::Client;
@@ -122,7 +122,7 @@ impl AssetDownloader {
 
     /// Transfers `assets` beneath `output`, retaining resumable partial files.
     ///
-    /// Asset names must be safe relative paths. Matching final file sizes are reused;
+    /// TransportVolume names must be safe relative paths. Matching final file sizes are reused;
     /// incomplete final files are removed. Partial files use a `.part` suffix and HTTP
     /// range requests; a server returning a full response causes a restart.
     /// No installation lock is acquired; callers must coordinate destination access.
@@ -138,7 +138,7 @@ impl AssetDownloader {
     /// Successfully completed files and partial files are retained after failure.
     pub async fn download_with_observer<F>(
         &self,
-        assets: Vec<Asset>,
+        assets: Vec<TransportVolume>,
         output: impl AsRef<Path>,
         options: DownloadOptions,
         observer: F,
@@ -182,7 +182,7 @@ impl AssetDownloader {
 
     async fn download_with_retries(
         &self,
-        asset: Asset,
+        asset: TransportVolume,
         output: PathBuf,
         attempts: usize,
         observer: Arc<dyn Fn(DownloadEvent) + Send + Sync>,

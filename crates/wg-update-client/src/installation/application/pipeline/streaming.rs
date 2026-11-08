@@ -7,7 +7,7 @@ use super::{
     ExtractionEvent, ExtractionOptions, InstallationEvent, InstallationPipeline, InstallationReport,
 };
 use crate::installation::infrastructure::filesystem::{
-    InstallationLock, InstallationStorage, records, storage::prepare_installation,
+    InstallationLayout, InstallationLock, records, storage::prepare_installation,
 };
 use crate::installation::{AssetDownloader, DownloadOptions, PinnedManifest};
 use crate::{Error, Result};
@@ -44,8 +44,8 @@ impl InstallationPipeline {
         F: Fn(InstallationEvent) + Send + Sync + 'static,
     {
         let install_root = install_root.as_ref().to_path_buf();
-        let storage = InstallationStorage::for_root(&install_root);
-        let _lock = InstallationLock::acquire(&storage, &install_root)?;
+        let storage = InstallationLayout::for_root(&install_root);
+        let _lock = InstallationLock::acquire(&storage)?;
         let cache = storage.cache.clone();
         let mut manifest = super::resume_manifest(manifest, &storage)?;
         let patches = manifest.planned_patches()?;
@@ -56,9 +56,8 @@ impl InstallationPipeline {
             Arc::new(move |event| observer(InstallationEvent::Extraction(event)))
         };
 
-        let prepare_root = install_root.clone();
         let prepare_storage = storage.clone();
-        tokio::task::spawn_blocking(move || prepare_installation(&prepare_root, &prepare_storage))
+        tokio::task::spawn_blocking(move || prepare_installation(&prepare_storage))
             .await
             .map_err(crate::installation::PipelineError::WorkerFailed)??;
 
@@ -79,7 +78,6 @@ impl InstallationPipeline {
                 merge_download_report(&mut report.download, downloaded.report);
                 let patch = downloaded.patch;
 
-                let game_for_patch = install_root.clone();
                 let patch_observer = Arc::clone(&extraction_observer);
                 let mut checkpoint_manifest = manifest.clone();
                 let checkpoint_storage = storage.clone();
@@ -88,7 +86,6 @@ impl InstallationPipeline {
                         &mut checkpoint_manifest,
                         &patch,
                         &checkpoint_storage,
-                        &game_for_patch,
                         PatchProgress { index, total },
                         extraction_options,
                         &patch_observer,
@@ -113,14 +110,12 @@ impl InstallationPipeline {
         downloads.stop().await;
         result?;
 
-        let finalize_root = install_root.clone();
         let finalize_manifest = manifest.clone();
         let finalize_storage = storage.clone();
         let finalize_observer = Arc::clone(&extraction_observer);
         report.extraction = tokio::task::spawn_blocking(move || {
             finalize_installation(
                 &finalize_manifest,
-                &finalize_root,
                 &finalize_storage,
                 extraction_options,
                 report.extraction.applied_deltas,

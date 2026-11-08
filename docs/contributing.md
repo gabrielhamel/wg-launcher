@@ -113,9 +113,10 @@ crates/
           build_identity.rs   Shared published identity, flattened in saved records
           release/resolved_release.rs  Published release and validated component views
           release/patch_chain.rs  Version traversal and full-package fallback
+          release/transport_volume.rs  Downloadable transport volumes and HTTP seeds
           release/package_plan.rs  Own the volume index and resolve selected steps to packages
         application/          list, inspect, and live build/update release resolution
-          resolution.rs       Resolve explicit/default variants, smallest installable variants, and updates
+          resolution.rs       Own WGUS clients and resolve explicit/default variants, smallest variants, and updates
           reports.rs          Consumer build identity and inspection/patch summaries
           directory_name.rs   Suggested directory names shared by inspect and installation
         infrastructure/wgus/  WGUS transport and response translation
@@ -146,13 +147,13 @@ crates/
             local.rs          Cache reuse, partial-file preparation, and promotion
             attempt.rs        One HTTP attempt and structured transfer outcomes
           packages/           Transport archives, delta application, throttled output progress
-            archive.rs        Explicit full-patch installation and staged patch decoding
+            archive.rs        Decode transport archives and report fully decoded entries
             volumes.rs        Read split transport volumes as one seekable archive
             contents.rs       Classify replacement files and typed deltas before execution
-            patch_application.rs  Install replacements, preserve sources, and apply deltas
+            patch_application.rs  Install full patches or decoded replacements and source-dependent deltas
             delta.rs          Reconstruct and replace a single file using a delta
           filesystem/         Installation filesystem adapters
-            storage.rs        Infallible installation layout and explicit staging preparation
+            storage.rs        InstallationLayout owns the root and derived paths; explicit staging preparation
             lock.rs           Exclusive installation mutation lock
             cache.rs          Package verification and release
             records.rs        Load pinned manifests and installed identity; save with file replacement
@@ -178,7 +179,7 @@ crates/
         application/          Release checks, executable update workflow, events and outcomes
         infrastructure/       Release HTTP, archives, ownership detection, replacement
           release.rs          Discover published launcher releases
-          artifact.rs         Download, verify, and extract the selected artifact
+          artifact.rs         Prepare a candidate by downloading, verifying, and extracting the artifact
           http.rs             Shared HTTPS, redirect, and bounded-transfer policy
         presentation/         Command handlers, notices, update instructions, event rendering
           error.rs            Render typed failures with terminal recovery guidance

@@ -394,8 +394,8 @@ the CLI.
   decoding and delta application.
 - `crates/wg-update-client/src/installation/infrastructure/filesystem/`: installation
   paths, locks, JSON persistence, recovery source files, replacement, and cleanup.
-  Keep layout/staging in `storage.rs`, exclusive locking in `lock.rs`, package
-  verification/release in `cache.rs`, persistence and manifest resumption in
+  Keep the installation root, derived layout paths, and staging preparation in
+  `storage.rs`, exclusive locking in `lock.rs`, package verification/release in `cache.rs`, persistence and manifest resumption in
   `records.rs`, active patch staging and original sources in `patch_workspace.rs`,
   and file replacement in `replacement.rs`.
 - `crates/wg-update-client/src/error.rs`: thin public workflow error wrapper.

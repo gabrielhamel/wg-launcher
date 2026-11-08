@@ -1,6 +1,5 @@
 use super::{BuildSelection, InstallPlan, plan::build_plan, resolution::resolve_installation};
 use crate::Result;
-use crate::catalog::WgusClient;
 use crate::installation::{
     AssetDownloader, DownloadOptions, InstallationEvent, InstallationPipeline, InstallationReport,
 };
@@ -80,9 +79,7 @@ pub async fn install_with_observer<F>(
 where
     F: Fn(InstallEvent) + Send + Sync + 'static,
 {
-    let client = WgusClient::new()?;
-    let (manifest, root) =
-        resolve_installation(&client, &options.selection, options.output).await?;
+    let (manifest, root) = resolve_installation(&options.selection, options.output).await?;
     install_resolved(manifest, root, options.download, observer).await
 }
 

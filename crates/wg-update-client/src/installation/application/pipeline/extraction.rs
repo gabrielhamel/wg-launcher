@@ -5,15 +5,14 @@ use crate::installation::infrastructure::filesystem::InstallationLock;
 use crate::installation::infrastructure::filesystem::{
     cache::verify_cache,
     records::save_manifest,
-    storage::{InstallationStorage, prepare_installation},
+    storage::{InstallationLayout, prepare_installation},
 };
 use crate::installation::{ExtractionEvent, ExtractionOptions, ExtractionReport, PinnedManifest};
 use std::{path::Path, sync::Arc};
 
 pub(super) fn extract_sync(
     manifest: &PinnedManifest,
-    install_root: &Path,
-    storage: &InstallationStorage,
+    storage: &InstallationLayout,
     options: ExtractionOptions,
     observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<ExtractionReport> {
@@ -29,7 +28,7 @@ pub(super) fn extract_sync(
         .collect::<Vec<_>>();
     verify_cache(&patches.iter().collect::<Vec<_>>(), cache)?;
     save_manifest(&manifest, storage)?;
-    prepare_installation(install_root, storage)?;
+    prepare_installation(storage)?;
 
     let total = patches.len();
     let mut report = ExtractionReport::default();
@@ -38,21 +37,13 @@ pub(super) fn extract_sync(
             &mut manifest,
             &patch,
             storage,
-            install_root,
             PatchProgress { index, total },
             options,
             &observer,
         )?;
         report.applied_deltas += completion.applied_deltas;
     }
-    finalize_installation(
-        &manifest,
-        install_root,
-        storage,
-        options,
-        report.applied_deltas,
-        observer,
-    )
+    finalize_installation(&manifest, storage, options, report.applied_deltas, observer)
 }
 
 impl InstallationPipeline {
@@ -113,13 +104,11 @@ impl InstallationPipeline {
         F: Fn(ExtractionEvent) + Send + Sync + 'static,
     {
         let install_root = install_root.as_ref().to_path_buf();
-        let storage = InstallationStorage::for_root(&install_root);
-        let _lock = InstallationLock::acquire(&storage, &install_root)?;
+        let storage = InstallationLayout::for_root(&install_root);
+        let _lock = InstallationLock::acquire(&storage)?;
         let observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = Arc::new(observer);
-        tokio::task::spawn_blocking(move || {
-            extract_sync(&manifest, &install_root, &storage, options, observer)
-        })
-        .await
-        .map_err(crate::installation::PipelineError::WorkerFailed)?
+        tokio::task::spawn_blocking(move || extract_sync(&manifest, &storage, options, observer))
+            .await
+            .map_err(crate::installation::PipelineError::WorkerFailed)?
     }
 }

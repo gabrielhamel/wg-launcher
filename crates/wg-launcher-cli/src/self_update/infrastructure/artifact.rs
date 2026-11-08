@@ -26,7 +26,7 @@ pub(crate) enum ArtifactDownloadError {
     ChecksumMismatch,
 }
 
-pub(crate) async fn download(
+pub(crate) async fn prepare_candidate(
     release: &Release,
     artifact: &ReleaseArtifact,
     directory: &Path,

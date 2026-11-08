@@ -2,13 +2,15 @@
 
 use super::error::{Result, WgusError as Error};
 use super::wire::{self, PatchesChainXml, WebSeedsXml};
-use crate::catalog::{Asset, ClientType, Patch, PatchFile, PatchSource, Product, WebSeed};
+use crate::catalog::{
+    ClientType, Patch, PatchFile, PatchSource, Product, TransportVolume, WebSeed,
+};
 use std::collections::{BTreeMap, HashMap};
 use url::Url;
 
 pub(super) struct ConvertedPatchChain {
     pub(super) patches: Vec<Patch>,
-    pub(super) assets: Vec<Asset>,
+    pub(super) assets: Vec<TransportVolume>,
     pub(super) web_seeds: Vec<WebSeed>,
     pub(super) component_versions: BTreeMap<String, String>,
 }
@@ -71,7 +73,7 @@ pub(super) fn patch_chain_from_wire(
             })
             .collect::<Vec<_>>();
         for file in &files {
-            assets.push(Asset {
+            assets.push(TransportVolume {
                 part: patch.part.clone(),
                 source: source.clone(),
                 version_to: patch.version_to.clone(),

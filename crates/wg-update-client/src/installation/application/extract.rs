@@ -1,7 +1,7 @@
 use super::{InstallPlan, plan::build_plan};
 use crate::installation::infrastructure::filesystem::records::load_pinned_manifest;
 use crate::installation::{ExtractionEvent, ExtractionReport, InstallationPipeline};
-use crate::{Result, installation::infrastructure::filesystem::InstallationStorage};
+use crate::{Result, installation::infrastructure::filesystem::InstallationLayout};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -68,7 +68,7 @@ where
     F: Fn(ExtractEvent) + Send + Sync + 'static,
 {
     let root = std::path::absolute(options.path)?;
-    let cache = InstallationStorage::for_root(&root).cache;
+    let cache = InstallationLayout::for_root(&root).cache;
     let manifest = load_pinned_manifest(&cache).await?.ok_or_else(|| {
         crate::installation::ExtractError::DownloadManifestNotFound(cache.clone())
     })?;

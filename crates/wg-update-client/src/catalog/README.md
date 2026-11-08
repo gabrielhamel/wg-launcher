@@ -32,6 +32,7 @@ selection to prepare the game on someone's machine.
 | Patch source | What a patch starts from: a full component needs no earlier version; a delta needs a specific version. An unspecified saved source cannot establish a chain. |
 | Planned patch | One step selected for installation, kept together with the packages needed to apply it. |
 | Patch chain | The ordered steps needed to reach a component's target version. |
+| Transport volume | One downloadable file, with a resolved HTTP URL. Several volumes can form one patch archive; these are distinct from game-owned assets. |
 | Package | A downloadable piece of a patch. One patch can require several packages. |
 | Download size | The size of the published packages, before allowing for anything already downloaded. |
 | Payload platform | The kind of computer the game content is intended for. It can differ from the computer running the launcher. |
@@ -57,3 +58,8 @@ The application names smallest-installable-variant resolution explicitly. Candid
 are visited in publisher order, equal sizes keep the first candidate, and total
 failure reports the first resolution or package-planning error. A missing component
 target is reported separately from a missing full-install patch.
+
+Catalog entry points own WGUS client construction and reuse during resolution.
+Installation asks for a resolved release without constructing a protocol client.
+Internally, `TransportVolume` names a downloadable archive volume; saved releases
+retain the `assets` field and consumer reports retain their existing names.

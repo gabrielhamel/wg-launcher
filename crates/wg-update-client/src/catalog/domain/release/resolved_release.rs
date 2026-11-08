@@ -1,4 +1,4 @@
-use super::{Asset, Patch, WebSeed};
+use super::{Patch, TransportVolume, WebSeed};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -27,7 +27,7 @@ pub struct ResolvedRelease {
     /// Published HTTP seed endpoints; asset URLs use the first seed.
     pub web_seeds: Vec<WebSeed>,
     /// Resolved transport volumes across the published patches.
-    pub assets: Vec<Asset>,
+    pub assets: Vec<TransportVolume>,
 }
 
 impl ResolvedRelease {

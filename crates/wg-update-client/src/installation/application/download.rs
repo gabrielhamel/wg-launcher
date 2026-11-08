@@ -6,8 +6,8 @@ use crate::installation::infrastructure::filesystem::records::{
 };
 use crate::{
     Result,
-    catalog::{Asset, WgusClient},
-    installation::infrastructure::filesystem::{InstallationLock, InstallationStorage},
+    catalog::TransportVolume,
+    installation::infrastructure::filesystem::{InstallationLayout, InstallationLock},
     installation::{AssetDownloader, DownloadEvent, DownloadOptions, DownloadReport},
 };
 use serde::Serialize;
@@ -87,11 +87,9 @@ pub async fn download_with_observer<F>(
 where
     F: Fn(DownloadAssetsEvent) + Send + Sync + 'static,
 {
-    let client = WgusClient::new()?;
-    let (manifest, root) =
-        resolve_installation(&client, &options.selection, options.output).await?;
-    let storage = InstallationStorage::for_root(&root);
-    let _lock = InstallationLock::acquire(&storage, &root)?;
+    let (manifest, root) = resolve_installation(&options.selection, options.output).await?;
+    let storage = InstallationLayout::for_root(&root);
+    let _lock = InstallationLock::acquire(&storage)?;
     // Discovery happens before locking; another workflow could have checkpointed
     // this installation meanwhile. Read its authoritative manifest under the lock.
     let manifest = if let Some(pending) = load_pinned_manifest(&storage.cache).await? {
@@ -118,7 +116,10 @@ where
     Ok(DownloadAssetsOutcome { plan, report })
 }
 
-pub(super) fn select_download_assets(assets: Vec<Asset>, parts: &[String]) -> Vec<Asset> {
+pub(super) fn select_download_assets(
+    assets: Vec<TransportVolume>,
+    parts: &[String],
+) -> Vec<TransportVolume> {
     if parts.is_empty() {
         return assets;
     }

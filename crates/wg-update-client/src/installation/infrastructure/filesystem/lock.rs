@@ -1,19 +1,16 @@
 use super::{
     error::{Result, StorageError as Error},
-    storage::InstallationStorage,
+    storage::InstallationLayout,
 };
-use std::{
-    fs::{self, File, OpenOptions},
-    path::Path,
-};
+use std::fs::{self, File, OpenOptions};
 
 pub(crate) struct InstallationLock {
     file: File,
 }
 
 impl InstallationLock {
-    pub(crate) fn acquire(storage: &InstallationStorage, install_root: &Path) -> Result<Self> {
-        fs::create_dir_all(install_root.join(".wg-launcher"))?;
+    pub(crate) fn acquire(storage: &InstallationLayout) -> Result<Self> {
+        fs::create_dir_all(storage.root().join(".wg-launcher"))?;
         let file = OpenOptions::new()
             .create(true)
             .truncate(false)
@@ -23,7 +20,7 @@ impl InstallationLock {
         match fs2::FileExt::try_lock_exclusive(&file) {
             Ok(()) => Ok(Self { file }),
             Err(error) if error.raw_os_error() == fs2::lock_contended_error().raw_os_error() => {
-                Err(Error::InstallationLocked(install_root.to_path_buf()))
+                Err(Error::InstallationLocked(storage.root().to_path_buf()))
             }
             Err(error) => Err(error.into()),
         }

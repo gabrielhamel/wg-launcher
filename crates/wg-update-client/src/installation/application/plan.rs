@@ -1,6 +1,6 @@
-use crate::catalog::{Asset, BuildInfo};
+use crate::catalog::{BuildInfo, TransportVolume};
 use crate::installation::PinnedManifest;
-use crate::installation::infrastructure::filesystem::InstallationStorage;
+use crate::installation::infrastructure::filesystem::InstallationLayout;
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -33,10 +33,10 @@ pub struct InstallPlan {
 pub(super) fn build_plan(
     manifest: &PinnedManifest,
     root: PathBuf,
-    assets: &[Asset],
+    assets: &[TransportVolume],
 ) -> InstallPlan {
     let compressed_bytes = assets.iter().map(|asset| asset.size).sum();
-    let cache = InstallationStorage::for_root(&root).cache;
+    let cache = InstallationLayout::for_root(&root).cache;
     InstallPlan {
         build: BuildInfo::from_release(&manifest.release),
         root,

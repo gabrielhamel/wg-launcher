@@ -3,11 +3,11 @@ use crate::catalog::Patch;
 use crate::installation::infrastructure::{
     filesystem::{
         cache::remove_patch_volumes, patch_workspace::PatchWorkspace, records::save_manifest,
-        storage::InstallationStorage,
+        storage::InstallationLayout,
     },
     packages::{
-        archive::{decode_patch_contents, install_full_patch},
-        patch_application::apply_patch_directory,
+        archive::decode_patch_contents,
+        patch_application::{apply_patch_directory, install_full_patch},
     },
 };
 use crate::installation::{ExtractionEvent, ExtractionOptions, PinnedManifest};
@@ -24,8 +24,7 @@ pub(super) struct PatchProgress {
 pub(super) fn apply_and_checkpoint_patch(
     manifest: &mut PinnedManifest,
     patch: &Patch,
-    storage: &InstallationStorage,
-    install_root: &Path,
+    storage: &InstallationLayout,
     progress: PatchProgress,
     options: ExtractionOptions,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
@@ -39,7 +38,7 @@ pub(super) fn apply_and_checkpoint_patch(
     });
     let workspace = PatchWorkspace::prepare(patch, &storage.staging)?;
     let applied_deltas =
-        extract_patch_sync(patch, &storage.cache, install_root, &workspace, observer)?;
+        extract_patch_sync(patch, &storage.cache, storage.root(), &workspace, observer)?;
     manifest.checkpoint(patch);
     save_manifest(manifest, storage)?;
     workspace.release()?;

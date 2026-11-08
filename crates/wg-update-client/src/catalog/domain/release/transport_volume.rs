@@ -15,7 +15,7 @@ pub struct WebSeed {
 
 /// One downloadable transport volume with a resolved HTTP URL.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct Asset {
+pub struct TransportVolume {
     /// Component identifier to which this patch belongs.
     pub part: String,
     /// Normalized patch source, serialized using the existing version field.

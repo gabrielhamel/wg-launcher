@@ -10,7 +10,7 @@ pub enum PackageError {
     Io(#[from] std::io::Error),
     /// Transport archive decoding or entry extraction failed.
     #[error("package archive extraction failed: {0}")]
-    ArchiveExtraction(String),
+    ArchiveExtraction(#[from] sevenz_rust::Error),
     /// A delta could not be decoded or applied.
     #[error("failed to apply {format} delta {path:?}: {detail}")]
     DeltaDecode {
