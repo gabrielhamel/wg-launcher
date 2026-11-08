@@ -1,20 +1,24 @@
 use crate::terminal::{command, human_bytes};
 use console::style;
 use std::path::Path;
-use wg_update_client::StatusReport;
+use wg_update_client::{StatusReport, UpdateTargetSource};
 
 pub(crate) fn print_status(report: &StatusReport, current: &Path) {
     println!("Installation: {}", report.path.display());
     println!("Game:         {}", report.installed.name);
     println!("Region:       {}", report.installed.region);
+    let target_label = match report.target.source {
+        UpdateTargetSource::LiveCatalog => "Latest:",
+        UpdateTargetSource::PinnedManifest => "Pinned target:",
+    };
     if report.update_available {
         println!(
             "Installed:    {}",
             style(&report.installed.version).yellow()
         );
         println!(
-            "Latest:       {}",
-            style(&report.latest_version).green().bold()
+            "{target_label:<14}{}",
+            style(&report.target.version).green().bold()
         );
         println!(
             "Update size:  ~{}",
@@ -34,7 +38,7 @@ pub(crate) fn print_status(report: &StatusReport, current: &Path) {
         }
     } else {
         println!("Installed:    {}", report.installed.version);
-        println!("Latest:       {}", report.latest_version);
+        println!("{target_label:<14}{}", report.target.version);
         println!("{}", style("Up to date.").green());
     }
 }

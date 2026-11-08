@@ -12,6 +12,25 @@ pub struct StatusOptions {
     pub path: PathBuf,
 }
 
+/// Source of the build chosen for comparison with an installation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum UpdateTargetSource {
+    /// The publisher's current release, resolved from the live catalog.
+    LiveCatalog,
+    /// The saved release for unfinished work, which may differ from the live catalog.
+    PinnedManifest,
+}
+
+/// Build version chosen for comparison, together with how it was selected.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct UpdateTarget {
+    /// Publisher game build version; component versions are compared separately.
+    pub version: String,
+    /// Whether this target came from live discovery or unfinished local work.
+    pub source: UpdateTargetSource,
+}
+
 /// Recorded build identity and the version it was compared against.
 ///
 /// [`status`] compares with the live catalog. [`update`](crate::update) may instead compare with
@@ -22,8 +41,8 @@ pub struct StatusReport {
     pub path: PathBuf,
     /// Identity loaded before any update.
     pub installed: BuildInfo,
-    /// Live catalog version, or pending pinned version during update retries.
-    pub latest_version: String,
+    /// Build chosen for comparison, with its live or pinned origin.
+    pub target: UpdateTarget,
     /// Whether the build or any component version differs. Versions are compared
     /// for equality; game files are not scanned for integrity.
     pub update_available: bool,
@@ -55,14 +74,15 @@ pub async fn status(options: StatusOptions) -> Result<StatusReport> {
         )
         .await?;
     let mut latest = PinnedManifest::from(latest);
-    latest.include_installed_versions(&installed);
-    build_status(path, installed, &latest)
+    latest.seed_missing_component_versions(&installed);
+    build_status(path, installed, &latest, UpdateTargetSource::LiveCatalog)
 }
 
 pub(super) fn build_status(
     path: PathBuf,
     installed: InstalledBuild,
     manifest: &PinnedManifest,
+    source: UpdateTargetSource,
 ) -> Result<StatusReport> {
     let update_available = installed.differs_from(manifest);
     let update_download_bytes = if update_available {
@@ -77,7 +97,10 @@ pub(super) fn build_status(
     Ok(StatusReport {
         path,
         installed: installed.build_info(),
-        latest_version: manifest.release.version.clone(),
+        target: UpdateTarget {
+            version: manifest.release.version.clone(),
+            source,
+        },
         update_available,
         update_download_bytes,
     })

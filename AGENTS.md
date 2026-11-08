@@ -382,7 +382,9 @@ the CLI.
   `resolution.rs` owns pinned-cache reuse and calls catalog for live resolution;
   `plan.rs` builds informational plans.
 - `crates/wg-update-client/src/installation/application/pipeline/`: internal
-  `PackageExtractor` coordinator and shared streaming/local installation orchestration.
+  `InstallationPipeline` coordinator and shared streaming/local installation orchestration.
+  `extraction.rs` owns local execution and finalization; `streaming.rs` owns
+  overlapping downloads and ordered patch execution.
   `patch.rs` owns shared patch application, checkpointing, and package release.
   Preserve locking, prefetch overlap, checkpoint-before-release ordering, and cancellation.
 - `crates/wg-update-client/src/installation/infrastructure/transfer/`: resumable HTTP transfer.

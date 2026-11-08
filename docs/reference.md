@@ -71,6 +71,12 @@ packages, excluding unchanged components. The CLI shows this as `Update size`
 when an update is available. This is the complete patch transfer size; cached
 packages and partial downloads may reduce the actual download. Status does not
 transfer packages, modify files, or use a pending pinned manifest.
+`StatusReport.target.version` names the compared build and `target.source` identifies
+`UpdateTargetSource::LiveCatalog` or `UpdateTargetSource::PinnedManifest`.
+Status always uses the live catalog; an update retry can use a pinned target even
+when the publisher now offers a different release. A no-work CLI update against a
+pinned target reports `Already at pinned target` rather than claiming the live
+catalog is current.
 
 `update`
 reuses that selection and path, with a pending pinned manifest taking precedence
@@ -146,7 +152,9 @@ failures. Classification follows nested causes, including exhausted transfer
 retries. Use the display message and `std::error::Error::source()` for detailed
 diagnostics; implementation-specific error types are internal.
 
-**API migration (breaking):** replace `inspect` manifest access such as
+**API migration (breaking):** replace `StatusReport.latest_version` with
+`StatusReport.target.version`; use `target.source` to distinguish live discovery
+from a pinned retry target. Replace `inspect` manifest access such as
 `manifest.version` with `report.build.version`, and `download_size()` with
 `report.compressed_bytes`. Use patch summary counts/sizes instead of raw patch
 files. Replace `outcome.plan.manifest` with `outcome.plan.build` and

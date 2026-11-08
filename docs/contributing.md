@@ -124,7 +124,9 @@ crates/
         application/          download, extract, install, status, update
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
-          pipeline/           Shared streaming/local installation coordination
+          pipeline/           InstallationPipeline and shared execution contracts
+            extraction.rs     Local extraction and installation finalization
+            streaming.rs      Overlapping downloads and ordered patch execution
             patch.rs          Apply a patch, persist its checkpoint, then release packages
         infrastructure/
           transfer/           Resumable HTTP package downloads
@@ -134,7 +136,7 @@ crates/
             storage.rs        Installation-relative paths and staging preparation
             lock.rs           Exclusive installation mutation lock
             cache.rs          Package verification and release
-            records.rs        Pinned-manifest resumption and installed-build persistence
+            records.rs        One replacement policy for manifests and installed-build persistence
             patch_workspace.rs  Active patch staging and preserved original sources
             replacement.rs    File replacement with rollback on rename failure
       error.rs                Public Error, ErrorKind classification, and Result alias
@@ -152,8 +154,12 @@ crates/
           progress/           Shared display with separate download/extraction renderers
       self_update/            CLI executable update context
         domain/               Release comparison and ownership/path rules
+          artifact.rs         Select the host archive format and checksum pair
         application/          Release checks, executable update workflow, events and outcomes
         infrastructure/       Release HTTP, archives, ownership detection, replacement
+          release.rs          Discover published launcher releases
+          artifact.rs         Download, verify, and extract the selected artifact
+          http.rs             Shared HTTPS, redirect, and bounded-transfer policy
         presentation/         Command handlers, notices, update instructions, event rendering
       terminal/               Shared command styling, byte sizes, spinner/styles
     docs/assets/              CLI demonstration assets

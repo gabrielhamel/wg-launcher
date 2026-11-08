@@ -66,7 +66,7 @@ fn pending_update_preserves_directory_and_selection_and_changes_installed_versio
     let before_current = server.requests();
     let state = fs::read(&state_path).unwrap();
     let output = success(sandbox.run(&sandbox.path, &["update", "--path", game.to_str().unwrap()]));
-    assert!(output.contains("Already up to date (2.0)"));
+    assert!(output.contains("Already at pinned target (2.0)"));
     assert_eq!(fs::read(&state_path).unwrap(), state);
     assert_eq!(server.requests(), before_current);
 }

@@ -21,20 +21,6 @@ pub(crate) async fn load_cache_manifest(cache: &Path) -> Result<Option<PinnedMan
     }
 }
 
-pub(crate) async fn save_cache_manifest(manifest: &PinnedManifest, cache: &Path) -> Result<()> {
-    tokio::fs::create_dir_all(cache).await?;
-    let mut bytes = serde_json::to_vec_pretty(manifest)?;
-    bytes.push(b'\n');
-    let target = cache.join(DOWNLOAD_MANIFEST_FILE);
-    let temporary = cache.join(format!("{DOWNLOAD_MANIFEST_FILE}.part"));
-    tokio::fs::write(&temporary, bytes).await?;
-    if cfg!(windows) && target.exists() {
-        tokio::fs::remove_file(&target).await?;
-    }
-    tokio::fs::rename(temporary, target).await?;
-    Ok(())
-}
-
 pub(crate) fn save_installed_build(
     manifest: &PinnedManifest,
     installed_state: &Path,

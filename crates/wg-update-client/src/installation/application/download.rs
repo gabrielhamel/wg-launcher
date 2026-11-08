@@ -2,7 +2,7 @@ use super::plan::build_plan;
 use super::{BuildSelection, InstallPlan, resolution::resolve_installation};
 use crate::installation::domain::selection::validate_cached_request;
 use crate::installation::infrastructure::filesystem::records::{
-    load_cache_manifest, save_cache_manifest,
+    load_cache_manifest, save_manifest,
 };
 use crate::{
     Result,
@@ -109,7 +109,7 @@ where
     }
     let plan = build_plan(&manifest, root, &assets)?;
     observer(DownloadAssetsEvent::Planned(Box::new(plan.clone())));
-    save_cache_manifest(&manifest, &plan.cache).await?;
+    save_manifest(&manifest, &storage)?;
     let report = AssetDownloader::new()?
         .download_with_observer(assets, &plan.cache, options.download, move |event| {
             observer(DownloadAssetsEvent::Progress(event));

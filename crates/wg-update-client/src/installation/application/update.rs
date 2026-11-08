@@ -1,4 +1,4 @@
-use super::status::{StatusReport, build_status, load_installed_build};
+use super::status::{StatusReport, UpdateTargetSource, build_status, load_installed_build};
 use super::{InstallEvent, InstallOutcome, install::install_resolved};
 use crate::catalog::WgusClient;
 use crate::installation::DownloadOptions;
@@ -61,25 +61,29 @@ where
     let path = std::path::absolute(options.path)?;
     let storage = installation_storage(&path)?;
     let installed = load_installed_build(&path).await?;
-    let mut manifest = if let Some(pending) = load_cache_manifest(&storage.cache).await? {
-        validate_cached_selection(&pending, &installed.selection()?)?;
-        pending
-    } else {
-        crate::installation::PinnedManifest::from(
-            WgusClient::new()?
-                .release_from_versions(
-                    &installed.product,
-                    &installed.client_type,
-                    Some(&installed.language),
-                    &installed.component_versions,
-                )
-                .await?,
-        )
-    };
+    let (mut manifest, target_source) =
+        if let Some(pending) = load_cache_manifest(&storage.cache).await? {
+            validate_cached_selection(&pending, &installed.selection()?)?;
+            (pending, UpdateTargetSource::PinnedManifest)
+        } else {
+            (
+                crate::installation::PinnedManifest::from(
+                    WgusClient::new()?
+                        .release_from_versions(
+                            &installed.product,
+                            &installed.client_type,
+                            Some(&installed.language),
+                            &installed.component_versions,
+                        )
+                        .await?,
+                ),
+                UpdateTargetSource::LiveCatalog,
+            )
+        };
     // A package-only download may have pinned a full installation chain. Start
     // that chain at the installed versions, retaining any completed checkpoints.
-    manifest.include_installed_versions(&installed);
-    let status = build_status(path, installed, &manifest)?;
+    manifest.seed_missing_component_versions(&installed);
+    let status = build_status(path, installed, &manifest, target_source)?;
     if !status.update_available {
         return Ok(UpdateOutcome {
             status,

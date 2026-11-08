@@ -11,8 +11,8 @@ use crate::terminal::{DiscoveryProgress, human_bytes};
 use std::{path::PathBuf, sync::Arc};
 use wg_update_client::{
     DownloadAssetsOptions, DownloadOptions, ExtractOptions, InstallOptions, StatusOptions,
-    UpdateOptions, download_with_observer, extract_with_observer, install_with_observer, status,
-    update_with_observer,
+    UpdateOptions, UpdateTargetSource, download_with_observer, extract_with_observer,
+    install_with_observer, status, update_with_observer,
 };
 
 pub(crate) async fn run_download(args: DownloadArgs) -> Result<(), Box<dyn std::error::Error>> {
@@ -128,7 +128,15 @@ pub(crate) async fn run_update(args: UpdateArgs) -> Result<(), Box<dyn std::erro
                 Ok(())
             }
             None => {
-                println!("Already up to date ({})", outcome.status.installed.version);
+                match outcome.status.target.source {
+                    UpdateTargetSource::LiveCatalog => {
+                        println!("Already up to date ({})", outcome.status.installed.version)
+                    }
+                    UpdateTargetSource::PinnedManifest => println!(
+                        "Already at pinned target ({})",
+                        outcome.status.target.version
+                    ),
+                }
                 Ok(())
             }
         },

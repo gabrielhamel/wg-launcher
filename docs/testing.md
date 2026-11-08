@@ -35,6 +35,11 @@ adding failure scenarios.
 The CLI end-to-end scenarios exercise complete workflows using local fixtures.
 Runnable library examples are checked for compilation separately.
 
+Manifest replacement coverage also obstructs the backup destination during a repeated
+package-only download, checks that the pinned manifest survives the failed write,
+and retries successfully after removing the obstruction. Pending-update coverage
+distinguishes an already-installed pinned target from a live up-to-date result.
+
 ```console
 cargo test -p wg-launcher-e2e --locked
 ```

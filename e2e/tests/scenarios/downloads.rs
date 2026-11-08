@@ -38,6 +38,22 @@ fn staged_download_reuses_cache_and_extracts_offline_from_current_directory() {
         before_retry,
         "pinned discovery and complete volumes must be reused"
     );
+    // Both download-only and extraction writes use the same replacement policy.
+    // Obstruct the backup rename to model a filesystem failure before replacement.
+    let cache = game.join(".wg-launcher/download");
+    let manifest_path = cache.join("manifest.json");
+    let pinned = fs::read(&manifest_path).unwrap();
+    let backup = cache.join("manifest.json.backup");
+    fs::create_dir(&backup).unwrap();
+    fs::write(backup.join("keep"), b"obstruction").unwrap();
+    failure(sandbox.run(&sandbox.path, &args), "I/O error:");
+    assert_eq!(fs::read(&manifest_path).unwrap(), pinned);
+    assert_eq!(server.requests(), before_retry);
+    fs::remove_dir_all(&backup).unwrap();
+    success(sandbox.run(&sandbox.path, &args));
+    assert_eq!(fs::read(&manifest_path).unwrap(), pinned);
+    assert!(!backup.exists());
+    assert!(!cache.join("manifest.json.part").exists());
     fs::remove_file(config).unwrap();
     drop(server);
 

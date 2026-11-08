@@ -15,6 +15,6 @@ pub use installation::{
     DownloadOptions, DownloadReport, ExtractEvent, ExtractOptions, ExtractOutcome, ExtractionEvent,
     ExtractionReport, InstallEvent, InstallOptions, InstallOutcome, InstallPlan, InstallationEvent,
     InstallationReport, PackageSummary, StatusOptions, StatusReport, UpdateOptions, UpdateOutcome,
-    download, download_with_observer, extract, extract_with_observer, install,
-    install_with_observer, status, update, update_with_observer,
+    UpdateTarget, UpdateTargetSource, download, download_with_observer, extract,
+    extract_with_observer, install, install_with_observer, status, update, update_with_observer,
 };

@@ -1,3 +1,4 @@
+pub(super) mod artifact;
 pub(super) mod ownership;
 
 use super::CURRENT;

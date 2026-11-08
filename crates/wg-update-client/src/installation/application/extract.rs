@@ -1,6 +1,6 @@
 use super::{InstallPlan, plan::build_plan};
 use crate::installation::infrastructure::filesystem::records::load_cache_manifest;
-use crate::installation::{ExtractionEvent, ExtractionReport, PackageExtractor};
+use crate::installation::{ExtractionEvent, ExtractionReport, InstallationPipeline};
 use crate::{Result, installation::infrastructure::filesystem::installation_storage};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -75,7 +75,7 @@ where
     let assets = manifest.installation_assets()?;
     let plan = build_plan(&manifest, root, &assets)?;
     observer(ExtractEvent::Planned(Box::new(plan.clone())));
-    let report = PackageExtractor::new()
+    let report = InstallationPipeline::new()
         .extract_with_observer(manifest, &plan.root, move |event| {
             observer(ExtractEvent::Progress(event));
         })

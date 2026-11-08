@@ -1,8 +1,8 @@
 //! Launcher updates are independent of game workflows and terminal presentation.
 
 use super::Result;
-use super::domain::Release;
-use super::infrastructure::{distribution, executable, release};
+use super::domain::{Release, artifact::ReleaseArtifact};
+use super::infrastructure::{artifact, distribution, executable, release};
 use semver::Version;
 
 /// A step in checking and replacing the launcher executable.
@@ -59,7 +59,8 @@ pub(crate) async fn run(observer: &Observer<'_>) -> Result<SelfUpdateOutcome> {
         return Ok(SelfUpdateOutcome::Current(release.version));
     }
     let work = executable::staging_directory()?;
-    let binary = release.download(work.path(), observer).await?;
+    let artifact = ReleaseArtifact::for_host(&release)?;
+    let binary = artifact::download(&release, &artifact, work.path(), observer).await?;
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::VerifyingExecutable))?;
     executable::verify(&binary, &release.version).await?;
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::ReplacingExecutable))?;

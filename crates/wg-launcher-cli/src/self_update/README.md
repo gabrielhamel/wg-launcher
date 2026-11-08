@@ -13,6 +13,7 @@ game versions belong to [installation](../installation/README.md).
 | --- | --- |
 | Launcher | The tool used to discover, download, install, and update game content. |
 | Launcher release | A published version of that tool, separate from any game release. |
+| Release artifact | The launcher archive selected for the host platform, together with its published checksum file and archive format. |
 | Current version | The version of the launcher being used now. |
 | Latest version | The newest launcher release offered by the release source being checked. |
 | Update notice | A message explaining that a newer launcher is available and how to obtain it. |

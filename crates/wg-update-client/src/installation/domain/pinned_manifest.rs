@@ -36,7 +36,8 @@ impl PinnedManifest {
         planned_patches(&self.release, &self.base_versions)
     }
 
-    pub(crate) fn include_installed_versions(&mut self, installed: &InstalledBuild) {
+    /// Seed starting versions without overwriting completed patch checkpoints.
+    pub(crate) fn seed_missing_component_versions(&mut self, installed: &InstalledBuild) {
         for (part, version) in &installed.component_versions {
             self.base_versions
                 .entry(part.clone())

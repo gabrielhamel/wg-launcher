@@ -18,8 +18,8 @@ async fn main() -> wg_update_client::Result<()> {
 
     let current = status(StatusOptions { path: path.clone() }).await?;
     println!(
-        "Installed: {} / Latest: {}",
-        current.installed.version, current.latest_version
+        "Installed: {} / Target: {}",
+        current.installed.version, current.target.version
     );
 
     if current.update_available {

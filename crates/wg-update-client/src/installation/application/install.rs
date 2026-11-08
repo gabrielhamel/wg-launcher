@@ -2,7 +2,7 @@ use super::{BuildSelection, InstallPlan, plan::build_plan, resolution::resolve_i
 use crate::Result;
 use crate::catalog::WgusClient;
 use crate::installation::{
-    AssetDownloader, DownloadOptions, InstallationEvent, InstallationReport, PackageExtractor,
+    AssetDownloader, DownloadOptions, InstallationEvent, InstallationPipeline, InstallationReport,
 };
 use serde::Serialize;
 use std::path::PathBuf;
@@ -99,8 +99,8 @@ where
     let plan = build_plan(&manifest, root, &assets)?;
     observer(InstallEvent::Planned(Box::new(plan.clone())));
 
-    let extractor = PackageExtractor::new();
-    let report = extractor
+    let pipeline = InstallationPipeline::new();
+    let report = pipeline
         .download_and_extract_with_observer(
             AssetDownloader::new()?,
             manifest,
