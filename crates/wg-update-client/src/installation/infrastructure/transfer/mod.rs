@@ -1,20 +1,17 @@
+mod attempt;
 mod error;
+mod local;
 
 use self::error::{Result, TransferError as Error};
 use crate::catalog::Asset;
-use crate::installation::infrastructure::filesystem::paths::safe_relative_path;
 pub use error::TransferError;
 use futures_util::{StreamExt, stream};
-use reqwest::{Client, StatusCode, header};
+use reqwest::Client;
 use serde::Serialize;
 use std::{
     path::{Path, PathBuf},
     sync::Arc,
     time::Duration,
-};
-use tokio::{
-    fs,
-    io::{AsyncWriteExt, BufWriter},
 };
 
 /// HTTP volume transfer policy. Defaults to three concurrent files and five attempts.
@@ -172,11 +169,12 @@ impl AssetDownloader {
         let mut report = DownloadReport::default();
         for result in results {
             let outcome = result?;
-            if outcome.skipped {
-                report.skipped_files += 1;
-            } else {
-                report.downloaded_files += 1;
-                report.downloaded_bytes += outcome.bytes;
+            match outcome {
+                FileOutcome::Reused => report.skipped_files += 1,
+                FileOutcome::Downloaded { new_bytes } => {
+                    report.downloaded_files += 1;
+                    report.downloaded_bytes += new_bytes;
+                }
             }
         }
         Ok(report)
@@ -213,123 +211,10 @@ impl AssetDownloader {
             source: Box::new(last_error.expect("at least one download attempt")),
         })
     }
-
-    async fn download_once(
-        &self,
-        asset: &Asset,
-        output: &Path,
-        observer: Arc<dyn Fn(DownloadEvent) + Send + Sync>,
-    ) -> Result<FileOutcome> {
-        let relative = safe_relative_path(&asset.name)?;
-        let target = output.join(relative);
-        if let Ok(metadata) = fs::metadata(&target).await {
-            if metadata.len() == asset.size {
-                observer(DownloadEvent::Skipped {
-                    name: asset.name.clone(),
-                    size: asset.size,
-                });
-                return Ok(FileOutcome {
-                    skipped: true,
-                    bytes: 0,
-                });
-            }
-            fs::remove_file(&target).await?;
-        }
-        if let Some(parent) = target.parent() {
-            fs::create_dir_all(parent).await?;
-        }
-        let partial = target.with_extension(format!(
-            "{}.part",
-            target
-                .extension()
-                .and_then(|value| value.to_str())
-                .unwrap_or_default()
-        ));
-        let mut resumed_at = fs::metadata(&partial)
-            .await
-            .map(|meta| meta.len())
-            .unwrap_or(0);
-        if resumed_at > asset.size {
-            fs::remove_file(&partial).await?;
-            resumed_at = 0;
-        }
-        if resumed_at == asset.size {
-            fs::rename(&partial, &target).await?;
-            observer(DownloadEvent::Completed {
-                name: asset.name.clone(),
-                size: asset.size,
-            });
-            return Ok(FileOutcome {
-                skipped: false,
-                bytes: 0,
-            });
-        }
-
-        let mut request = self.http.get(asset.url.clone());
-        if resumed_at > 0 {
-            request = request.header(header::RANGE, format!("bytes={resumed_at}-"));
-        }
-        let response = request.send().await?.error_for_status()?;
-        let append = resumed_at > 0 && response.status() == StatusCode::PARTIAL_CONTENT;
-        if resumed_at > 0 && !append && response.status() != StatusCode::OK {
-            return Err(Error::ResumeRejected {
-                path: partial,
-                status: response.status().as_u16(),
-            });
-        }
-        if !append {
-            resumed_at = 0;
-        }
-
-        observer(DownloadEvent::Started {
-            name: asset.name.clone(),
-            size: asset.size,
-            resumed_at,
-        });
-        let file = fs::OpenOptions::new()
-            .create(true)
-            .write(true)
-            .append(append)
-            .truncate(!append)
-            .open(&partial)
-            .await?;
-        let mut writer = BufWriter::new(file);
-        let mut downloaded = resumed_at;
-        let mut body = response.bytes_stream();
-        while let Some(chunk) = body.next().await {
-            let chunk = chunk?;
-            writer.write_all(&chunk).await?;
-            downloaded += chunk.len() as u64;
-            observer(DownloadEvent::Progress {
-                name: asset.name.clone(),
-                downloaded,
-                size: asset.size,
-            });
-        }
-        writer.flush().await?;
-        drop(writer);
-
-        let actual = fs::metadata(&partial).await?.len();
-        if actual != asset.size {
-            return Err(Error::SizeMismatch {
-                path: partial,
-                expected: asset.size,
-                actual,
-            });
-        }
-        fs::rename(&partial, &target).await?;
-        observer(DownloadEvent::Completed {
-            name: asset.name.clone(),
-            size: asset.size,
-        });
-        Ok(FileOutcome {
-            skipped: false,
-            bytes: asset.size - resumed_at,
-        })
-    }
 }
 
-struct FileOutcome {
-    skipped: bool,
-    bytes: u64,
+/// A successful volume attempt, distinguishing reuse from bytes newly retained.
+enum FileOutcome {
+    Reused,
+    Downloaded { new_bytes: u64 },
 }

@@ -40,16 +40,17 @@ fn validate_cache(
     language: Option<&str>,
 ) -> Result<()> {
     let selected_region = &product.region;
-    let language_matches =
-        language.is_none_or(|language| language.eq_ignore_ascii_case(&manifest.release.language));
+    let language_matches = language
+        .is_none_or(|language| language.eq_ignore_ascii_case(&manifest.release.identity.language));
     let client_type_matches = client_type.is_none_or(|client_type| {
         manifest
             .release
+            .identity
             .client_type
             .eq_ignore_ascii_case(client_type)
     });
     if manifest.release.product == *product
-        && manifest.release.region == *selected_region
+        && manifest.release.identity.region == *selected_region
         && client_type_matches
         && language_matches
     {
@@ -58,9 +59,9 @@ fn validate_cache(
     Err(Error::CachedSelectionMismatch {
         cached: format!(
             "{}/{}/{}{}",
-            manifest.release.region,
-            manifest.release.client_type,
-            manifest.release.language,
+            manifest.release.identity.region,
+            manifest.release.identity.client_type,
+            manifest.release.identity.language,
             product_description(&manifest.release.product)
         ),
         requested: format!(

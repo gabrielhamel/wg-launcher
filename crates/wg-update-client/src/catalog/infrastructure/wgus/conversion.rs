@@ -117,17 +117,19 @@ pub(super) fn release_from_wire(
         .unwrap_or_else(|| "unknown".to_owned());
 
     Ok(ResolvedRelease {
-        region: product.region.clone(),
+        identity: crate::catalog::BuildIdentity {
+            region: product.region.clone(),
+            channel: product.channel.clone(),
+            game_id: metadata.game_id.clone(),
+            platform: "windows".to_owned(),
+            architecture: selected.architecture.clone(),
+            client_type: selected.id.clone(),
+            language,
+            metadata_version: metadata.metadata_version,
+            version,
+        },
         product: product.clone(),
-        channel: product.channel.to_owned(),
         host,
-        game_id: metadata.game_id.clone(),
-        platform: "windows".to_owned(),
-        architecture: selected.architecture.clone(),
-        client_type: selected.id.clone(),
-        language,
-        metadata_version: metadata.metadata_version,
-        version,
         available_languages: metadata.supported_languages,
         publisher_ids: metadata.publisher_ids,
         parts: selected.parts.iter().map(|part| part.id.clone()).collect(),

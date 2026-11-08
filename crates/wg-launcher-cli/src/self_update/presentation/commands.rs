@@ -5,7 +5,7 @@ use crate::self_update::{CURRENT, Result, application, domain::Release};
 use application::SelfUpdateOutcome;
 
 pub(crate) fn notify_if_newer(release: Option<&Release>) {
-    if let Some(release) = release.filter(|release| release.is_newer()) {
+    if let Some(release) = release.filter(|release| application::is_newer(release)) {
         output::print_cli_update(
             CURRENT,
             &release.version.to_string(),
@@ -16,7 +16,7 @@ pub(crate) fn notify_if_newer(release: Option<&Release>) {
 
 pub(crate) async fn print_version() {
     let latest = application::check().await;
-    let update_available = latest.as_ref().is_some_and(Release::is_newer);
+    let update_available = latest.as_ref().is_some_and(application::is_newer);
     let version = latest.as_ref().map(|release| release.version.to_string());
     output::print_cli_version(
         CURRENT,

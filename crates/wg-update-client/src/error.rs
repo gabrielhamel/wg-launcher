@@ -1,7 +1,7 @@
 use crate::catalog::{CatalogError, ReleaseError, WgusError};
 use crate::installation::{
-    DownloadError, ExtractError, InstallationError, PackageError, PipelineError, StatusError,
-    StorageError, TransferError,
+    DownloadError, ExtractError, InstallationError, InstalledBuildError, PackageError,
+    PipelineError, StorageError, TransferError,
 };
 
 /// Actionable category of a workflow failure, independent of internal implementation layers.
@@ -126,7 +126,7 @@ workflow_errors!(
     PackageError => package_kind,
     StorageError => storage_kind,
     ExtractError => |_| ErrorKind::DownloadNotFound,
-    StatusError => |_| ErrorKind::InstallationNotFound,
+    InstalledBuildError => |_| ErrorKind::InstallationNotFound,
     PipelineError => |_| ErrorKind::Internal,
 );
 

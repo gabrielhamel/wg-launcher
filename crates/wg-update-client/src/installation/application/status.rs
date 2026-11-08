@@ -1,6 +1,8 @@
+use super::comparison::build_status;
+use super::installed::load_installed_build;
 use crate::Result;
 use crate::catalog::{BuildInfo, resolve_update_release};
-use crate::installation::{InstalledBuild, PinnedManifest};
+use crate::installation::PinnedManifest;
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -67,59 +69,12 @@ pub async fn status(options: StatusOptions) -> Result<StatusReport> {
     let installed = load_installed_build(&path).await?;
     let latest = resolve_update_release(
         &installed.product,
-        &installed.client_type,
-        &installed.language,
+        &installed.identity.client_type,
+        &installed.identity.language,
         &installed.component_versions,
     )
     .await?;
     let mut latest = PinnedManifest::from(latest);
     latest.seed_missing_component_versions(&installed);
     build_status(path, installed, &latest, UpdateTargetSource::LiveCatalog)
-}
-
-pub(super) fn build_status(
-    path: PathBuf,
-    installed: InstalledBuild,
-    manifest: &PinnedManifest,
-    source: UpdateTargetSource,
-) -> Result<StatusReport> {
-    let update_available = installed.differs_from(manifest);
-    let update_download_bytes = if update_available {
-        manifest
-            .installation_assets()?
-            .iter()
-            .map(|asset| asset.size)
-            .sum()
-    } else {
-        0
-    };
-    Ok(StatusReport {
-        path,
-        installed: installed.build_info(),
-        target: UpdateTarget {
-            version: manifest.release.version.clone(),
-            source,
-        },
-        update_available,
-        update_download_bytes,
-    })
-}
-
-/// Missing installed identity for status and update workflows.
-#[derive(Debug, thiserror::Error)]
-pub enum StatusError {
-    /// The installation root had no installed-build record.
-    #[error("no wg-launcher installation record was found for {0:?}")]
-    InstallationNotFound(std::path::PathBuf),
-}
-
-pub(super) async fn load_installed_build(
-    root: &std::path::Path,
-) -> crate::Result<crate::installation::InstalledBuild> {
-    let installed =
-        crate::installation::infrastructure::filesystem::records::load_installed_build(root)
-            .await?
-            .ok_or_else(|| StatusError::InstallationNotFound(root.to_path_buf()))?;
-    installed.validate_consistency()?;
-    Ok(installed)
 }

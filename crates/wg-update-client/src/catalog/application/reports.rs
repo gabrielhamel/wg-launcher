@@ -29,17 +29,24 @@ pub struct BuildInfo {
 
 impl BuildInfo {
     pub(crate) fn from_release(release: &ResolvedRelease) -> Self {
+        Self::from_identity(&release.product, &release.identity)
+    }
+
+    pub(crate) fn from_identity(
+        product: &crate::catalog::Product,
+        identity: &crate::catalog::BuildIdentity,
+    ) -> Self {
         Self {
-            game: release.product.game(),
-            name: release.product.name.clone(),
-            game_id: release.game_id.clone(),
-            region: release.region.clone(),
-            channel: release.channel.clone(),
-            version: release.version.clone(),
-            client_type: release.client_type.clone(),
-            language: release.language.clone(),
-            platform: release.platform.clone(),
-            architecture: release.architecture.clone(),
+            game: product.game(),
+            name: product.name.clone(),
+            game_id: identity.game_id.clone(),
+            region: identity.region.clone(),
+            channel: identity.channel.clone(),
+            version: identity.version.clone(),
+            client_type: identity.client_type.clone(),
+            language: identity.language.clone(),
+            platform: identity.platform.clone(),
+            architecture: identity.architecture.clone(),
         }
     }
 }

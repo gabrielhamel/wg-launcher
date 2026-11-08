@@ -135,6 +135,32 @@ fn inconsistent_saved_identity_fails_before_live_or_pinned_update_discovery() {
     success(sandbox.run(&sandbox.path, &install));
     let state_path = game.join(".wg-launcher/state.json");
     let original = fs::read(&state_path).unwrap();
+    // Identity refactoring must not turn required persisted fields into defaults.
+    for field in [
+        "game_id",
+        "region",
+        "channel",
+        "version",
+        "client_type",
+        "language",
+        "platform",
+        "metadata_version",
+    ] {
+        let mut state: serde_json::Value = serde_json::from_slice(&original).unwrap();
+        state.as_object_mut().unwrap().remove(field);
+        let saved = serde_json::to_vec_pretty(&state).unwrap();
+        fs::write(&state_path, &saved).unwrap();
+        let before = server.requests();
+        for command in ["status", "update"] {
+            failure(
+                sandbox.run(&game, &[command]),
+                &format!("missing field `{field}`"),
+            );
+            assert_eq!(server.requests(), before);
+            assert_eq!(fs::read(&state_path).unwrap(), saved);
+        }
+    }
+    fs::write(&state_path, &original).unwrap();
     // Validate both live resolution and the path where an existing pin takes precedence.
     for pinned in [false, true] {
         if pinned {

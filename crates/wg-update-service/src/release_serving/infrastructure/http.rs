@@ -243,20 +243,3 @@ fn write_empty(stream: &mut TcpStream, status: &str, headers: &[&str]) -> io::Re
 pub(crate) fn bind(address: SocketAddr) -> io::Result<TcpListener> {
     TcpListener::bind(address)
 }
-
-/// Map supported package routes to HTTP resources after safe filesystem lookup.
-pub(crate) fn package_resource(packages: &Path, request_path: &str) -> Resource {
-    let relative = request_path.trim_start_matches('/');
-    let relative = relative.strip_prefix("packages/").unwrap_or(relative);
-    let Some(file) = super::filesystem::resolve_package(packages, Path::new(relative)) else {
-        return Resource::NotFound;
-    };
-    let content_type = if relative.ends_with(".xml") {
-        "application/xml"
-    } else if relative.ends_with(".json") {
-        "application/json"
-    } else {
-        "application/octet-stream"
-    };
-    Resource::File(file, content_type)
-}

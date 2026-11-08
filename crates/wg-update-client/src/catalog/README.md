@@ -20,6 +20,7 @@ selection to prepare the game on someone's machine.
 | Channel | A stream of releases, such as the regular game or a public test. |
 | Resolved release | The selected published build, its component targets, and the packages the publisher offers. It contains no local installation progress. |
 | Build selection request | A discovery request that can leave edition or language to publisher defaults and optionally supply a replacement catalog. |
+| Build identity | The published application, region, channel, version, edition, language, and payload target describing a build. It stays distinct from the configured product endpoint. |
 | Build | A particular published version of a game for a chosen edition and language. |
 | Client type | The game's edition or quality variant, such as SD or HD. |
 | Language | The language chosen for the game content. |
@@ -38,3 +39,8 @@ The catalog application resolves update releases from a product, client type,
 language, and known component versions. Installation owns local progress and
 pending-manifest precedence. WGUS request encoding and redirect targets remain
 inside the protocol adapter; redirects preserve the configured product identity.
+
+Build identity is shared internally by resolved releases and installed records.
+Consumer reports project that identity without exposing persistence models. Patch
+chain selection owns version traversal and full-package fallback; package planning
+resolves the transport volumes for those selected steps.

@@ -8,73 +8,38 @@ use serde::{Deserialize, Serialize};
 /// name. Component versions select subsequent update chains.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct InstalledBuild {
-    /// Publisher application identifier.
-    pub game_id: String,
-    /// Publisher catalog region.
-    pub region: String,
+    #[serde(flatten)]
+    pub(crate) identity: crate::catalog::BuildIdentity,
     /// Complete selected product, saved for every built-in or custom installation.
     /// This is one product, never the full input catalog.
     pub product: crate::catalog::Product,
-    /// Publisher release channel.
-    pub channel: String,
-    /// Publisher game build version.
-    pub version: String,
-    /// Publisher client variant identifier, such as `sd` or `hd`.
-    pub client_type: String,
-    /// Selected normalized language identifier.
-    pub language: String,
-    /// Game payload platform, independent of the launcher host OS.
-    pub platform: String,
-    /// Game payload architecture, or `None` when not published.
-    pub architecture: Option<String>,
     /// Successfully installed version of each selected component.
     pub component_versions: std::collections::BTreeMap<String, String>,
-    /// Publisher metadata revision, distinct from the game version.
-    pub metadata_version: String,
 }
 
 impl From<&PinnedManifest> for InstalledBuild {
     fn from(manifest: &PinnedManifest) -> Self {
         Self {
-            game_id: manifest.release.game_id.clone(),
-            region: manifest.release.region.clone(),
+            identity: manifest.release.identity.clone(),
             product: manifest.release.product.clone(),
-            channel: manifest.release.channel.clone(),
-            version: manifest.release.version.clone(),
-            client_type: manifest.release.client_type.clone(),
-            language: manifest.release.language.clone(),
-            platform: manifest.release.platform.clone(),
-            architecture: manifest.release.architecture.clone(),
-            metadata_version: manifest.release.metadata_version.clone(),
             component_versions: manifest.release.component_versions.clone(),
         }
     }
 }
 
 impl InstalledBuild {
-    pub(crate) fn build_info(&self) -> crate::catalog::BuildInfo {
-        crate::catalog::BuildInfo {
-            game: self.product.game(),
-            name: self.product.name.clone(),
-            game_id: self.game_id.clone(),
-            region: self.region.clone(),
-            channel: self.channel.clone(),
-            version: self.version.clone(),
-            client_type: self.client_type.clone(),
-            language: self.language.clone(),
-            platform: self.platform.clone(),
-            architecture: self.architecture.clone(),
-        }
-    }
-
     /// Check the saved identity before using it for discovery or a pending update.
     pub(crate) fn validate_consistency(&self) -> super::error::Result<()> {
         self.product
             .validate_identity()
             .map_err(super::InstallationError::InvalidInstalledProduct)?;
-        if !self.product.region.eq_ignore_ascii_case(&self.region) {
+        if !self
+            .product
+            .region
+            .eq_ignore_ascii_case(&self.identity.region)
+        {
             return Err(super::InstallationError::InstalledRegionMismatch {
-                recorded: self.region.clone(),
+                recorded: self.identity.region.clone(),
                 product: self.product.region.clone(),
             });
         }
@@ -84,13 +49,35 @@ impl InstalledBuild {
     pub(crate) fn selection(&self) -> super::selection::ResolvedSelection<'_> {
         super::selection::ResolvedSelection {
             product: &self.product,
-            client_type: &self.client_type,
-            language: &self.language,
+            client_type: &self.identity.client_type,
+            language: &self.identity.language,
         }
     }
 
-    pub(crate) fn differs_from(&self, manifest: &PinnedManifest) -> bool {
-        self.version != manifest.release.version
-            || self.component_versions != manifest.release.component_versions
+    pub(crate) fn compare_with(
+        &self,
+        manifest: &PinnedManifest,
+    ) -> std::result::Result<BuildComparison, crate::catalog::ReleaseError> {
+        let update_available = self.identity.version != manifest.release.identity.version
+            || self.component_versions != manifest.release.component_versions;
+        let download_bytes = if update_available {
+            manifest
+                .installation_assets()?
+                .iter()
+                .map(|asset| asset.size)
+                .sum()
+        } else {
+            0
+        };
+        Ok(BuildComparison {
+            update_available,
+            download_bytes,
+        })
     }
+}
+
+/// Whether the target differs and the package bytes needed to reach it.
+pub(crate) struct BuildComparison {
+    pub(crate) update_available: bool,
+    pub(crate) download_bytes: u64,
 }

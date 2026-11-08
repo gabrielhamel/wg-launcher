@@ -7,29 +7,13 @@ use std::collections::BTreeMap;
 /// Fields describe the payload rather than the OS running this library.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ResolvedRelease {
-    /// Publisher catalog region.
-    pub region: String,
+    #[serde(flatten)]
+    pub(crate) identity: crate::catalog::BuildIdentity,
     /// Complete selected product, saved for every built-in or custom installation.
     /// This is one product, never the full input catalog.
     pub product: super::super::Product,
-    /// Publisher release channel.
-    pub channel: String,
     /// Resolved WGUS-compatible hostname after protocol redirects.
     pub host: String,
-    /// Publisher application identifier.
-    pub game_id: String,
-    /// Game payload platform, independent of the launcher host OS.
-    pub platform: String,
-    /// Game payload architecture, or `None` when not published.
-    pub architecture: Option<String>,
-    /// Publisher client variant identifier, such as `sd` or `hd`.
-    pub client_type: String,
-    /// Selected normalized language identifier.
-    pub language: String,
-    /// Publisher metadata revision, distinct from the game version.
-    pub metadata_version: String,
-    /// Publisher game build version.
-    pub version: String,
     /// Normalized languages advertised for this build.
     pub available_languages: Vec<String>,
     /// Publisher identifiers advertised in metadata.

@@ -1,7 +1,11 @@
 //! Launcher updates are independent of game workflows and terminal presentation.
 
 use super::Result;
-use super::domain::{Release, artifact::ReleaseArtifact, ownership::PackageManager};
+use super::domain::{
+    Release,
+    artifact::{HostTarget, ReleaseArtifact},
+    ownership::PackageManager,
+};
 use super::infrastructure::{artifact, distribution, executable, release};
 use semver::Version;
 
@@ -55,15 +59,25 @@ pub(crate) async fn run(observer: &Observer<'_>) -> Result<SelfUpdateOutcome> {
     let release = release.map_err(|error| {
         format!("Cannot check the latest CLI release: {error}. Check your connection or release mirror and try again.")
     })?;
-    if !release.is_newer() {
+    if !is_newer(&release) {
         return Ok(SelfUpdateOutcome::Current(release.version));
     }
     let work = executable::staging_directory()?;
-    let artifact = ReleaseArtifact::for_host(&release)?;
+    let host = HostTarget {
+        os: std::env::consts::OS,
+        architecture: std::env::consts::ARCH,
+        environment: if cfg!(target_env = "gnu") { "gnu" } else { "" },
+    };
+    let artifact = ReleaseArtifact::for_host(&release, &host)?;
     let binary = artifact::download(&release, &artifact, work.path(), observer).await?;
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::VerifyingExecutable))?;
     executable::verify(&binary, &release.version).await?;
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::ReplacingExecutable))?;
     executable::replace(&binary)?;
     Ok(SelfUpdateOutcome::Updated(release.version))
+}
+
+/// Compare a release with the running executable's compiled version.
+pub(crate) fn is_newer(release: &Release) -> bool {
+    Version::parse(super::CURRENT).is_ok_and(|current| release.is_newer_than(&current))
 }

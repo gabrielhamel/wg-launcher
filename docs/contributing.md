@@ -110,7 +110,9 @@ crates/
       catalog/                Published products and release discovery context
         mod.rs                Context entry points and exported models
         domain/               Built-ins, products, selections, release/patch rules
-          release/patch_chain.rs  Ordered patches with their resolved packages
+          build_identity.rs   Shared published identity, flattened in saved records
+          release/patch_chain.rs  Version traversal and full-package fallback
+          release/package_plan.rs  Resolve selected patch steps to transport packages
         application/          list, inspect, and live build/update release resolution
           resolution.rs       Catalog entry points for discovery requests and known component versions
           reports.rs          Consumer build identity and inspection/patch summaries
@@ -124,8 +126,10 @@ crates/
         mod.rs                Context entry points and exported contracts
         domain/               Installed identity, pinned manifests, compatibility, checkpoints
           component_progress.rs  Starting versions and saved patch completions
-          installed_build.rs  Saved identity, consistency validation, and selection projection
+          installed_build.rs  Saved identity, consistency, selection, and build comparison
         application/          download, extract, install, status, update
+          installed.rs        Shared validated installed-record loading
+          comparison.rs       Project domain build comparison into status reports
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
           pipeline/           InstallationPipeline and shared execution contracts
@@ -134,6 +138,8 @@ crates/
             patch.rs          Apply a patch, persist its checkpoint, then release packages
         infrastructure/
           transfer/           Resumable HTTP package downloads
+            local.rs          Cache reuse, partial-file preparation, and promotion
+            attempt.rs        One HTTP attempt and structured transfer outcomes
           packages/           Transport archives, delta application, throttled output progress
             contents.rs       Classify replacement files and typed deltas before execution
           filesystem/         Installation filesystem adapters
@@ -158,7 +164,7 @@ crates/
           progress/           Shared display with separate download/extraction renderers
       self_update/            CLI executable update context
         domain/               Release comparison and ownership/path rules
-          artifact.rs         Select the host archive format and checksum pair
+          artifact.rs         Select archive/checksum pair from an explicit host target
           ownership.rs        Typed package-manager ownership and path rules
         application/          Release checks, executable update workflow, events and outcomes
         infrastructure/       Release HTTP, archives, ownership detection, replacement
@@ -176,8 +182,9 @@ crates/
       release_serving/        File-backed release serving context
         domain/               Release URL/prefix rules and template rendering
         application/          FileService startup, routing, and lifetime coordination
+          routing.rs          Select release metadata, patch-chain, and package responses
         infrastructure/       HTTP/ranges, filesystem mapping, access logs
-          http.rs             Request parsing, package routes, content types, streamed responses
+          http.rs             Request parsing, ranges, headers, and streamed responses
           filesystem.rs       Release loading and safe relative package-file lookup
         presentation/         Service CLI arguments and startup output
 e2e/                          Independent black-box system test package
@@ -200,8 +207,9 @@ including WGUS discovery and patch planning. Its `ResolvedRelease` describes
 the selected build and published packages without local progress. `installation` owns the local
 installation lifecycle, including transfer, package application, storage, and
 recovery. Its `PinnedManifest` combines a resolved release with component
-checkpoints; only installation advances those checkpoints. The persistence
-adapter retains the existing flat JSON fields through Serde flattening.
+checkpoints; only installation advances those checkpoints. The shared internal `BuildIdentity` holds published build fields separately from
+the configured product. The persistence adapter retains the existing flat JSON
+fields through Serde flattening.
 
 Patch sources distinguish full content from changes to a specific version, while
 retaining the saved `version_from` string or null representation. Planned patches

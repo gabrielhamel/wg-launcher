@@ -1,7 +1,6 @@
 pub(super) mod artifact;
 pub(super) mod ownership;
 
-use super::CURRENT;
 use reqwest::Url;
 use semver::Version;
 
@@ -12,8 +11,8 @@ pub(crate) struct Release {
 }
 
 impl Release {
-    pub(crate) fn is_newer(&self) -> bool {
-        Version::parse(CURRENT).is_ok_and(|current| self.version.cmp_precedence(&current).is_gt())
+    pub(crate) fn is_newer_than(&self, current: &Version) -> bool {
+        self.version.cmp_precedence(current).is_gt()
     }
 }
 

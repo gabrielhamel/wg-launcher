@@ -25,6 +25,8 @@ release on someone's machine belongs to the launcher.
 | Resumed download | A download that asks for the remaining portion of a package instead of starting over. |
 | Access log | A record of requests received by the service, useful for understanding what launchers asked for. |
 
-The HTTP adapter interprets package routes and assigns response content types.
+The application release routes select metadata, patch chains, and package responses,
+including their content types. The HTTP adapter parses requests and handles ranges,
+headers, and streaming.
 The filesystem adapter resolves relative package paths and enforces containment
 inside the package folder, without constructing HTTP responses.

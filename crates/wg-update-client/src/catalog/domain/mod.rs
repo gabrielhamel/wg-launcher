@@ -1,3 +1,5 @@
+mod build_identity;
+pub(crate) use build_identity::BuildIdentity;
 mod build_selection;
 mod builtin;
 mod error;

@@ -25,4 +25,8 @@ game versions belong to [installation](../installation/README.md).
 | Managed installation | A launcher copy maintained by a package manager, such as Homebrew or APT. Updates go through that manager. |
 | Candidate | The downloaded launcher being checked before it can replace the current one. |
 | Verification | Checks that the downloaded launcher matches the published release and reports the expected version. |
+| Host target | Explicit operating system, processor architecture, and build environment used to select a compatible launcher archive. |
 | Host platform | The kind of computer running the launcher, which determines which launcher download is suitable. |
+
+The application supplies the current version and host target to domain rules.
+Release comparison and artifact selection do not discover those facts themselves.

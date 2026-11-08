@@ -262,6 +262,32 @@ pub fn assert_installed_in_region(game: &Path, release: Release, region: &str) {
     assert_eq!(fs::read(game.join("locale.txt")).unwrap(), release.locale());
     let state: serde_json::Value =
         serde_json::from_slice(&fs::read(game.join(".wg-launcher/state.json")).unwrap()).unwrap();
+    let fields = state
+        .as_object()
+        .unwrap()
+        .keys()
+        .map(String::as_str)
+        .collect::<std::collections::BTreeSet<_>>();
+    assert_eq!(
+        fields,
+        [
+            "architecture",
+            "channel",
+            "client_type",
+            "component_versions",
+            "game_id",
+            "language",
+            "metadata_version",
+            "platform",
+            "product",
+            "region",
+            "version",
+        ]
+        .into_iter()
+        .collect(),
+        "installed records retain their flat storage contract"
+    );
+    assert_eq!(state["metadata_version"], "1");
     assert_eq!(state["version"], release.version());
     assert_eq!(state["region"], region);
     assert_eq!(state["game_id"], "LOCAL.WOT");

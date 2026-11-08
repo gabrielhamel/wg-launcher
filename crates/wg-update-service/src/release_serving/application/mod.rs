@@ -1,7 +1,9 @@
-use super::domain::{ReleaseError, api_route, normalize_prefix, render_text, validate_public_url};
+mod routing;
+
+use super::domain::{ReleaseError, normalize_prefix, render_text, validate_public_url};
 use super::infrastructure::{
     access_log, filesystem,
-    http::{self, Request, Resource, ServerHandle},
+    http::{self, Request, ServerHandle},
 };
 use std::{io, net::SocketAddr, path::PathBuf, sync::Arc};
 
@@ -49,18 +51,11 @@ impl FileService {
         };
         let metadata = render_text(metadata, &public_url, METADATA_FILE)?;
         let patch_chain = render_text(patch_chain, &public_url, PATCH_CHAIN_FILE)?;
-        let metadata_route = api_route(&prefix, "metadata");
-        let patch_chain_route = api_route(&prefix, "patches_chain");
+        let routes = routing::ReleaseRoutes::new(&prefix, metadata, patch_chain, packages);
         let access_log = access_log::open(options.access_log)?;
         let handler = Arc::new(move |request: &Request| {
             access_log::record(&access_log, request);
-            if request.path == metadata_route {
-                return Resource::Bytes(metadata.clone(), "application/xml");
-            }
-            if request.path == patch_chain_route {
-                return Resource::Bytes(patch_chain.clone(), "application/xml");
-            }
-            http::package_resource(&packages, &request.path)
+            routes.resolve(request)
         });
         let handle = ServerHandle::start(listener, handler);
         Ok(Self {

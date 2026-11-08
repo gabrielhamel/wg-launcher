@@ -14,13 +14,20 @@ pub(crate) struct ReleaseArtifact {
     pub(crate) format: ArchiveFormat,
 }
 
+/// Host facts supplied by the application, rather than discovered by domain rules.
+pub(crate) struct HostTarget<'a> {
+    pub(crate) os: &'a str,
+    pub(crate) architecture: &'a str,
+    pub(crate) environment: &'a str,
+}
+
 impl ReleaseArtifact {
-    pub(crate) fn for_host(release: &Release) -> Result<Self> {
-        let (target, format) = match (std::env::consts::OS, std::env::consts::ARCH) {
+    pub(crate) fn for_host(release: &Release, host: &HostTarget<'_>) -> Result<Self> {
+        let (target, format) = match (host.os, host.architecture) {
             ("windows", "x86_64") => ("x86_64-pc-windows-msvc", ArchiveFormat::Zip),
             ("macos", "aarch64") => ("aarch64-apple-darwin", ArchiveFormat::TarGzip),
             ("macos", "x86_64") => ("x86_64-apple-darwin", ArchiveFormat::TarGzip),
-            ("linux", "x86_64") if cfg!(target_env = "gnu") => ("x86_64-unknown-linux-gnu", ArchiveFormat::TarGzip),
+            ("linux", "x86_64") if host.environment == "gnu" => ("x86_64-unknown-linux-gnu", ArchiveFormat::TarGzip),
             _ => return Err("Self-update not supported for this platform; install a compatible CLI build manually.".into()),
         };
         let extension = match format {

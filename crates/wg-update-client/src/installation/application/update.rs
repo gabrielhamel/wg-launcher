@@ -1,5 +1,6 @@
-use super::status::{StatusReport, UpdateTargetSource, build_status, load_installed_build};
+use super::status::{StatusReport, UpdateTargetSource};
 use super::{InstallEvent, InstallOutcome, install::install_resolved};
+use super::{comparison::build_status, installed::load_installed_build};
 use crate::catalog::resolve_update_release;
 use crate::installation::DownloadOptions;
 use crate::installation::domain::selection::validate_cached_selection;
@@ -70,8 +71,8 @@ where
                 crate::installation::PinnedManifest::from(
                     resolve_update_release(
                         &installed.product,
-                        &installed.client_type,
-                        &installed.language,
+                        &installed.identity.client_type,
+                        &installed.identity.language,
                         &installed.component_versions,
                     )
                     .await?,

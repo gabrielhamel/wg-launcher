@@ -230,3 +230,8 @@ The root workspace keeps the two launcher packages as defaults, so an unqualifie
 `cargo run` still selects the launcher. Name the service package explicitly with
 `cargo run -p wg-update-service`. Full workspace checks include the three
 published production packages and the unpublished E2E package.
+
+Installed-record assertions check the exact flat field set across successful
+installation and update scenarios. Saved-identity validation also removes required
+build fields from a CLI-produced record and checks that both status and update
+reject it before any discovery request, preserving the invalid record unchanged.
