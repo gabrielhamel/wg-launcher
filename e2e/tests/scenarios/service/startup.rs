@@ -1,7 +1,7 @@
 use crate::{
     fixture::Release,
     server::WgUpdateService,
-    support::{Sandbox, success},
+    support::{Sandbox, binary, failure, success},
 };
 use std::{collections::BTreeSet, sync::Barrier, thread};
 
@@ -55,4 +55,55 @@ fn parallel_services_own_distinct_ports_and_restart_on_the_same_address() {
                 .all(|service| service.requests().is_empty())
         );
     }
+}
+
+#[test]
+fn invalid_public_origins_report_the_cli_option_without_mislabeling_other_errors() {
+    let sandbox = Sandbox::new();
+    let resources = sandbox.fixture(Release::V1).service_resources("updates");
+    let server = WgUpdateService::start(resources.clone());
+    let config = sandbox.configuration(&server);
+    success(sandbox.run(
+        &sandbox.path,
+        &["list", "--product", config.to_str().unwrap()],
+    ));
+    let release = sandbox.path.join("release");
+    crate::server::write_release(&release, resources);
+    let service = binary("wg-update-service");
+    for origin in [
+        "not a URL",
+        "ftp://example.test",
+        "https://example.test/path",
+    ] {
+        failure(
+            sandbox.run_cli(
+                &service,
+                &sandbox.path,
+                &[
+                    "--input",
+                    release.to_str().unwrap(),
+                    "--listen",
+                    "127.0.0.1:0",
+                    "--public-url",
+                    origin,
+                ],
+                &[],
+            ),
+            "--public-url: public origin must be an absolute HTTP(S) origin",
+        );
+    }
+    let missing = sandbox.path.join("missing-release");
+    let output = sandbox.run_cli(
+        &service,
+        &sandbox.path,
+        &[
+            "--input",
+            missing.to_str().unwrap(),
+            "--listen",
+            "127.0.0.1:0",
+        ],
+        &[],
+    );
+    assert!(!String::from_utf8_lossy(&output.stderr).contains("--public-url"));
+    failure(output, "wg-update-service:");
 }

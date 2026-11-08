@@ -12,7 +12,7 @@ pub(super) fn extract_sync(
     options: ExtractionOptions,
     observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<ExtractionReport> {
-    let cache = &session.access.layout.cache;
+    let cache = &session.access.layout().cache;
     observer(ExtractionEvent::CheckingCache {
         assets: session.manifest.release.volumes.len(),
     });

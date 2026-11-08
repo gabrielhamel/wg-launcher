@@ -50,4 +50,6 @@ Those release-specific HTTP decisions stay in `release.rs` and `routing.rs`.
 
 `domain/address.rs` owns validated route prefixes and public origins, API route
 construction, and product-host composition. Startup converts string options into
-these values before rendering metadata or configuring release routes.
+these values before rendering metadata or configuring release routes. Domain
+validation describes public-origin constraints without CLI option names; CLI
+presentation adds `--public-url` context to the typed origin error at startup.

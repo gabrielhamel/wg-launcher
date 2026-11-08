@@ -74,7 +74,7 @@ selection to prepare the game on someone's machine.
   targets and missing volumes for selected steps, while leaving unused publisher
   alternatives alone. Each planned volume is one transport description validated
   against its archive declaration; local cache binding does not depend on parallel
-  lists. The saved release keeps its flat collections. Duplicate names cannot
+  lists. Planned patch bindings cannot be independently changed by callers. The saved release keeps its flat collections. Duplicate names cannot
   silently overwrite another source.
 - Discovery reuses one metadata response per product across variant selection and
   resolution. Redirect hops fetch their own metadata; there is no persistent or

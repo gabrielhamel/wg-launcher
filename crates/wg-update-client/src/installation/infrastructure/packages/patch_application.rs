@@ -83,7 +83,7 @@ pub(crate) fn apply_patch_contents(
     workspace: &PatchWorkspace,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<usize> {
-    if patch.patch.provides_full_component() {
+    if patch.patch().provides_full_component() {
         install_full_component(patch, game, workspace, observer)?;
         return Ok(0);
     }

@@ -1,6 +1,6 @@
 //! Validated public origin and API route prefix used to construct service addresses.
 
-use super::error::{Result, invalid_input};
+use super::error::{ReleaseError, Result, invalid_input};
 
 pub(crate) struct RoutePrefix(String);
 
@@ -30,8 +30,9 @@ pub(crate) struct PublicOrigin(String);
 impl PublicOrigin {
     pub(crate) fn parse(url: &str) -> Result<Self> {
         let url = url.trim_end_matches('/');
-        let parsed = url::Url::parse(url)
-            .map_err(|_| invalid_input("--public-url must be an absolute HTTP(S) origin"))?;
+        let parsed = url::Url::parse(url).map_err(|_| {
+            ReleaseError::InvalidPublicOrigin("public origin must be an absolute HTTP(S) origin")
+        })?;
         if !matches!(parsed.scheme(), "http" | "https")
             || parsed.host_str().is_none()
             || !parsed.username().is_empty()
@@ -40,8 +41,8 @@ impl PublicOrigin {
             || parsed.fragment().is_some()
             || parsed.path() != "/"
         {
-            return Err(invalid_input(
-                "--public-url must be an absolute HTTP(S) origin without credentials, path, query, or fragment",
+            return Err(ReleaseError::InvalidPublicOrigin(
+                "public origin must be an absolute HTTP(S) origin without credentials, path, query, or fragment",
             ));
         }
         Ok(Self(url.to_owned()))

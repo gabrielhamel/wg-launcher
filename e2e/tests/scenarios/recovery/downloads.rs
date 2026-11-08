@@ -47,7 +47,18 @@ fn complete_partial_volume_is_promoted_without_http() {
     let cache = recovery.cache();
     fs::rename(cache.join("client.wgpkg"), cache.join("client.wgpkg.part")).unwrap();
     let before = recovery.server.requests();
-    success(recovery.run("install"));
+    let downloaded = success(recovery.run("download"));
+    assert!(
+        downloaded.contains("1 volumes completed, 1 reused, 0 B newly retained"),
+        "{downloaded}"
+    );
+    assert_eq!(recovery.server.requests(), before);
+    fs::rename(cache.join("client.wgpkg"), cache.join("client.wgpkg.part")).unwrap();
+    let installed = success(recovery.run("install"));
+    assert!(
+        installed.contains("1 volumes completed, 1 reused, 0 B newly retained"),
+        "{installed}"
+    );
     assert_eq!(recovery.server.requests(), before);
     assert_installed(&recovery.game, crate::fixture::Release::V1);
 }

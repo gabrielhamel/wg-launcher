@@ -11,6 +11,7 @@ pub(crate) mod progress;
 mod resolution;
 pub(crate) mod status;
 mod status_report;
+pub(crate) mod transfer;
 mod update;
 mod update_target;
 

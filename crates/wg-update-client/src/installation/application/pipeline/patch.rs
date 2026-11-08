@@ -1,3 +1,4 @@
+use super::super::access::LockedInstallation;
 use super::reports::PackageRetention;
 use crate::Result;
 use crate::catalog::PatchIdentity;
@@ -5,8 +6,6 @@ use crate::installation::infrastructure::{
     filesystem::{
         cache::{LocalPatch, remove_patch_volumes},
         patch_workspace::PatchWorkspace,
-        records::save_manifest,
-        storage::InstallationLayout,
     },
     packages::apply_patch_contents,
 };
@@ -24,12 +23,13 @@ pub(super) struct PatchProgress {
 pub(super) fn apply_and_checkpoint_patch(
     manifest: &mut PinnedManifest,
     local: &LocalPatch,
-    storage: &InstallationLayout,
+    access: &LockedInstallation,
     progress: PatchProgress,
     options: ExtractionOptions,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<PatchCompletion> {
-    let patch = &local.patch;
+    let storage = access.layout();
+    let patch = local.patch();
     observer(ExtractionEvent::ExtractingPatch {
         part: patch.component_id.clone(),
         version_from: patch.source.version().unwrap_or("?").to_owned(),
@@ -40,7 +40,7 @@ pub(super) fn apply_and_checkpoint_patch(
     let workspace = PatchWorkspace::prepare(PatchIdentity::from(patch), &storage.staging)?;
     let applied_deltas = apply_patch_contents(local, storage.root(), &workspace, observer)?;
     manifest.checkpoint(patch);
-    save_manifest(manifest, storage)?;
+    access.save_manifest(manifest)?;
     workspace.release()?;
     let released_package_bytes = match options.package_retention() {
         PackageRetention::ReleaseAfterCheckpoint => remove_patch_volumes(&storage.cache, local)?,

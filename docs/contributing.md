@@ -145,11 +145,12 @@ crates/
           pinned_manifest.rs  Pinned release, checkpoints, and checked installation completion
         application/          download, extract, install, status, update
           progress.rs         Shared package execution and installation observer events
+          transfer.rs         Public download options, observer events, and reports
           update_target.rs    Shared update target/source, pending precedence, live fallback, and starting versions
           installed.rs        Shared validated installed-record loading
           status_report.rs    Build status reports and estimate volumes from explicit starting versions
           resolution.rs       Pinned-cache reuse and live-resolution coordination
-          access.rs           Locked access, matching-download adoption, and exact-release resume
+          access.rs           Locked access, record writes, matching-download adoption, and exact-release resume
           plan.rs             Consumer plan and progress package summaries
           pipeline/           InstallationPipeline execution strategies
             session.rs        Execution state holding locked access, restored checkpoints, totals, and finalization
@@ -163,8 +164,7 @@ crates/
             patch.rs          Call package execution, persist its checkpoint, then release sources and packages
         infrastructure/
           transfer/           Resumable HTTP package downloads
-            mod.rs            Entry point and contract exports
-            contracts.rs      Download options, observer events, and reports
+            mod.rs            HTTP transfer implementation entry point
             downloader.rs     Concurrent downloads, retries, and outcome aggregation
             local.rs          Cache reuse, partial-file preparation, and promotion
             attempt.rs        One HTTP attempt and structured transfer outcomes

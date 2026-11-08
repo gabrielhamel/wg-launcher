@@ -38,7 +38,7 @@ impl InstallationPipeline {
         F: Fn(InstallationEvent) + Send + Sync + 'static,
     {
         let (mut session, patches) = self.into_execution();
-        let cache = session.access.layout.cache.clone();
+        let cache = session.access.layout().cache.clone();
         let _lock = session.retain_lock();
         let observer: Arc<dyn Fn(InstallationEvent) + Send + Sync> = Arc::new(observer);
         let extraction_observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = {

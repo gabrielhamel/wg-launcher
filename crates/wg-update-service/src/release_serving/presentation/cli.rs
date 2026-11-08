@@ -1,4 +1,4 @@
-use super::super::{FileService, FileServiceOptions};
+use super::super::{FileService, FileServiceOptions, domain::ReleaseError};
 use clap::Parser;
 use std::{net::SocketAddr, path::PathBuf, process::ExitCode};
 
@@ -47,8 +47,20 @@ pub fn run() -> ExitCode {
             ExitCode::SUCCESS
         }
         Err(error) => {
-            eprintln!("wg-update-service: {error}");
+            let option = startup_option(&error);
+            eprintln!("wg-update-service: {option}{error}");
             ExitCode::FAILURE
         }
+    }
+}
+
+/// Add CLI context without putting option names into domain validation errors.
+fn startup_option(error: &std::io::Error) -> &'static str {
+    match error
+        .get_ref()
+        .and_then(|source| source.downcast_ref::<ReleaseError>())
+    {
+        Some(ReleaseError::InvalidPublicOrigin(_)) => "--public-url: ",
+        _ => "",
     }
 }

@@ -20,15 +20,30 @@ pub fn required_volumes(
 ) -> Result<Vec<TransportVolume>> {
     Ok(planned_patches(release, base_versions)?
         .into_iter()
-        .flat_map(|planned| planned.volumes)
+        .flat_map(PlannedPatch::into_volumes)
         .collect())
 }
 
 /// An ordered patch and the resolved transport volumes needed to apply it.
+/// Private fields preserve the binding established by patch planning.
 #[derive(Debug, Clone)]
 pub(crate) struct PlannedPatch {
-    pub(crate) patch: Patch,
-    pub(crate) volumes: Vec<TransportVolume>,
+    patch: Patch,
+    volumes: Vec<TransportVolume>,
+}
+
+impl PlannedPatch {
+    pub(crate) fn patch(&self) -> &Patch {
+        &self.patch
+    }
+
+    pub(crate) fn volumes(&self) -> &[TransportVolume] {
+        &self.volumes
+    }
+
+    pub(crate) fn into_volumes(self) -> Vec<TransportVolume> {
+        self.volumes
+    }
 }
 
 pub(crate) fn planned_patches(

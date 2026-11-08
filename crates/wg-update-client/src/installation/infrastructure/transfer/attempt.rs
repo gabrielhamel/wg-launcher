@@ -3,7 +3,7 @@
 use super::error::{Result, TransferError as Error};
 use super::{
     DownloadEvent, VolumeDownloader,
-    downloader::FileOutcome,
+    downloader::VolumeOutcome,
     local::{self, DownloadPreparation, VolumePaths},
 };
 use crate::catalog::TransportVolume;
@@ -21,14 +21,14 @@ impl VolumeDownloader {
         asset: &TransportVolume,
         output: &Path,
         observer: Arc<dyn Fn(DownloadEvent) + Send + Sync>,
-    ) -> Result<FileOutcome> {
+    ) -> Result<VolumeOutcome> {
         match local::prepare(asset, output).await? {
             DownloadPreparation::ReuseComplete => {
                 observer(DownloadEvent::Skipped {
                     name: asset.name.clone(),
                     size: asset.size,
                 });
-                Ok(FileOutcome::Reused)
+                Ok(VolumeOutcome::Reused)
             }
             DownloadPreparation::PromotePartial(paths) => {
                 paths.promote().await?;
@@ -36,7 +36,9 @@ impl VolumeDownloader {
                     name: asset.name.clone(),
                     size: asset.size,
                 });
-                Ok(FileOutcome::Downloaded { new_bytes: 0 })
+                Ok(VolumeOutcome::Completed {
+                    new_bytes_retained: 0,
+                })
             }
             DownloadPreparation::TransferFrom { paths, offset } => {
                 self.transfer_from(asset, paths, offset, &observer).await
@@ -50,7 +52,7 @@ impl VolumeDownloader {
         paths: VolumePaths,
         mut resumed_at: u64,
         observer: &Arc<dyn Fn(DownloadEvent) + Send + Sync>,
-    ) -> Result<FileOutcome> {
+    ) -> Result<VolumeOutcome> {
         let mut request = self.http.get(asset.url.clone());
         if resumed_at > 0 {
             request = request.header(header::RANGE, format!("bytes={resumed_at}-"));
@@ -98,8 +100,8 @@ impl VolumeDownloader {
             name: asset.name.clone(),
             size: asset.size,
         });
-        Ok(FileOutcome::Downloaded {
-            new_bytes: asset.size - resumed_at,
+        Ok(VolumeOutcome::Completed {
+            new_bytes_retained: asset.size - resumed_at,
         })
     }
 }

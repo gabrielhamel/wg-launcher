@@ -34,7 +34,7 @@ pub(super) fn decode_archive(
     volumes.sort();
     if volumes.is_empty() {
         return Err(crate::catalog::ReleaseError::MissingFullPatch {
-            part: patch.patch.component_id.clone(),
+            part: patch.patch().component_id.clone(),
         }
         .into());
     }

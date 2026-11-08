@@ -16,7 +16,7 @@ impl ExecutionPlan {
         let summary = build_plan(
             manifest,
             root,
-            patches.iter().flat_map(|patch| patch.volumes.iter()),
+            patches.iter().flat_map(|patch| patch.volumes().iter()),
         );
         Ok(Self { patches, summary })
     }

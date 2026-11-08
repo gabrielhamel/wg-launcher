@@ -21,6 +21,9 @@ installation manages the copy on a person's machine.
 | Component progress | The versions reached locally, starting with installed versions and advancing after successful patches. Saved progress takes precedence when retrying; it remains stored as `base_versions` in the pinned manifest. |
 | Component version | The recorded version of one part of the game. Different parts can change independently. Starting versions seed missing checkpoints; completed patch checkpoints take precedence. |
 | Download | Bring packages onto the machine, without yet applying them to the game. |
+| Completed volume | A package brought to its final cache filename, including a complete partial file promoted without a network request. |
+| Reused volume | A package already present at its final filename with the expected size. |
+| New bytes retained | Bytes added by successful transfer attempts, excluding resumed prefixes and traffic from failed attempts. |
 | Download preparation | Decide whether to reuse a complete volume, promote a complete partial file, or transfer the missing bytes. |
 | Transport volume | One downloaded file forming all or part of a patch archive. Split volumes are read together as one archive. |
 | Download cache | Packages kept locally so they can be used or reused for installation. |
@@ -65,13 +68,14 @@ installation manages the copy on a person's machine.
 | `application/` | Public workflows, options, reports, and observer contracts. |
 | `application/resolution.rs`, `update_target.rs` | Pinned-cache reuse, pending update precedence, live fallback, and starting-version seeding. |
 | `application/installed.rs`, `status_report.rs`, `plan.rs` | Validated state loading and consumer status/plan projections. |
-| `application/access.rs` | Locked installation access, adopting matching downloads, and exact-release resume. |
+| `application/access.rs` | Locked installation access, adopting matching downloads, exact-release resume, and record writes requiring the lock owner. |
 | `application/pipeline/session.rs` | Execution state holding locked access, authoritative checkpoints, and execution totals. |
 | `application/pipeline/mod.rs`, `execution_plan.rs` | Resolve remaining work under the session lock, own its consumer summary, and hand patches to execution once. |
 | `application/pipeline/extraction.rs`, `streaming.rs` | Local execution or overlapping downloads and patch application. |
 | `application/pipeline/patch.rs`, `finalization.rs` | Coordinate package execution, checkpoint/release ordering, installed-state writes, and successful cleanup. |
 | `application/pipeline/prefetch.rs`, `prefetch_budget.rs` | Download coordination, cancellation, and queued-byte policy. |
-| `infrastructure/transfer/` | `contracts.rs` owns options, events, and reports; `downloader.rs` owns concurrency, retries, and totals; `local.rs` and `attempt.rs` own cache preparation and HTTP attempts. |
+| `application/transfer.rs` | Public transfer options, observer events, and reports, shared by workflows and implemented by infrastructure. |
+| `infrastructure/transfer/` | `downloader.rs` owns concurrency, retries, and totals; `local.rs` and `attempt.rs` own cache preparation and HTTP attempts. |
 | `infrastructure/packages/` | Split-volume reading, archive decoding, replacement/delta classification, and application. |
 | `infrastructure/filesystem/` | Layout, locks, persistence through consistent layout-based record operations, safe paths, local patch bindings in `cache.rs`, patch workspaces, and replacement. `cleanup.rs` owns file counting and successful staging/cache removal; application finalization owns their order. |
 
@@ -93,9 +97,11 @@ installation manages the copy on a person's machine.
 - Streaming overlaps later downloads with ordered patch execution. The prefetch
   budget limits bytes queued ahead of the applying patch; one complete patch may
   cross the threshold. Download and extraction use the same resolved steps.
+- Planned and local patches keep their patch descriptions and bound volumes private, exposing read-only views or consuming access to volumes.
 - Planned patches bind their validated transport volumes to safe local paths once. Staged
   extraction verifies declared patch sizes; archive reading retains filename ordering
   for split volumes. Execution and package release consume those same paths.
+- Application record writes go through locked installation access. Patch execution and finalization require that lock owner, rather than paths alone.
 - Each patch is applied, checkpointed, then its recovery files and eligible packages
   are released. Failures retain uncheckpointed packages and original delta sources.
   Package retention controls both early release and final cache cleanup.

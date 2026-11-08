@@ -87,7 +87,8 @@ workflows, checking component-specific normalization, pinned JSON, payload bytes
 and cleanup.
 
 The dedicated server-crossing category also verifies parallel services receive
-distinct ports and preserve their address when restarted. `service/http.rs` also
+distinct ports and preserve their address when restarted. Startup failures identify
+`--public-url` for invalid public origins while leaving unrelated errors unlabelled. `service/http.rs` also
 checks full and HEAD responses, valid and rejected resumed ranges, empty files,
 package URL aliases, XML/JSON/binary content types, traversal rejection, missing
 packages, and unsupported methods against the real service after CLI
@@ -177,7 +178,7 @@ coverage, rather than a claim that every possible failure in that area is tested
 | 3 | Interrupt concurrent downloads | Each complete volume is reused and each incomplete durable prefix resumes independently. |
 | 4 | Required package returns 404 | Other volumes and pinned manifest survive; restoration permits retry without discovery. |
 | 5 | Truncated or corrupt cached volume | Wrong-size files are fetched again; invalid headers and damaged compressed streams fail extraction without truncating existing destinations. |
-| 6 | Invalid partial volume | Oversized partials restart, complete partials promote without HTTP, and corrupt prefixes fail extraction. |
+| 6 | Invalid partial volume | Oversized partials restart, complete partials promote without HTTP (reported as completed volumes with zero newly retained bytes), and corrupt prefixes fail extraction. |
 | 7 | Later archive is corrupt | Earlier component checkpoint and payload survive; failed component retries offline. |
 | 8 | Kill during full extraction | Kill both between completed files and while a large file decodes in staging; retries recreate exact bytes and preserve the previous destination during decoding. |
 | 9 | Destination is blocked | User directory contents and transport volumes survive; removing the obstruction permits offline retry. |

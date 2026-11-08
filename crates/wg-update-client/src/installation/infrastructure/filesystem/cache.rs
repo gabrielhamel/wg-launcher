@@ -10,8 +10,9 @@ use std::{
 
 /// A planned patch bound to local package paths, without changing its published identity.
 /// Paths are safe cache-relative names; file presence and contents are checked separately.
+/// The patch and bound volumes cannot be independently changed by callers.
 pub(crate) struct LocalPatch {
-    pub(crate) patch: Patch,
+    patch: Patch,
     volumes: Vec<LocalVolume>,
 }
 
@@ -24,7 +25,7 @@ impl LocalPatch {
     pub(crate) fn from_plan(planned: &PlannedPatch, cache: &Path) -> Result<Self> {
         // Each planned volume carries the declared size used for cache verification.
         let volumes = planned
-            .volumes
+            .volumes()
             .iter()
             .map(|volume| {
                 Ok(LocalVolume {
@@ -34,9 +35,13 @@ impl LocalPatch {
             })
             .collect::<Result<Vec<_>>>()?;
         Ok(Self {
-            patch: planned.patch.clone(),
+            patch: planned.patch().clone(),
             volumes,
         })
+    }
+
+    pub(crate) fn patch(&self) -> &Patch {
+        &self.patch
     }
 
     pub(crate) fn volume_paths(&self) -> impl Iterator<Item = &Path> {

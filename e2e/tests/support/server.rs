@@ -171,7 +171,7 @@ fn spawn_service(
     }
 }
 
-fn write_release(release: &Path, resources: BTreeMap<String, Vec<u8>>) -> String {
+pub fn write_release(release: &Path, resources: BTreeMap<String, Vec<u8>>) -> String {
     if release.exists() {
         fs::remove_dir_all(release).unwrap();
     }

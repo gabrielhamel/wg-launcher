@@ -50,7 +50,7 @@ impl PatchDownloads {
                 };
                 let result = downloader
                     .download_with_observer(
-                        planned.volumes,
+                        planned.into_volumes(),
                         cache.clone(),
                         options.clone(),
                         move |event| {

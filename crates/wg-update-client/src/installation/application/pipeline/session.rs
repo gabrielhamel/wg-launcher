@@ -8,8 +8,7 @@ use crate::Result;
 use crate::installation::{
     PinnedManifest,
     infrastructure::filesystem::{
-        InstallationLayout, InstallationLock, cache::LocalPatch, records,
-        storage::prepare_installation,
+        InstallationLayout, InstallationLock, cache::LocalPatch, storage::prepare_installation,
     },
 };
 use std::sync::Arc;
@@ -40,8 +39,8 @@ impl InstallationSession {
     }
 
     pub(super) fn prepare(&self) -> Result<()> {
-        records::save_manifest(&self.manifest, &self.access.layout)?;
-        prepare_installation(&self.access.layout)?;
+        self.access.save_manifest(&self.manifest)?;
+        prepare_installation(self.access.layout())?;
         Ok(())
     }
 
@@ -55,7 +54,7 @@ impl InstallationSession {
         let completion = apply_and_checkpoint_patch(
             &mut self.manifest,
             patch,
-            &self.access.layout,
+            &self.access,
             progress,
             options,
             observer,
@@ -71,7 +70,7 @@ impl InstallationSession {
     ) -> Result<ExtractionReport> {
         finalize_installation(
             &self.manifest,
-            &self.access.layout,
+            &self.access,
             options,
             self.applied_deltas,
             observer,

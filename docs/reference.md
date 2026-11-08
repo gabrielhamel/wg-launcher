@@ -99,6 +99,13 @@ Download, extraction, installation, and update also provide `_with_observer`
 variants for structured progress. `DownloadOptions` controls transfer concurrency
 and retries; ordinary calls do not require an observer.
 
+Download summaries distinguish completed volumes, reused volumes, and newly
+retained bytes. Completing a volume includes promoting a complete partial file
+without an HTTP request. Reuse means a final cache file already has the expected
+size. Newly retained bytes count successful attempts only, excluding resumed
+prefixes and traffic from failed attempts. The public `DownloadReport` fields
+remain `downloaded_files`, `skipped_files`, and `downloaded_bytes`, respectively.
+
 Delta application reports preservation of the original file, the start of
 application, and throttled cumulative reconstructed bytes through
 `ExtractionEvent::PreparingDelta`, `ApplyingDelta`, and `DeltaProgress`.

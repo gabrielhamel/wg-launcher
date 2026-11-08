@@ -33,7 +33,7 @@ pub(crate) async fn run_download(args: DownloadArgs) -> Result<(), Box<dyn std::
         Ok(outcome) => {
             progress.finish_success();
             println!(
-                "downloaded: {} new, {} already present, {} transferred",
+                "download complete: {} volumes completed, {} reused, {} newly retained",
                 outcome.report.downloaded_files,
                 outcome.report.skipped_files,
                 human_bytes(outcome.report.downloaded_bytes),

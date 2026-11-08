@@ -91,10 +91,10 @@ impl VolumeDownloader {
         for result in results {
             let outcome = result?;
             match outcome {
-                FileOutcome::Reused => report.skipped_files += 1,
-                FileOutcome::Downloaded { new_bytes } => {
+                VolumeOutcome::Reused => report.skipped_files += 1,
+                VolumeOutcome::Completed { new_bytes_retained } => {
                     report.downloaded_files += 1;
-                    report.downloaded_bytes += new_bytes;
+                    report.downloaded_bytes += new_bytes_retained;
                 }
             }
         }
@@ -107,7 +107,7 @@ impl VolumeDownloader {
         output: PathBuf,
         attempts: usize,
         observer: Arc<dyn Fn(DownloadEvent) + Send + Sync>,
-    ) -> Result<FileOutcome> {
+    ) -> Result<VolumeOutcome> {
         let mut last_error = None;
         for attempt in 1..=attempts {
             match self
@@ -135,7 +135,7 @@ impl VolumeDownloader {
 }
 
 /// A successful volume attempt, distinguishing reuse from bytes newly retained.
-pub(super) enum FileOutcome {
+pub(super) enum VolumeOutcome {
     Reused,
-    Downloaded { new_bytes: u64 },
+    Completed { new_bytes_retained: u64 },
 }

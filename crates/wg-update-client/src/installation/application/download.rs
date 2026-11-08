@@ -1,6 +1,5 @@
 use super::plan::build_plan;
 use super::{BuildSelection, InstallPlan, resolution::resolve_installation};
-use crate::installation::infrastructure::filesystem::records::save_manifest;
 use crate::{
     Result,
     catalog::TransportVolume,
@@ -88,7 +87,6 @@ where
     let (manifest, root) = resolve_installation(&request, options.output).await?;
     let access = super::access::LockedInstallation::open(InstallationLayout::for_root(&root))?;
     let manifest = access.adopt_matching_download(manifest, &request).await?;
-    let storage = &access.layout;
     let all_assets = manifest.required_volumes()?;
     let assets = select_download_volumes(all_assets, &options.parts);
     if assets.is_empty() {
@@ -98,7 +96,7 @@ where
     }
     let plan = build_plan(&manifest, root, &assets);
     observer(DownloadAssetsEvent::Planned(Box::new(plan.clone())));
-    save_manifest(&manifest, storage)?;
+    access.save_manifest(&manifest)?;
     let report = VolumeDownloader::new()?
         .download_with_observer(assets, &plan.cache, options.download, move |event| {
             observer(DownloadAssetsEvent::Progress(event));

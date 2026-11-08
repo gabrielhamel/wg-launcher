@@ -1,7 +1,7 @@
 //! Adopt authoritative local work while holding exclusive installation access.
 
 use crate::installation::{
-    PinnedManifest,
+    InstalledBuild, PinnedManifest,
     domain::selection::validate_cached_request,
     infrastructure::filesystem::{InstallationLayout, InstallationLock, records},
 };
@@ -9,7 +9,7 @@ use crate::{Result, catalog::SelectedProductRequest};
 use std::sync::Arc;
 
 pub(super) struct LockedInstallation {
-    pub(super) layout: InstallationLayout,
+    layout: InstallationLayout,
     lock: Arc<InstallationLock>,
 }
 
@@ -17,6 +17,22 @@ impl LockedInstallation {
     pub(super) fn open(layout: InstallationLayout) -> Result<Self> {
         let lock = Arc::new(InstallationLock::acquire(&layout)?);
         Ok(Self { layout, lock })
+    }
+
+    pub(super) fn layout(&self) -> &InstallationLayout {
+        &self.layout
+    }
+
+    /// Persist pinned work only while this installation is exclusively owned.
+    pub(super) fn save_manifest(&self, manifest: &PinnedManifest) -> Result<()> {
+        records::save_manifest(manifest, &self.layout)?;
+        Ok(())
+    }
+
+    /// Publish completed identity under the same lock as patch execution.
+    pub(super) fn save_installed_build(&self, installed: &InstalledBuild) -> Result<()> {
+        records::save_installed_build(installed, &self.layout)?;
+        Ok(())
     }
 
     /// Downloads adopt compatible pinned work, even if discovery found another release.

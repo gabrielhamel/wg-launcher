@@ -36,7 +36,7 @@ impl InstallationPipeline {
         let session = session::InstallationSession::resume(manifest, layout)?;
         let execution_plan = execution_plan::ExecutionPlan::resolve(
             &session.manifest,
-            session.access.layout.root().to_path_buf(),
+            session.access.layout().root().to_path_buf(),
         )?;
         Ok(Self {
             session,

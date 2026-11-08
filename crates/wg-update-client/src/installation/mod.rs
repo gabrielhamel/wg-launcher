@@ -7,6 +7,7 @@ mod infrastructure;
 pub(crate) use application::pipeline::{ExtractionOptions, InstallationPipeline};
 pub use application::pipeline::{ExtractionReport, InstallationReport};
 pub use application::progress::{ExtractionEvent, InstallationEvent};
+pub use application::transfer::{DownloadEvent, DownloadOptions, DownloadReport};
 pub use application::{
     DownloadAssetsEvent, DownloadAssetsOptions, DownloadAssetsOutcome, ExtractEvent,
     ExtractOptions, ExtractOutcome, InstallEvent, InstallOptions, InstallOutcome, InstallPlan,
@@ -20,5 +21,4 @@ pub(crate) use application::{
 pub(crate) use domain::{InstallationError, InstalledBuild, PinnedManifest};
 pub(crate) use infrastructure::filesystem::{DOWNLOAD_MANIFEST_FILE, StorageError};
 pub(crate) use infrastructure::packages::PackageError;
-pub use infrastructure::transfer::{DownloadEvent, DownloadOptions, DownloadReport};
 pub(crate) use infrastructure::transfer::{TransferError, VolumeDownloader};
