@@ -25,7 +25,8 @@ impl From<ResolvedRelease> for PinnedManifest {
 }
 
 impl PinnedManifest {
-    pub(crate) fn starting_versions(&self) -> &std::collections::BTreeMap<String, String> {
+    /// Component versions reached locally, including saved patch completions.
+    pub(crate) fn reached_versions(&self) -> &std::collections::BTreeMap<String, String> {
         self.progress.versions()
     }
 
@@ -60,7 +61,7 @@ impl PinnedManifest {
             });
         }
         // Persisted checkpoints are authoritative when retrying an original plan.
-        self.progress.retain_saved(pending.progress);
+        self.progress.restore_saved_checkpoints(pending.progress);
         Ok(self)
     }
 

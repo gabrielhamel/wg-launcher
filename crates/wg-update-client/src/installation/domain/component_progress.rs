@@ -20,7 +20,8 @@ impl ComponentProgress {
         }
     }
 
-    pub(super) fn retain_saved(&mut self, saved: Self) {
+    /// Saved checkpoints override the caller's versions when resuming work.
+    pub(super) fn restore_saved_checkpoints(&mut self, saved: Self) {
         self.0.extend(saved.0);
     }
 

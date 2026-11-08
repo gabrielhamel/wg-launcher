@@ -15,8 +15,9 @@ pub(super) fn finalize_installation(
     applied_deltas: usize,
     observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<ExtractionReport> {
+    let files_before_finalization = count_files_before_finalization(install_root)?;
     let mut report = ExtractionReport {
-        installed_files: walk_files(install_root)?.len(),
+        installed_files: files_before_finalization,
         applied_deltas,
         cache_removed: false,
     };
@@ -39,4 +40,10 @@ pub(super) fn finalize_installation(
         cache_removed: report.cache_removed,
     });
     Ok(report)
+}
+
+/// Count the whole tree before state writes and cleanup, including existing game
+/// files and launcher metadata. This preserves the public installed_files metric.
+fn count_files_before_finalization(install_root: &Path) -> Result<usize> {
+    Ok(walk_files(install_root)?.len())
 }

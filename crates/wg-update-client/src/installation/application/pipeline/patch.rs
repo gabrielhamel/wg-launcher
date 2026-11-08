@@ -7,7 +7,7 @@ use crate::installation::infrastructure::{
     },
     packages::{
         archive::{decode_patch_contents, install_full_patch},
-        delta::apply_patch_directory,
+        patch_application::apply_patch_directory,
     },
 };
 use crate::installation::{ExtractionEvent, ExtractionOptions, PinnedManifest};

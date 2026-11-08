@@ -35,6 +35,7 @@ installation manages the copy on a person's machine.
 | Finalization | Record the completed build and remove temporary work and, when requested, cached packages after all patches succeed. |
 | Installation pipeline | Coordinates package downloads and patch application, including the lock, saved progress, and final cleanup. |
 | Delta | Changes that need an existing game file, rather than another complete copy of that file. |
+| Patch identity | The component, source version, and target version that identify the patch whose original files are preserved for retry. |
 | Patch workspace | Temporary files and preserved originals for the patch being applied. They remain available after failure until that patch is saved as complete. |
 | Patch contents | The files decoded from a patch: complete replacement files and delta files that change existing content. Replacements are installed before deltas are applied. |
 | Patch completion | Apply a patch successfully, save its checkpoint, then release its recovery files and, when cleanup is enabled, its downloaded packages. |
@@ -69,3 +70,13 @@ Background worker failures retain their technical causes and are distinguished f
 a download coordinator ending before every planned patch is ready. Installation
 storage describes paths without reading or creating files; preparation and locking
 perform the filesystem operations.
+
+Component progress exposes the versions reached locally, including saved patch
+completions. Restoring saved checkpoints explicitly gives those values precedence.
+Both asynchronous and synchronous record loaders call the same saved record a pinned
+manifest; their names distinguish execution mode rather than implying different records.
+Patch workspaces name the patch identity explicitly while preserving its saved array
+representation. Package `patch_application.rs` owns replacement-first execution and
+source preservation; `delta.rs` reconstructs and replaces an individual file.
+Finalization counts files before state writes and cleanup, including pre-existing files
+and launcher metadata, preserving the existing public `installed_files` metric.

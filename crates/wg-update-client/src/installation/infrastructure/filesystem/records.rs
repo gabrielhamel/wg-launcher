@@ -12,7 +12,7 @@ pub(crate) async fn load_installed_build(root: &Path) -> Result<Option<Installed
     }
 }
 
-pub(crate) async fn load_cache_manifest(cache: &Path) -> Result<Option<PinnedManifest>> {
+pub(crate) async fn load_pinned_manifest(cache: &Path) -> Result<Option<PinnedManifest>> {
     let path = cache.join(DOWNLOAD_MANIFEST_FILE);
     match tokio::fs::read(&path).await {
         Ok(bytes) => Ok(Some(serde_json::from_slice(&bytes)?)),
@@ -54,7 +54,7 @@ pub(crate) fn save_manifest(
     )
 }
 
-pub(crate) fn load_pending_manifest(
+pub(crate) fn load_pinned_manifest_sync(
     storage: &InstallationStorage,
 ) -> Result<Option<PinnedManifest>> {
     let bytes = match fs::read(storage.cache.join(DOWNLOAD_MANIFEST_FILE)) {

@@ -12,12 +12,12 @@ pub(super) fn build_status(
     path: PathBuf,
     installed: &InstalledBuild,
     target: &ResolvedRelease,
-    starting_versions: &std::collections::BTreeMap<String, String>,
+    reached_versions: &std::collections::BTreeMap<String, String>,
     source: UpdateTargetSource,
 ) -> Result<StatusReport> {
     let update_available = installed.differs_from(target);
     let download_bytes = if update_available {
-        installation_assets(target, starting_versions)?
+        installation_assets(target, reached_versions)?
             .iter()
             .map(|asset| asset.size)
             .sum()

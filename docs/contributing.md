@@ -149,12 +149,14 @@ crates/
             archive.rs        Explicit full-patch installation and staged patch decoding
             volumes.rs        Read split transport volumes as one seekable archive
             contents.rs       Classify replacement files and typed deltas before execution
+            patch_application.rs  Install replacements, preserve sources, and apply deltas
+            delta.rs          Reconstruct and replace a single file using a delta
           filesystem/         Installation filesystem adapters
             storage.rs        Infallible installation layout and explicit staging preparation
             lock.rs           Exclusive installation mutation lock
             cache.rs          Package verification and release
-            records.rs        Read/write records with one file replacement policy
-            patch_workspace.rs  Active patch staging and preserved original sources
+            records.rs        Load pinned manifests and installed identity; save with file replacement
+            patch_workspace.rs  Patch identity, active staging, and preserved original sources
             replacement.rs    File replacement with rollback on rename failure
       error.rs                Public Error, ErrorKind classification, and Result alias
   wg-launcher-cli/            CLI package, README, and license
