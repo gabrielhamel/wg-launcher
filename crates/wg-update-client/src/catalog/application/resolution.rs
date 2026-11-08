@@ -1,5 +1,5 @@
 use super::super::infrastructure::wgus::WgusClient;
-use crate::catalog::{BuildSelection, GameMetadata, Product, ResolvedRelease, installation_assets};
+use crate::catalog::{BuildSelection, GameMetadata, Product, ResolvedRelease, required_volumes};
 use crate::{Error, Result};
 
 pub(crate) async fn resolve(selection: &BuildSelection) -> Result<ResolvedRelease> {
@@ -50,7 +50,7 @@ async fn resolve_smallest_installable_variant(
             .release_for_product(product, &client_type.id, language)
             .await
         {
-            Ok(release) => match installation_assets(&release, &Default::default()) {
+            Ok(release) => match required_volumes(&release, &Default::default()) {
                 Ok(assets) => {
                     let size = assets.iter().map(|asset| asset.size).sum();
                     if best.as_ref().is_none_or(|(best_size, _)| size < *best_size) {

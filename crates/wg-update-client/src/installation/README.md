@@ -35,6 +35,7 @@ installation manages the copy on a person's machine.
 | Prefetch budget | The limit on packages queued ahead of the patch currently being applied. A new patch may start below the limit even if finishing it exceeds the limit. |
 | Finalization | Record the completed build and remove temporary work and, when requested, cached packages after all patches succeed. |
 | Installation pipeline | Coordinates package downloads and patch application, including the lock, saved progress, and final cleanup. |
+| Delta filename | A publisher filename whose extension, version segment, and hexadecimal checksum segment identify a delta and its target game package. Recognition checks naming syntax, not checksum correctness; unrecognized names remain replacement files. |
 | Delta | Changes that need an existing game file, rather than another complete copy of that file. |
 | Patch identity | The component, source version, and target version that identify the patch whose original files are preserved for retry. |
 | Patch workspace | Temporary files and preserved originals for the patch being applied. They remain available after failure until that patch is saved as complete. |
@@ -86,3 +87,9 @@ source preservation; `delta.rs` reconstructs and replaces an individual file.
 Finalization counts files before state writes and cleanup, including pre-existing files
 and launcher metadata, reported as `ExtractionReport.files_before_finalization`. The count is unchanged;
 it includes launcher metadata and cached packages still present before cleanup.
+
+`application/update_target.rs` owns pending-manifest precedence, selection validation,
+live fallback, and starting-version seeding for updates. Status remains live-only.
+Shared observer events live in `application/progress.rs`; pipeline reports and
+execution options live in `application/pipeline/reports.rs`. Package directory
+classification delegates publisher filename recognition to `packages/delta_filename.rs`.

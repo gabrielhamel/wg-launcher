@@ -98,7 +98,7 @@ where
     } else {
         manifest
     };
-    let all_assets = manifest.installation_assets()?;
+    let all_assets = manifest.required_volumes()?;
     let assets = select_download_assets(all_assets, &options.parts);
     if assets.is_empty() {
         return Err(

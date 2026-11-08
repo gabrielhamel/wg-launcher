@@ -13,7 +13,7 @@ use std::collections::{BTreeMap, HashMap};
 ///
 /// Returns an error for an unreachable component target, cyclic patch chain, or a patch
 /// volume absent from the release assets.
-pub fn installation_assets(
+pub fn required_volumes(
     release: &ResolvedRelease,
     base_versions: &BTreeMap<String, String>,
 ) -> Result<Vec<TransportVolume>> {

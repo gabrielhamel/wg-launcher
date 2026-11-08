@@ -52,7 +52,7 @@ impl ResolvedRelease {
     ///
     /// This is a transport total, not required disk space or remaining network traffic;
     /// it does not subtract cached files or filter the installation chain.
-    pub fn download_size(&self) -> u64 {
+    pub fn published_volume_bytes(&self) -> u64 {
         self.assets.iter().map(|asset| asset.size).sum()
     }
 }

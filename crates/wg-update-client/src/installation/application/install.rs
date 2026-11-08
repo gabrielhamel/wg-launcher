@@ -92,7 +92,7 @@ pub(super) async fn install_resolved<F>(
 where
     F: Fn(InstallEvent) + Send + Sync + 'static,
 {
-    let assets = manifest.installation_assets()?;
+    let assets = manifest.required_volumes()?;
     let plan = build_plan(&manifest, root, &assets);
     observer(InstallEvent::Planned(Box::new(plan.clone())));
 

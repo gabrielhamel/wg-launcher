@@ -72,7 +72,7 @@ where
     let manifest = load_pinned_manifest(&cache).await?.ok_or_else(|| {
         crate::installation::ExtractError::DownloadManifestNotFound(cache.clone())
     })?;
-    let assets = manifest.installation_assets()?;
+    let assets = manifest.required_volumes()?;
     let plan = build_plan(&manifest, root, &assets);
     observer(ExtractEvent::Planned(Box::new(plan.clone())));
     let report = InstallationPipeline::new()

@@ -1,6 +1,6 @@
 //! Select release descriptions and packages for incoming service requests.
 
-use super::super::{domain::api_route, infrastructure::filesystem};
+use super::super::{domain::RoutePrefix, infrastructure::filesystem};
 use std::path::{Path, PathBuf};
 
 /// Content selected by release-serving rules, independent of HTTP representation.
@@ -27,14 +27,14 @@ pub(super) struct ReleaseRoutes {
 
 impl ReleaseRoutes {
     pub(super) fn new(
-        prefix: &str,
+        prefix: &RoutePrefix,
         metadata: Vec<u8>,
         patch_chain: Vec<u8>,
         packages: PathBuf,
     ) -> Self {
         Self {
-            metadata_route: api_route(prefix, "metadata"),
-            patch_chain_route: api_route(prefix, "patches_chain"),
+            metadata_route: prefix.api_route("metadata"),
+            patch_chain_route: prefix.api_route("patches_chain"),
             metadata,
             patch_chain,
             packages,

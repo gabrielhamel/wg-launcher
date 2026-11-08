@@ -13,7 +13,7 @@ pub(crate) use domain::release::package_plan::{PlannedPatch, planned_patches};
 pub(crate) use domain::release::patch_chain::ordered_patches;
 pub(crate) use domain::release::{
     ClientPart, ClientType, Executable, GameMetadata, Patch, PatchFile, PatchSource, ReleaseError,
-    ResolvedRelease, TransportVolume, WebSeed, installation_assets,
+    ResolvedRelease, TransportVolume, WebSeed, required_volumes,
 };
 pub(crate) use domain::{BuildIdentity, CatalogError};
 pub use domain::{BuildSelection, Game, Product, Region};

@@ -4,10 +4,9 @@ mod application;
 mod domain;
 mod infrastructure;
 
-pub use application::pipeline::{
-    ExtractionEvent, ExtractionReport, InstallationEvent, InstallationReport,
-};
 pub(crate) use application::pipeline::{ExtractionOptions, InstallationPipeline};
+pub use application::pipeline::{ExtractionReport, InstallationReport};
+pub use application::progress::{ExtractionEvent, InstallationEvent};
 pub use application::{
     DownloadAssetsEvent, DownloadAssetsOptions, DownloadAssetsOutcome, ExtractEvent,
     ExtractOptions, ExtractOutcome, InstallEvent, InstallOptions, InstallOutcome, InstallPlan,

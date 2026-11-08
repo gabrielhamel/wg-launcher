@@ -103,7 +103,7 @@ impl InspectReport {
                 })
                 .collect(),
             package_count: release.assets.len(),
-            compressed_bytes: release.download_size(),
+            compressed_bytes: release.published_volume_bytes(),
             default_output_directory: BuildInfo::from_release(release).default_output_directory(),
         }
     }

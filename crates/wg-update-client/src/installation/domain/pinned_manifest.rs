@@ -1,8 +1,8 @@
 use super::error::{InstallationError as Error, Result as InstallationResult};
 use super::{InstalledBuild, component_progress::ComponentProgress};
 use crate::catalog::{
-    Patch, PlannedPatch, ReleaseError, ResolvedRelease, TransportVolume, installation_assets,
-    ordered_patches, planned_patches,
+    Patch, PlannedPatch, ReleaseError, ResolvedRelease, TransportVolume, ordered_patches,
+    planned_patches, required_volumes,
 };
 use serde::{Deserialize, Serialize};
 
@@ -30,10 +30,10 @@ impl PinnedManifest {
         self.progress.versions()
     }
 
-    pub(crate) fn installation_assets(
+    pub(crate) fn required_volumes(
         &self,
     ) -> std::result::Result<Vec<TransportVolume>, ReleaseError> {
-        installation_assets(&self.release, self.progress.versions())
+        required_volumes(&self.release, self.progress.versions())
     }
 
     pub(crate) fn ordered_patches(&self) -> std::result::Result<Vec<&Patch>, ReleaseError> {

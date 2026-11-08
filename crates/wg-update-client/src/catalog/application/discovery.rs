@@ -1,7 +1,7 @@
 use super::super::infrastructure::wgus::WgusClient;
 use super::resolution::resolve;
 use crate::Result;
-use crate::catalog::{BuildSelection, InspectReport, Product, installation_assets};
+use crate::catalog::{BuildSelection, InspectReport, Product, required_volumes};
 use serde::Serialize;
 
 /// Configures discovery. By default every supported region is queried.
@@ -116,7 +116,7 @@ async fn list_with_client(client: &WgusClient, options: ListOptions) -> Result<L
                 .release_for_product(&product, &client_type.id, Some(&metadata.default_language))
                 .await
             {
-                Ok(release) => match installation_assets(&release, &Default::default()) {
+                Ok(release) => match required_volumes(&release, &Default::default()) {
                     Ok(assets) => builds.push(BuildSummary {
                         game: product.game(),
                         region: product.region.clone(),

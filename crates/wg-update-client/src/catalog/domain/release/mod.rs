@@ -8,7 +8,7 @@ mod transport_volume;
 
 pub use error::ReleaseError;
 pub use metadata::{ClientPart, ClientType, Executable, GameMetadata};
-pub use package_plan::installation_assets;
+pub use package_plan::required_volumes;
 pub(crate) use patch::PatchSource;
 pub use patch::{Patch, PatchFile};
 pub use resolved_release::ResolvedRelease;

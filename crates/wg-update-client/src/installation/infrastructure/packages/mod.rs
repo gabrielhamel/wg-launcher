@@ -3,6 +3,7 @@ mod error;
 pub use error::PackageError;
 pub(crate) mod archive;
 mod delta;
+mod delta_filename;
 mod delta_progress;
 pub(crate) mod patch_application;
 mod volumes;

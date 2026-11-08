@@ -1,8 +1,8 @@
 //! Reconstruct and replace one game file using a VCDIFF or librsync delta.
 
-use super::contents::{DeltaFile, DeltaFormat};
 use super::delta_progress::DeltaWriter;
 use super::error::{PackageError as Error, Result};
+use super::{contents::DeltaFile, delta_filename::DeltaFormat};
 use crate::installation::infrastructure::filesystem::{
     patch_workspace::PatchWorkspace, replacement::replace_file,
 };

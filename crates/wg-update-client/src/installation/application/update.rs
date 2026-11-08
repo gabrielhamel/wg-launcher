@@ -1,10 +1,8 @@
-use super::status::{StatusReport, UpdateTargetSource};
+use super::status::StatusReport;
+use super::update_target::resolve_update_target;
 use super::{InstallEvent, InstallOutcome, install::install_resolved};
 use super::{comparison::build_status, installed::load_installed_build};
-use crate::catalog::resolve_update_release;
 use crate::installation::DownloadOptions;
-use crate::installation::domain::selection::validate_cached_selection;
-use crate::installation::infrastructure::filesystem::records::load_pinned_manifest;
 use crate::{Result, installation::infrastructure::filesystem::InstallationLayout};
 use serde::Serialize;
 use std::path::PathBuf;
@@ -62,27 +60,7 @@ where
     let path = std::path::absolute(options.path)?;
     let storage = InstallationLayout::for_root(&path);
     let installed = load_installed_build(&path).await?;
-    let (mut manifest, target_source) =
-        if let Some(pending) = load_pinned_manifest(&storage.cache).await? {
-            validate_cached_selection(&pending, &installed.selection())?;
-            (pending, UpdateTargetSource::PinnedManifest)
-        } else {
-            (
-                crate::installation::PinnedManifest::from(
-                    resolve_update_release(
-                        &installed.product,
-                        &installed.identity.client_type,
-                        &installed.identity.language,
-                        &installed.component_versions,
-                    )
-                    .await?,
-                ),
-                UpdateTargetSource::LiveCatalog,
-            )
-        };
-    // A package-only download may have pinned a full installation chain. Start
-    // that chain at the installed versions, retaining any completed checkpoints.
-    manifest.seed_missing_component_versions(&installed);
+    let (manifest, target_source) = resolve_update_target(&installed, &storage).await?;
     let status = build_status(
         path,
         &installed,

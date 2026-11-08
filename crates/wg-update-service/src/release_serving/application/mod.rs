@@ -1,7 +1,7 @@
 mod routing;
 pub(crate) use routing::{ContentKind, ReleaseContent};
 
-use super::domain::{ReleaseError, normalize_prefix, render_text, validate_public_url};
+use super::domain::{PublicOrigin, ReleaseError, RoutePrefix, render_text};
 use super::infrastructure::{
     access_log, filesystem,
     http::{self, Request, ServerHandle},
@@ -32,8 +32,8 @@ pub struct FileServiceOptions {
 /// for each request, so large release volumes are never retained in memory.
 pub struct FileService {
     handle: ServerHandle,
-    prefix: String,
-    public_url: String,
+    prefix: RoutePrefix,
+    public_url: PublicOrigin,
 }
 
 impl FileService {
@@ -43,12 +43,12 @@ impl FileService {
         let packages = files.packages;
         let metadata = files.metadata;
         let patch_chain = files.patch_chain;
-        let prefix = normalize_prefix(&options.prefix)?;
+        let prefix = RoutePrefix::parse(&options.prefix)?;
         let listener = http::bind(options.listen)?;
         let address = listener.local_addr()?;
         let public_url = match options.public_url {
-            Some(url) => validate_public_url(&url)?,
-            None => format!("http://{address}"),
+            Some(url) => PublicOrigin::parse(&url)?,
+            None => PublicOrigin::parse(&format!("http://{address}"))?,
         };
         let metadata = render_text(metadata, &public_url, METADATA_FILE)?;
         let patch_chain = render_text(patch_chain, &public_url, PATCH_CHAIN_FILE)?;
@@ -68,16 +68,12 @@ impl FileService {
 
     /// Public origin used when rendering the release metadata.
     pub fn url(&self) -> &str {
-        &self.public_url
+        self.public_url.as_str()
     }
 
     /// URL to store in a launcher's custom product configuration.
     pub fn product_host(&self) -> String {
-        if self.prefix.is_empty() {
-            self.public_url.clone()
-        } else {
-            format!("{}/{}", self.public_url, self.prefix)
-        }
+        self.public_url.product_host(&self.prefix)
     }
 
     /// Bound socket address, including the selected port when port zero was used.

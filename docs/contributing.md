@@ -131,11 +131,14 @@ crates/
           component_progress.rs  Starting versions and saved patch completions
           installed_build.rs  Saved identity, consistency, selection, and build comparison
         application/          download, extract, install, status, update
+          progress.rs         Shared package execution and installation observer events
+          update_target.rs    Pending target precedence, live fallback, and starting versions
           installed.rs        Shared validated installed-record loading
           comparison.rs       Compare targets and estimate packages from explicit starting versions
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
-          pipeline/           InstallationPipeline, checkpoint resumption, and shared contracts
+          pipeline/           InstallationPipeline and checkpoint resumption
+            reports.rs        Extraction/installation totals and cache-retention options
             extraction.rs     Apply already downloaded patches
             finalization.rs   Record the installed build and clean up successful work
             prefetch.rs       Async patch download coordination and cancellation
@@ -150,6 +153,7 @@ crates/
             archive.rs        Decode transport archives and report fully decoded entries
             volumes.rs        Read split transport volumes as one seekable archive
             contents.rs       Classify replacement files and typed deltas before execution
+            delta_filename.rs  Interpret publisher delta filenames and target package paths
             patch_application.rs  Install full patches or decoded replacements and source-dependent deltas
             delta.rs          Reconstruct and replace a single file using a delta
           filesystem/         Installation filesystem adapters
@@ -192,6 +196,7 @@ crates/
       lib.rs                  Public service API
       release_serving/        File-backed release serving context
         domain/               Release URL/prefix rules and template rendering
+          address.rs          Validated route prefixes and public origins
         application/          FileService startup, routing, and lifetime coordination
           routing.rs          Select application-owned release content independently of HTTP
         infrastructure/       HTTP/ranges, filesystem mapping, access logs
@@ -211,8 +216,12 @@ e2e/                          Independent black-box system test package
 ```
 
 Each directory's `mod.rs` is its entry point. Workflow options, events, and results
-live beside their workflow; shared installation events and reports live in
-`installation/application/pipeline/types.rs`. End-to-end scenarios and their
+live beside their workflow; shared installation observer events live in
+`installation/application/progress.rs`, while pipeline reports and execution options
+live in `installation/application/pipeline/reports.rs`. Update-target resolution
+lives in `installation/application/update_target.rs`; publisher delta filename
+recognition lives in `installation/infrastructure/packages/delta_filename.rs`.
+Service URL and prefix types live in `release_serving/domain/address.rs`. End-to-end scenarios and their
 process helpers live entirely under `e2e/tests/`.
 
 Organize by bounded context first, with domain, application, and infrastructure

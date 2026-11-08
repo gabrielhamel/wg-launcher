@@ -5,12 +5,11 @@ mod finalization;
 mod patch;
 mod prefetch;
 mod prefetch_budget;
+mod reports;
 mod streaming;
-mod types;
 
-pub use types::{
-    ExtractionEvent, ExtractionOptions, ExtractionReport, InstallationEvent, InstallationReport,
-};
+use super::progress::{ExtractionEvent, InstallationEvent};
+pub use reports::{ExtractionOptions, ExtractionReport, InstallationReport};
 
 /// Coordinates local extraction and streaming installation of a pinned release.
 ///

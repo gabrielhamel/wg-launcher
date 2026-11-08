@@ -3,7 +3,7 @@
 use super::status::{StatusReport, UpdateTarget, UpdateTargetSource};
 use crate::{
     Result,
-    catalog::{ResolvedRelease, installation_assets},
+    catalog::{ResolvedRelease, required_volumes},
     installation::InstalledBuild,
 };
 use std::path::PathBuf;
@@ -17,7 +17,7 @@ pub(super) fn build_status(
 ) -> Result<StatusReport> {
     let update_available = installed.differs_from(target);
     let download_bytes = if update_available {
-        installation_assets(target, reached_versions)?
+        required_volumes(target, reached_versions)?
             .iter()
             .map(|asset| asset.size)
             .sum()

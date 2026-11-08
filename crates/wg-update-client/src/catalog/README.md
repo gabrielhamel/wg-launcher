@@ -34,7 +34,8 @@ selection to prepare the game on someone's machine.
 | Patch chain | The ordered steps needed to reach a component's target version. |
 | Transport volume | One downloadable file, with a resolved HTTP URL. Several volumes can form one patch archive; these are distinct from game-owned assets. |
 | Package | A downloadable piece of a patch. One patch can require several packages. |
-| Download size | The size of the published packages, before allowing for anything already downloaded. |
+| Published volume bytes | The compressed size of all volumes offered in a resolved release, including unused patch alternatives. |
+| Required volumes | The volumes needed for the patch chain selected from starting component versions; cached bytes are not subtracted. |
 | Payload platform | The kind of computer the game content is intended for. It can differ from the computer running the launcher. |
 
 The catalog application resolves update releases from a product, client type,
@@ -63,3 +64,6 @@ Catalog entry points own WGUS client construction and reuse during resolution.
 Installation asks for a resolved release without constructing a protocol client.
 Internally, `TransportVolume` names a downloadable archive volume; saved releases
 retain the `assets` field and consumer reports retain their existing names.
+
+Internal size queries distinguish `published_volume_bytes()` from `required_volumes()`.
+Saved releases retain `assets`; consumer reports keep their existing field names.

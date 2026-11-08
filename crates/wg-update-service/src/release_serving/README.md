@@ -23,6 +23,8 @@ release on someone's machine belongs to the launcher.
 | Client type | An edition or quality variant of the game, such as SD or HD. |
 | Patch chain | The steps offered to bring a game component to its target version. |
 | Package | A downloadable piece of a patch. |
+| Route prefix | The validated optional path before the service API routes. |
+| Public origin | The validated HTTP(S) scheme, hostname, and optional port used in published package URLs. It contains no path or credentials. |
 | Service address | The location launchers use to discover the release and request its packages. |
 | Resumed download | A download that asks for the remaining portion of a package instead of starting over. |
 | Response range | The complete body or remaining bytes selected for a response, including its offset and length. |
@@ -37,3 +39,7 @@ inside the package folder, without constructing HTTP responses.
 The HTTP adapter lives in `infrastructure/http/`: `server.rs` owns connections and
 shutdown, `request.rs` parses incoming messages, and `response.rs` resolves response
 ranges and streams bodies. `mod.rs` maps release content to those responses.
+
+`domain/address.rs` owns validated route prefixes and public origins, API route
+construction, and product-host composition. Startup converts string options into
+these values before rendering metadata or configuring release routes.
