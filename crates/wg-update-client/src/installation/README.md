@@ -21,6 +21,7 @@ installation manages the copy on a person's machine.
 | Component version | The recorded version of one part of the game. Different parts can change independently. Starting versions seed missing checkpoints; completed patch checkpoints take precedence. |
 | Download | Bring packages onto the machine, without yet applying them to the game. |
 | Download preparation | Decide whether to reuse a complete volume, promote a complete partial file, or transfer the missing bytes. |
+| Transport volume | One downloaded file forming all or part of a patch archive. Split volumes are read together as one archive. |
 | Download cache | Packages kept locally so they can be used or reused for installation. |
 | Pinned manifest | The resolved release saved for local work, together with completed component checkpoints. Its saved JSON keeps release details and checkpoints in the same record. |
 | Pinned selection | The saved choice of build and packages for unfinished work. A retry continues that choice even if the publisher releases something newer. |
@@ -48,3 +49,10 @@ The installed-build domain compares versions and estimates remaining package byt
 the application projects that result into the public status report. Download
 preparation inspects local files before HTTP execution, keeping reuse, promotion,
 and resumed transfer explicit without changing retry or cleanup behavior.
+
+The pipeline decides how saved checkpoints resume a manifest and when a completed
+manifest becomes installed identity. Filesystem records only load and save those
+values. Package execution exposes separate full-patch installation and staged
+patch decoding operations: full content is decoded before each live file is
+replaced; delta contents stay in the patch workspace until application. Split-volume
+reading lives separately from archive decoding and replacement policy.

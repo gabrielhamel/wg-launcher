@@ -2237,6 +2237,7 @@ dependencies = [
  "sha2",
  "tar",
  "tempfile",
+ "thiserror",
  "tokio",
  "wg-update-client",
  "zip",

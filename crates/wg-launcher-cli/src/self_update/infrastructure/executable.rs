@@ -2,19 +2,35 @@ use super::super::Result;
 use semver::Version;
 use std::{path::Path, time::Duration};
 
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum ExecutableError {
+    #[error("launcher directory unavailable")]
+    MissingDirectory,
+    #[error("cannot prepare update in {directory}")]
+    Staging {
+        directory: std::path::PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
+    #[error("candidate did not respond")]
+    Timeout,
+    #[error("candidate failed version check")]
+    VersionMismatch,
+    #[error("cannot replace executable")]
+    Replacement(#[source] std::io::Error),
+}
+
 pub(crate) fn staging_directory() -> Result<tempfile::TempDir> {
     let executable = std::env::current_exe()?.canonicalize()?;
     let parent = executable
         .parent()
-        .ok_or("Cannot locate the launcher directory.")?;
+        .ok_or(ExecutableError::MissingDirectory)?;
     let work = tempfile::Builder::new()
         .prefix(".wg-launcher-self-update-")
         .tempdir_in(parent)
-        .map_err(|error| {
-            format!(
-                "Cannot prepare the CLI update in {}: {error}. Check directory permissions.",
-                parent.display()
-            )
+        .map_err(|source| ExecutableError::Staging {
+            directory: parent.to_path_buf(),
+            source,
         })?;
     Ok(work)
 }
@@ -30,23 +46,16 @@ pub(crate) async fn verify(binary: &Path, expected: &Version) -> Result<()> {
         .kill_on_drop(true);
     let output = tokio::time::timeout(Duration::from_secs(5), candidate.output())
         .await
-        .map_err(
-            |_| "The downloaded CLI did not respond; the installed executable was preserved.",
-        )??;
+        .map_err(|_| ExecutableError::Timeout)??;
     let stdout = String::from_utf8_lossy(&output.stdout);
     let version = super::super::domain::candidate_version(&stdout);
     if !output.status.success() || version != Some(expected.to_string().as_str()) {
-        return Err(
-            "The downloaded CLI failed its version check; the installed executable was preserved."
-                .into(),
-        );
+        return Err(ExecutableError::VersionMismatch.into());
     }
     Ok(())
 }
 
 pub(crate) fn replace(binary: &Path) -> Result<()> {
-    self_replace::self_replace(binary).map_err(|error| {
-        format!("Cannot replace the CLI executable: {error}. Check directory permissions.")
-    })?;
+    self_replace::self_replace(binary).map_err(ExecutableError::Replacement)?;
     Ok(())
 }

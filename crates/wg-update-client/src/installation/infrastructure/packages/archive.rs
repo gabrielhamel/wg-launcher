@@ -1,4 +1,5 @@
 use super::error::{PackageError as Error, Result};
+use super::volumes::MultiVolumeReader;
 use crate::catalog::Patch;
 use crate::installation::ExtractionEvent;
 use crate::installation::infrastructure::filesystem::{
@@ -7,19 +8,55 @@ use crate::installation::infrastructure::filesystem::{
     replacement::replace_file,
 };
 use std::{
-    fs::{self, File},
-    io::{Read, Seek, SeekFrom},
-    path::{Path, PathBuf},
+    fs,
+    io::Read,
+    path::Path,
     sync::Arc,
     time::{Duration, Instant},
 };
 
-pub(crate) fn extract_archive(
+/// Decode full content safely before replacing each live game file.
+pub(crate) fn install_full_patch(
+    patch: &Patch,
+    cache: &Path,
+    game: &Path,
+    workspace: &PatchWorkspace,
+    observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
+) -> Result<()> {
+    fs::create_dir_all(game)?;
+    decode_archive(
+        patch,
+        cache,
+        &workspace.archive(),
+        observer,
+        |relative, output| {
+            let target = game.join(relative);
+            let result = if output.is_dir() {
+                fs::create_dir_all(target).map_err(crate::installation::StorageError::from)
+            } else {
+                replace_file(output, &target, &workspace.replacement_backup())
+            };
+            result.map_err(|error| sevenz_rust::Error::other(error.to_string()))
+        },
+    )
+}
+
+/// Decode a delta patch into its workspace without changing live game files.
+pub(crate) fn decode_patch_contents(
+    patch: &Patch,
+    cache: &Path,
+    workspace: &PatchWorkspace,
+    observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
+) -> Result<()> {
+    decode_archive(patch, cache, &workspace.archive(), observer, |_, _| Ok(()))
+}
+
+fn decode_archive(
     patch: &Patch,
     cache: &Path,
     destination: &Path,
-    workspace: Option<&PatchWorkspace>,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
+    mut install: impl FnMut(&Path, &Path) -> std::result::Result<(), sevenz_rust::Error>,
 ) -> Result<()> {
     let mut volumes = patch
         .files
@@ -52,7 +89,9 @@ pub(crate) fn extract_archive(
                 .map_err(|error| sevenz_rust::Error::other(error.to_string()))?;
             let target = destination.join(&relative);
             if entry.is_directory() {
-                return sevenz_rust::default_entry_extract_fn(entry, reader, &target);
+                let result = sevenz_rust::default_entry_extract_fn(entry, reader, &target)?;
+                install(&relative, &target)?;
+                return Ok(result);
             }
             index += 1;
             let notify = |extracted| {
@@ -71,15 +110,8 @@ pub(crate) fn extract_archive(
                 extracted: 0,
                 last_update: Instant::now(),
             };
-            // A full archive must not truncate a live game file before decoding
-            // its replacement succeeds. Delta archives already target staging.
-            let staged = workspace.map(|work| work.archive().join(&relative));
-            let output = staged.as_ref().unwrap_or(&target);
-            let result = sevenz_rust::default_entry_extract_fn(entry, &mut progress, output)?;
-            if let Some(work) = workspace {
-                replace_file(output, &target, &work.replacement_backup())
-                    .map_err(|error| sevenz_rust::Error::other(error.to_string()))?;
-            }
+            let result = sevenz_rust::default_entry_extract_fn(entry, &mut progress, &target)?;
+            install(&relative, &target)?;
             notify(progress.extracted);
             Ok(result)
         })
@@ -102,86 +134,5 @@ impl Read for ExtractionReader<'_> {
             self.last_update = Instant::now();
         }
         Ok(count)
-    }
-}
-
-#[derive(Debug)]
-struct MultiVolumeReader {
-    files: Vec<File>,
-    starts: Vec<u64>,
-    lengths: Vec<u64>,
-    position: u64,
-    length: u64,
-}
-
-impl MultiVolumeReader {
-    fn open(paths: &[PathBuf]) -> Result<Self> {
-        let mut files = Vec::with_capacity(paths.len());
-        let mut starts = Vec::with_capacity(paths.len());
-        let mut lengths = Vec::with_capacity(paths.len());
-        let mut length = 0_u64;
-        for path in paths {
-            let file = File::open(path)?;
-            let file_length = file.metadata()?.len();
-            starts.push(length);
-            lengths.push(file_length);
-            length = length.checked_add(file_length).ok_or_else(|| {
-                Error::ArchiveExtraction("archive volume sizes overflow u64".to_owned())
-            })?;
-            files.push(file);
-        }
-        Ok(Self {
-            files,
-            starts,
-            lengths,
-            position: 0,
-            length,
-        })
-    }
-
-    fn volume_at(&self, position: u64) -> Option<usize> {
-        self.starts
-            .iter()
-            .zip(&self.lengths)
-            .position(|(start, length)| position >= *start && position < *start + *length)
-    }
-}
-
-impl Read for MultiVolumeReader {
-    fn read(&mut self, buffer: &mut [u8]) -> std::io::Result<usize> {
-        if buffer.is_empty() || self.position >= self.length {
-            return Ok(0);
-        }
-        let Some(index) = self.volume_at(self.position) else {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "archive volume contains an invalid empty gap",
-            ));
-        };
-        let local_position = self.position - self.starts[index];
-        self.files[index].seek(SeekFrom::Start(local_position))?;
-        let remaining = (self.lengths[index] - local_position) as usize;
-        let read_length = buffer.len().min(remaining);
-        let count = self.files[index].read(&mut buffer[..read_length])?;
-        self.position += count as u64;
-        Ok(count)
-    }
-}
-
-impl Seek for MultiVolumeReader {
-    fn seek(&mut self, position: SeekFrom) -> std::io::Result<u64> {
-        let next = match position {
-            SeekFrom::Start(position) => i128::from(position),
-            SeekFrom::End(offset) => i128::from(self.length) + i128::from(offset),
-            SeekFrom::Current(offset) => i128::from(self.position) + i128::from(offset),
-        };
-        if !(0..=i128::from(self.length)).contains(&next) {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "cannot seek outside the split archive",
-            ));
-        }
-        self.position = next as u64;
-        Ok(self.position)
     }
 }

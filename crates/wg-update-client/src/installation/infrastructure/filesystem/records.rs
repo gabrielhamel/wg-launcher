@@ -22,11 +22,10 @@ pub(crate) async fn load_cache_manifest(cache: &Path) -> Result<Option<PinnedMan
 }
 
 pub(crate) fn save_installed_build(
-    manifest: &PinnedManifest,
+    installed_build: &InstalledBuild,
     installed_state: &Path,
 ) -> Result<()> {
-    let installed_build = InstalledBuild::from(manifest);
-    let bytes = serde_json::to_vec_pretty(&installed_build)?;
+    let bytes = serde_json::to_vec_pretty(installed_build)?;
     if let Some(parent) = installed_state.parent() {
         fs::create_dir_all(parent)?;
     }
@@ -55,15 +54,13 @@ pub(crate) fn save_manifest(
     )
 }
 
-pub(crate) fn resume_manifest(
-    manifest: PinnedManifest,
+pub(crate) fn load_pending_manifest(
     storage: &InstallationStorage,
-) -> Result<PinnedManifest> {
+) -> Result<Option<PinnedManifest>> {
     let bytes = match fs::read(storage.cache.join(DOWNLOAD_MANIFEST_FILE)) {
         Ok(bytes) => bytes,
-        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(manifest),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
         Err(error) => return Err(error.into()),
     };
-    let pending: PinnedManifest = serde_json::from_slice(&bytes)?;
-    Ok(manifest.resume_from(pending)?)
+    Ok(Some(serde_json::from_slice(&bytes)?))
 }

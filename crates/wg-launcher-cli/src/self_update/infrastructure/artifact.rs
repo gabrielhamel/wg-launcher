@@ -7,10 +7,7 @@ use super::{
 use crate::self_update::application::{Observer, SelfUpdateEvent, SelfUpdateStage};
 use crate::self_update::{
     Result,
-    domain::{
-        Release,
-        artifact::{ArchiveFormat, ReleaseArtifact},
-    },
+    domain::{Release, artifact::ReleaseArtifact},
 };
 use sha2::{Digest, Sha256};
 use std::{
@@ -18,6 +15,16 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
+
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum ArtifactDownloadError {
+    #[error("invalid archive checksum")]
+    InvalidChecksum,
+    #[error("archive exceeds size limit")]
+    TooLarge,
+    #[error("archive checksum mismatch")]
+    ChecksumMismatch,
+}
 
 pub(crate) async fn download(
     release: &Release,
@@ -33,9 +40,7 @@ pub(crate) async fn download(
         .next()
         .unwrap_or("");
     if checksum.len() != 64 || !checksum.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-        return Err(
-            "The CLI archive checksum is invalid; the installed executable was preserved.".into(),
-        );
+        return Err(ArtifactDownloadError::InvalidChecksum.into());
     }
     let archive = directory.join(&artifact.name);
     let mut file = std::fs::File::create(&archive)?;
@@ -53,9 +58,9 @@ pub(crate) async fn download(
     while let Some(chunk) = response.chunk().await? {
         size = size
             .checked_add(chunk.len())
-            .ok_or("CLI archive is too large.")?;
+            .ok_or(ArtifactDownloadError::TooLarge)?;
         if size > 128 * 1024 * 1024 {
-            return Err("CLI archive is too large; the installed executable was preserved.".into());
+            return Err(ArtifactDownloadError::TooLarge.into());
         }
         hasher.update(&chunk);
         file.write_all(&chunk)?;
@@ -65,15 +70,8 @@ pub(crate) async fn download(
     file.sync_all()?;
     drop(file);
     if !format!("{:x}", hasher.finalize()).eq_ignore_ascii_case(checksum) {
-        return Err(
-            "CLI archive checksum mismatch; the installed executable was preserved.".into(),
-        );
+        return Err(ArtifactDownloadError::ChecksumMismatch.into());
     }
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::OpeningArchive))?;
-    archive::extract(
-        &archive,
-        directory,
-        matches!(artifact.format, ArchiveFormat::Zip),
-        observer,
-    )
+    archive::extract(&archive, directory, artifact.format, observer)
 }

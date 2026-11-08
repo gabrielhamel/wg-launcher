@@ -35,6 +35,7 @@ tar = "0.4"
 zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 tempfile = "3"
 self-replace = "1.5"
+thiserror = "2"
 
 # Keep binary releases enabled independently of crates.io publication.
 [package.metadata.dist]

@@ -155,6 +155,38 @@ impl Fixture {
         resources
     }
 
+    /// A full component containing an empty directory and nested game-owned content.
+    pub fn with_directories(mut self, scratch: &Path) -> Self {
+        let source = scratch.join("tree");
+        fs::create_dir_all(source.join("empty")).unwrap();
+        fs::create_dir_all(source.join("nested")).unwrap();
+        fs::write(source.join("nested/payload.pkg"), self.release.payload()).unwrap();
+        let archive = scratch.join("tree.wgpkg");
+        let mut writer =
+            sevenz_rust::SevenZWriter::new(fs::File::create(&archive).unwrap()).unwrap();
+        for name in ["empty", "nested"] {
+            writer
+                .push_archive_entry::<&[u8]>(
+                    sevenz_rust::SevenZArchiveEntry::from_path(source.join(name), name.to_owned()),
+                    None,
+                )
+                .unwrap();
+        }
+        writer
+            .push_archive_entry(
+                sevenz_rust::SevenZArchiveEntry::from_path(
+                    source.join("nested/payload.pkg"),
+                    "nested/payload.pkg".into(),
+                ),
+                Some(fs::File::open(source.join("nested/payload.pkg")).unwrap()),
+            )
+            .unwrap();
+        writer.finish().unwrap();
+        self.packages
+            .insert("client.wgpkg".into(), fs::read(archive).unwrap());
+        self
+    }
+
     /// Builds real 7z transport volumes in a caller-owned scratch directory.
     pub fn build(release: Release, scratch: &Path) -> Self {
         fs::create_dir_all(scratch).unwrap();

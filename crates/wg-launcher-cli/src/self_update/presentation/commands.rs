@@ -31,7 +31,9 @@ pub(crate) async fn print_version() {
 
 pub(crate) async fn run() -> Result<()> {
     let progress = SelfUpdateProgress::new();
-    let outcome = application::run(&|event| progress.observe(event)).await?;
+    let outcome = application::run(&|event| progress.observe(event))
+        .await
+        .map_err(|error| super::error::describe(error.as_ref()))?;
     progress.clear();
     match outcome {
         SelfUpdateOutcome::Managed(manager) => {

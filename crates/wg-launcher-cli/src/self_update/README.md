@@ -30,3 +30,8 @@ game versions belong to [installation](../installation/README.md).
 
 The application supplies the current version and host target to domain rules.
 Release comparison and artifact selection do not discover those facts themselves.
+
+Artifact selection and verification return concrete failure types beside their
+owning rules and adapters. The application retains discovery causes; presentation
+renders failures and recovery instructions. Archive format remains explicit from
+release selection through extraction.

@@ -5,7 +5,7 @@ use crate::installation::infrastructure::filesystem::{InstallationLock, installa
 use crate::installation::infrastructure::filesystem::{
     cache::verify_cache,
     paths::walk_files,
-    records::{resume_manifest, save_installed_build, save_manifest},
+    records::{save_installed_build, save_manifest},
     storage::{InstallationStorage, prepare_installation},
 };
 use crate::installation::{ExtractionEvent, ExtractionOptions, ExtractionReport, PinnedManifest};
@@ -25,7 +25,8 @@ pub(super) fn finalize_installation(
         cache_removed: false,
     };
     observer(ExtractionEvent::Finalizing);
-    save_installed_build(manifest, &storage.installed_state)?;
+    let installed = crate::installation::InstalledBuild::from(manifest);
+    save_installed_build(&installed, &storage.installed_state)?;
     if storage.staging.exists() {
         fs::remove_dir_all(&storage.staging)?;
     }
@@ -55,7 +56,7 @@ pub(super) fn extract_sync(
     observer(ExtractionEvent::CheckingCache {
         assets: manifest.release.assets.len(),
     });
-    let mut manifest = resume_manifest(manifest.clone(), storage)?;
+    let mut manifest = super::resume_manifest(manifest.clone(), storage)?;
     let patches = manifest
         .ordered_patches()?
         .into_iter()

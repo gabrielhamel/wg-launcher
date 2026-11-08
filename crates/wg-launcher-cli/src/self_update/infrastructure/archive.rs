@@ -1,6 +1,7 @@
 //! Read only the executable into a fixed staging path; never unpack archive paths.
 
-use crate::self_update::Result;
+use crate::self_update::{Result, domain::artifact::ArchiveFormat};
+
 use crate::self_update::application::{Observer, SelfUpdateEvent, SelfUpdateStage};
 use std::{
     fs::File,
@@ -8,12 +9,26 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum ArchiveError {
+    #[error("archive executable is a symbolic link")]
+    SymbolicLink,
+    #[error("unsafe archive executable entry")]
+    UnsafeEntry,
+    #[error("archive contains no launcher executable")]
+    MissingExecutable,
+    #[error("archive contains duplicate launcher executables")]
+    DuplicateExecutable,
+    #[error("invalid executable size")]
+    InvalidSize,
+}
+
 const LIMIT: u64 = 256 * 1024 * 1024;
 
 pub(crate) fn extract(
     archive: &Path,
     directory: &Path,
-    zip: bool,
+    format: ArchiveFormat,
     observer: &Observer<'_>,
 ) -> Result<PathBuf> {
     let name = if cfg!(windows) {
@@ -23,53 +38,54 @@ pub(crate) fn extract(
     };
     let output = directory.join(name);
     let mut found = false;
-    if zip {
-        let mut archive = zip::ZipArchive::new(File::open(archive)?)?;
-        for index in 0..archive.len() {
-            let mut entry = archive.by_index(index)?;
-            let Some(path) = entry.enclosed_name() else {
-                continue;
-            };
-            if path.file_name().is_some_and(|part| part == name) && entry.is_file() {
-                if entry
-                    .unix_mode()
-                    .is_some_and(|mode| mode & 0o170000 == 0o120000)
-                {
-                    return Err(
-                        "The CLI archive contains a symbolic link instead of an executable.".into(),
-                    );
+    match format {
+        ArchiveFormat::Zip => {
+            let mut archive = zip::ZipArchive::new(File::open(archive)?)?;
+            for index in 0..archive.len() {
+                let mut entry = archive.by_index(index)?;
+                let Some(path) = entry.enclosed_name() else {
+                    continue;
+                };
+                if path.file_name().is_some_and(|part| part == name) && entry.is_file() {
+                    if entry
+                        .unix_mode()
+                        .is_some_and(|mode| mode & 0o170000 == 0o120000)
+                    {
+                        return Err(ArchiveError::SymbolicLink.into());
+                    }
+                    observer(SelfUpdateEvent::Transfer {
+                        stage: SelfUpdateStage::ExtractingExecutable,
+                        total: Some(entry.size()),
+                    })?;
+                    write_binary(&mut entry, &output, &mut found, observer)?;
                 }
-                observer(SelfUpdateEvent::Transfer {
-                    stage: SelfUpdateStage::ExtractingExecutable,
-                    total: Some(entry.size()),
-                })?;
-                write_binary(&mut entry, &output, &mut found, observer)?;
             }
         }
-    } else {
-        let decoded = flate2::read::GzDecoder::new(File::open(archive)?).take(LIMIT * 2);
-        let mut archive = tar::Archive::new(decoded);
-        for entry in archive.entries()? {
-            let mut entry = entry?;
-            let path = entry.path()?;
-            if path.file_name().is_some_and(|part| part == name) {
-                if !path
-                    .components()
-                    .all(|part| matches!(part, Component::Normal(_)))
-                    || !entry.header().entry_type().is_file()
-                {
-                    return Err("The CLI archive has an unsafe executable entry.".into());
+        ArchiveFormat::TarGzip => {
+            let decoded = flate2::read::GzDecoder::new(File::open(archive)?).take(LIMIT * 2);
+            let mut archive = tar::Archive::new(decoded);
+            for entry in archive.entries()? {
+                let mut entry = entry?;
+                let path = entry.path()?;
+                if path.file_name().is_some_and(|part| part == name) {
+                    if !path
+                        .components()
+                        .all(|part| matches!(part, Component::Normal(_)))
+                        || !entry.header().entry_type().is_file()
+                    {
+                        return Err(ArchiveError::UnsafeEntry.into());
+                    }
+                    observer(SelfUpdateEvent::Transfer {
+                        stage: SelfUpdateStage::ExtractingExecutable,
+                        total: Some(entry.size()),
+                    })?;
+                    write_binary(&mut entry, &output, &mut found, observer)?;
                 }
-                observer(SelfUpdateEvent::Transfer {
-                    stage: SelfUpdateStage::ExtractingExecutable,
-                    total: Some(entry.size()),
-                })?;
-                write_binary(&mut entry, &output, &mut found, observer)?;
             }
         }
     }
     if !found {
-        return Err("The CLI archive does not contain the launcher executable.".into());
+        return Err(ArchiveError::MissingExecutable.into());
     }
     #[cfg(unix)]
     {
@@ -86,7 +102,7 @@ fn write_binary(
     observer: &Observer<'_>,
 ) -> Result<()> {
     if *found {
-        return Err("The CLI archive contains duplicate launcher executables.".into());
+        return Err(ArchiveError::DuplicateExecutable.into());
     }
     let mut file = File::create(output)?;
     let mut reader = reader.take(LIMIT + 1);
@@ -102,7 +118,7 @@ fn write_binary(
         observer(SelfUpdateEvent::Advanced(count as u64))?;
     }
     if size == 0 || size > LIMIT {
-        return Err("The CLI executable has an invalid size.".into());
+        return Err(ArchiveError::InvalidSize.into());
     }
     file.flush()?;
     file.sync_all()?;

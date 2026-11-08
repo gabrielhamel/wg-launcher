@@ -52,3 +52,46 @@ fn install_crosses_both_public_clis_and_the_http_boundary() {
     let status = success(sandbox.run(&game, &["status"]));
     assert!(status.contains("Up to date."));
 }
+
+#[test]
+fn full_patch_preserves_empty_directories_in_streaming_and_staged_installation() {
+    for staged in [false, true] {
+        let sandbox = Sandbox::new();
+        let fixture = sandbox
+            .fixture(Release::V1)
+            .with_directories(&sandbox.path.join("directories"));
+        let service = WgUpdateService::start(fixture.service_resources("updates"));
+        let config = sandbox.configuration(&service);
+        let game = sandbox.game();
+        success(sandbox.run(
+            &sandbox.path,
+            &[
+                if staged { "download" } else { "install" },
+                "--game",
+                "wot",
+                "--product",
+                config.to_str().unwrap(),
+                "--region",
+                "local",
+                "--output",
+                game.to_str().unwrap(),
+            ],
+        ));
+        if staged {
+            drop(service);
+            success(sandbox.run(&game, &["extract"]));
+        }
+        assert!(game.join("empty").is_dir());
+        assert_eq!(
+            fs::read(game.join("nested/payload.pkg")).unwrap(),
+            Release::V1.payload()
+        );
+        assert_eq!(
+            fs::read(game.join("locale.txt")).unwrap(),
+            Release::V1.locale()
+        );
+        assert!(game.join(".wg-launcher/state.json").is_file());
+        assert!(!game.join(".wg-launcher/download").exists());
+        assert!(!game.join(".wg-launcher/installing").exists());
+    }
+}

@@ -9,6 +9,10 @@ use super::domain::{
 use super::infrastructure::{artifact, distribution, executable, release};
 use semver::Version;
 
+#[derive(Debug, thiserror::Error)]
+#[error("release discovery failed: {0}")]
+pub(crate) struct ReleaseCheckError(#[source] pub(crate) Box<dyn std::error::Error>);
+
 /// A step in checking and replacing the launcher executable.
 #[derive(Clone, Copy)]
 pub(crate) enum SelfUpdateStage {
@@ -56,9 +60,7 @@ pub(crate) async fn run(observer: &Observer<'_>) -> Result<SelfUpdateOutcome> {
     if let Some(manager) = distribution::manager() {
         return Ok(SelfUpdateOutcome::Managed(manager));
     }
-    let release = release.map_err(|error| {
-        format!("Cannot check the latest CLI release: {error}. Check your connection or release mirror and try again.")
-    })?;
+    let release = release.map_err(ReleaseCheckError)?;
     if !is_newer(&release) {
         return Ok(SelfUpdateOutcome::Current(release.version));
     }

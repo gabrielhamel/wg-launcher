@@ -4,12 +4,20 @@ use crate::self_update::Result;
 use reqwest::{Client, Url};
 use std::time::Duration;
 
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum HttpError {
+    #[error("update URL requires HTTPS or loopback HTTP")]
+    UnsafeUrl,
+    #[error("update metadata exceeds size limit")]
+    MetadataTooLarge,
+}
+
 pub(super) fn validate_url(url: &Url) -> Result<()> {
     let local = matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "[::1]"));
     if url.scheme() == "https" || (url.scheme() == "http" && local) {
         Ok(())
     } else {
-        Err("CLI updates require HTTPS (HTTP is allowed only for loopback mirrors).".into())
+        Err(HttpError::UnsafeUrl.into())
     }
 }
 
@@ -35,7 +43,7 @@ pub(super) async fn fetch(client: &Client, url: Url, limit: usize) -> Result<Vec
     let mut bytes = Vec::new();
     while let Some(chunk) = response.chunk().await? {
         if bytes.len().saturating_add(chunk.len()) > limit {
-            return Err("CLI update metadata is too large.".into());
+            return Err(HttpError::MetadataTooLarge.into());
         }
         bytes.extend_from_slice(&chunk);
     }

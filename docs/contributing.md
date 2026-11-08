@@ -132,7 +132,7 @@ crates/
           comparison.rs       Project domain build comparison into status reports
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
-          pipeline/           InstallationPipeline and shared execution contracts
+          pipeline/           InstallationPipeline, checkpoint resumption, and shared contracts
             extraction.rs     Local extraction and installation finalization
             streaming.rs      Overlapping downloads and ordered patch execution
             patch.rs          Apply a patch, persist its checkpoint, then release packages
@@ -141,12 +141,14 @@ crates/
             local.rs          Cache reuse, partial-file preparation, and promotion
             attempt.rs        One HTTP attempt and structured transfer outcomes
           packages/           Transport archives, delta application, throttled output progress
+            archive.rs        Explicit full-patch installation and staged patch decoding
+            volumes.rs        Read split transport volumes as one seekable archive
             contents.rs       Classify replacement files and typed deltas before execution
           filesystem/         Installation filesystem adapters
             storage.rs        Installation-relative paths and staging preparation
             lock.rs           Exclusive installation mutation lock
             cache.rs          Package verification and release
-            records.rs        One replacement policy for manifests and installed-build persistence
+            records.rs        Read/write records with one file replacement policy
             patch_workspace.rs  Active patch staging and preserved original sources
             replacement.rs    File replacement with rollback on rename failure
       error.rs                Public Error, ErrorKind classification, and Result alias
@@ -172,6 +174,7 @@ crates/
           artifact.rs         Download, verify, and extract the selected artifact
           http.rs             Shared HTTPS, redirect, and bounded-transfer policy
         presentation/         Command handlers, notices, update instructions, event rendering
+          error.rs            Render typed failures with terminal recovery guidance
       terminal/               Shared command styling, byte sizes, spinner/styles
     docs/assets/              CLI demonstration assets
   wg-update-service/          File-backed server binary
@@ -182,7 +185,7 @@ crates/
       release_serving/        File-backed release serving context
         domain/               Release URL/prefix rules and template rendering
         application/          FileService startup, routing, and lifetime coordination
-          routing.rs          Select release metadata, patch-chain, and package responses
+          routing.rs          Select application-owned release content independently of HTTP
         infrastructure/       HTTP/ranges, filesystem mapping, access logs
           http.rs             Request parsing, ranges, headers, and streamed responses
           filesystem.rs       Release loading and safe relative package-file lookup

@@ -1,4 +1,5 @@
 mod routing;
+pub(crate) use routing::{PackageKind, ReleaseContent};
 
 use super::domain::{ReleaseError, normalize_prefix, render_text, validate_public_url};
 use super::infrastructure::{
@@ -55,7 +56,7 @@ impl FileService {
         let access_log = access_log::open(options.access_log)?;
         let handler = Arc::new(move |request: &Request| {
             access_log::record(&access_log, request);
-            routes.resolve(request)
+            routes.resolve(&request.path)
         });
         let handle = ServerHandle::start(listener, handler);
         Ok(Self {

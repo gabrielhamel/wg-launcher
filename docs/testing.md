@@ -44,6 +44,9 @@ distinguishes an already-installed pinned target from a live up-to-date result.
 cargo test -p wg-launcher-e2e --locked
 ```
 
+The server-crossing installation scenarios also check that full patches retain
+empty directories and nested payloads in integrated and offline staged workflows.
+
 The dedicated server-crossing category also verifies parallel services receive
 distinct ports and preserve their address when restarted:
 

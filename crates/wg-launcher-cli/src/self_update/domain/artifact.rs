@@ -1,8 +1,15 @@
 //! Select the launcher archive and checksum published for the running host.
 
 use super::Release;
-use crate::self_update::Result;
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum ArtifactSelectionError {
+    #[error("unsupported self-update host")]
+    UnsupportedHost,
+    #[error("release archive or checksum missing for host")]
+    MissingArtifact,
+}
 
+#[derive(Clone, Copy)]
 pub(crate) enum ArchiveFormat {
     Zip,
     TarGzip,
@@ -22,13 +29,18 @@ pub(crate) struct HostTarget<'a> {
 }
 
 impl ReleaseArtifact {
-    pub(crate) fn for_host(release: &Release, host: &HostTarget<'_>) -> Result<Self> {
+    pub(crate) fn for_host(
+        release: &Release,
+        host: &HostTarget<'_>,
+    ) -> Result<Self, ArtifactSelectionError> {
         let (target, format) = match (host.os, host.architecture) {
             ("windows", "x86_64") => ("x86_64-pc-windows-msvc", ArchiveFormat::Zip),
             ("macos", "aarch64") => ("aarch64-apple-darwin", ArchiveFormat::TarGzip),
             ("macos", "x86_64") => ("x86_64-apple-darwin", ArchiveFormat::TarGzip),
-            ("linux", "x86_64") if host.environment == "gnu" => ("x86_64-unknown-linux-gnu", ArchiveFormat::TarGzip),
-            _ => return Err("Self-update not supported for this platform; install a compatible CLI build manually.".into()),
+            ("linux", "x86_64") if host.environment == "gnu" => {
+                ("x86_64-unknown-linux-gnu", ArchiveFormat::TarGzip)
+            }
+            _ => return Err(ArtifactSelectionError::UnsupportedHost),
         };
         let extension = match format {
             ArchiveFormat::Zip => "zip",
@@ -37,7 +49,7 @@ impl ReleaseArtifact {
         let name = format!("{}-{target}.{extension}", env!("CARGO_PKG_NAME"));
         let checksum_name = format!("{name}.sha256");
         if !release.artifacts.contains(&name) || !release.artifacts.contains(&checksum_name) {
-            return Err("The latest release has no archive and checksum for this platform.".into());
+            return Err(ArtifactSelectionError::MissingArtifact);
         }
         Ok(Self {
             name,

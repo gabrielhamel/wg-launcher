@@ -14,6 +14,7 @@ release on someone's machine belongs to the launcher.
 | --- | --- |
 | Publisher | The person or organisation making game content available. |
 | Release | A prepared offering of game content and the information describing how to obtain it. |
+| Release content | The metadata, patch chain, or package selected for a request, or the fact that none exists. HTTP headers are chosen separately. |
 | Release folder | The local collection of release descriptions and packages that the service makes available. |
 | Product | The game offering a launcher asks about, identified by its publisher and application identity. |
 | Application identity | The publisher's name for the game offering being requested. |
@@ -25,8 +26,8 @@ release on someone's machine belongs to the launcher.
 | Resumed download | A download that asks for the remaining portion of a package instead of starting over. |
 | Access log | A record of requests received by the service, useful for understanding what launchers asked for. |
 
-The application release routes select metadata, patch chains, and package responses,
-including their content types. The HTTP adapter parses requests and handles ranges,
-headers, and streaming.
+The application release routes select release content without HTTP request or
+response models. The HTTP adapter parses requests, translates the selected content
+into MIME types and status codes, and handles ranges, headers, and streaming.
 The filesystem adapter resolves relative package paths and enforces containment
 inside the package folder, without constructing HTTP responses.

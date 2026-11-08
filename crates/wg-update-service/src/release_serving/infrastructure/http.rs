@@ -1,8 +1,9 @@
+use super::super::application::{PackageKind, ReleaseContent};
 use std::{
     fs::File,
     io::{self, Read, Seek, SeekFrom, Write},
     net::{SocketAddr, TcpListener, TcpStream},
-    path::{Path, PathBuf},
+    path::Path,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -17,7 +18,7 @@ pub(crate) struct Request {
     pub(crate) range: Option<String>,
 }
 
-pub(crate) type Handler = dyn Fn(&Request) -> Resource + Send + Sync + 'static;
+pub(crate) type Handler = dyn Fn(&Request) -> ReleaseContent + Send + Sync + 'static;
 
 pub(crate) struct ServerHandle {
     pub(crate) address: SocketAddr,
@@ -64,33 +65,31 @@ impl Drop for ServerHandle {
     }
 }
 
-pub(crate) enum Resource {
-    Bytes(Vec<u8>, &'static str),
-    File(PathBuf, &'static str),
-    NotFound,
-}
-
 fn serve(stream: &mut TcpStream, handler: &Handler) -> io::Result<()> {
     let (method, request) = read_request(stream)?;
     if method != "GET" && method != "HEAD" {
         return write_empty(stream, "405 Method Not Allowed", &["Allow: GET, HEAD"]);
     }
     match handler(&request) {
-        Resource::Bytes(body, content_type) => write_bytes(
+        ReleaseContent::Metadata(body) | ReleaseContent::PatchChain(body) => write_bytes(
             stream,
             method == "HEAD",
             &body,
-            content_type,
+            "application/xml",
             request.range.as_deref(),
         ),
-        Resource::File(path, content_type) => write_file(
+        ReleaseContent::Package { path, kind } => write_file(
             stream,
             method == "HEAD",
             &path,
-            content_type,
+            match kind {
+                PackageKind::Xml => "application/xml",
+                PackageKind::Json => "application/json",
+                PackageKind::Binary => "application/octet-stream",
+            },
             request.range.as_deref(),
         ),
-        Resource::NotFound => write_empty(stream, "404 Not Found", &[]),
+        ReleaseContent::Missing => write_empty(stream, "404 Not Found", &[]),
     }
 }
 

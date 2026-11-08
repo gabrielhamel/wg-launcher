@@ -7,6 +7,16 @@ use semver::Version;
 use serde::Deserialize;
 use std::time::Duration;
 
+#[derive(Debug, thiserror::Error)]
+pub(crate) enum ReleaseError {
+    #[error("CLI absent from release manifest")]
+    MissingCli,
+    #[error("latest release is unstable")]
+    Unstable,
+    #[error("invalid repository URL")]
+    InvalidRepository,
+}
+
 const PACKAGE: &str = env!("CARGO_PKG_NAME");
 const REPOSITORY: &str = env!("CARGO_PKG_REPOSITORY");
 
@@ -39,21 +49,21 @@ pub(crate) async fn latest() -> Result<Release> {
         .releases
         .into_iter()
         .find(|app| app.app_name == PACKAGE)
-        .ok_or("The release manifest does not contain this CLI.")?;
+        .ok_or(ReleaseError::MissingCli)?;
     let version = Version::parse(
         app.app_version
             .strip_prefix('v')
             .unwrap_or(&app.app_version),
     )?;
     if manifest.announcement_is_prerelease || !version.pre.is_empty() {
-        return Err("The latest CLI release is not a stable version.".into());
+        return Err(ReleaseError::Unstable.into());
     }
     let base = if mirror.is_some() {
         url.join("./")?
     } else {
         let mut base = Url::parse(REPOSITORY)?;
         base.path_segments_mut()
-            .map_err(|_| "Invalid CLI repository URL.")?
+            .map_err(|_| ReleaseError::InvalidRepository)?
             .extend(["releases", "download", &manifest.announcement_tag, ""]);
         base
     };

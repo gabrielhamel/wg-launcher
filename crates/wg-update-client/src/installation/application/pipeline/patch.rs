@@ -5,7 +5,10 @@ use crate::installation::infrastructure::{
         cache::remove_patch_volumes, patch_workspace::PatchWorkspace, records::save_manifest,
         storage::InstallationStorage,
     },
-    packages::{archive::extract_archive, delta::apply_patch_directory},
+    packages::{
+        archive::{decode_patch_contents, install_full_patch},
+        delta::apply_patch_directory,
+    },
 };
 use crate::installation::{ExtractionEvent, ExtractionOptions, PinnedManifest};
 use std::{path::Path, sync::Arc};
@@ -64,12 +67,12 @@ fn extract_patch_sync(
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<usize> {
     if patch.is_full_install() {
-        extract_archive(patch, cache, game, Some(workspace), observer)?;
+        install_full_patch(patch, cache, game, workspace, observer)?;
         return Ok(0);
     }
 
     let patch_dir = workspace.archive();
-    extract_archive(patch, cache, &patch_dir, None, observer)?;
+    decode_patch_contents(patch, cache, workspace, observer)?;
     let applied_deltas = apply_patch_directory(&patch_dir, game, workspace, observer)?;
     workspace.clear_archive()?;
     Ok(applied_deltas)

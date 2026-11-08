@@ -1,13 +1,21 @@
 //! Select release descriptions and packages for incoming service requests.
 
-use super::super::{
-    domain::api_route,
-    infrastructure::{
-        filesystem,
-        http::{Request, Resource},
-    },
-};
+use super::super::{domain::api_route, infrastructure::filesystem};
 use std::path::{Path, PathBuf};
+
+/// Content selected by release-serving rules, independent of HTTP representation.
+pub(crate) enum ReleaseContent {
+    Metadata(Vec<u8>),
+    PatchChain(Vec<u8>),
+    Package { path: PathBuf, kind: PackageKind },
+    Missing,
+}
+
+pub(crate) enum PackageKind {
+    Xml,
+    Json,
+    Binary,
+}
 
 pub(super) struct ReleaseRoutes {
     metadata_route: String,
@@ -33,30 +41,30 @@ impl ReleaseRoutes {
         }
     }
 
-    pub(super) fn resolve(&self, request: &Request) -> Resource {
-        if request.path == self.metadata_route {
-            return Resource::Bytes(self.metadata.clone(), "application/xml");
+    pub(super) fn resolve(&self, request_path: &str) -> ReleaseContent {
+        if request_path == self.metadata_route {
+            return ReleaseContent::Metadata(self.metadata.clone());
         }
-        if request.path == self.patch_chain_route {
-            return Resource::Bytes(self.patch_chain.clone(), "application/xml");
+        if request_path == self.patch_chain_route {
+            return ReleaseContent::PatchChain(self.patch_chain.clone());
         }
-        package_resource(&self.packages, &request.path)
+        package_resource(&self.packages, request_path)
     }
 }
 
-/// Map supported package routes to HTTP resources after safe filesystem lookup.
-fn package_resource(packages: &Path, request_path: &str) -> Resource {
+/// Select a package and its content kind after safe filesystem lookup.
+fn package_resource(packages: &Path, request_path: &str) -> ReleaseContent {
     let relative = request_path.trim_start_matches('/');
     let relative = relative.strip_prefix("packages/").unwrap_or(relative);
     let Some(file) = filesystem::resolve_package(packages, Path::new(relative)) else {
-        return Resource::NotFound;
+        return ReleaseContent::Missing;
     };
-    let content_type = if relative.ends_with(".xml") {
-        "application/xml"
+    let kind = if relative.ends_with(".xml") {
+        PackageKind::Xml
     } else if relative.ends_with(".json") {
-        "application/json"
+        PackageKind::Json
     } else {
-        "application/octet-stream"
+        PackageKind::Binary
     };
-    Resource::File(file, content_type)
+    ReleaseContent::Package { path: file, kind }
 }

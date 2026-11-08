@@ -47,7 +47,7 @@ impl InstallationPipeline {
         let storage = installation_storage(&install_root)?;
         let _lock = InstallationLock::acquire(&storage, &install_root)?;
         let cache = storage.cache.clone();
-        let mut manifest = records::resume_manifest(manifest, &storage)?;
+        let mut manifest = super::resume_manifest(manifest, &storage)?;
         let patches = manifest.planned_patches()?;
         records::save_manifest(&manifest, &storage)?;
         let observer: Arc<dyn Fn(InstallationEvent) + Send + Sync> = Arc::new(observer);
