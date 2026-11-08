@@ -10,7 +10,8 @@ pub(super) struct DownloadAccounting {
 
 #[derive(Default)]
 struct FileTransfer {
-    position: u64,
+    attempt_position: u64,
+    credited_bytes: u64,
     activity: FileActivity,
 }
 
@@ -29,7 +30,7 @@ pub(super) struct DownloadUpdate {
     pub(super) position: u64,
     pub(super) activity: FileActivity,
     pub(super) became_active: bool,
-    pub(super) advanced_bytes: u64,
+    pub(super) completed_bytes_delta: u64,
 }
 
 impl DownloadAccounting {
@@ -62,17 +63,19 @@ impl DownloadAccounting {
         };
         let file = self.files.entry(name.clone()).or_default();
         let became_active = activity == FileActivity::Transferring && file.activity != activity;
-        // Preserve positive-increment accounting when a retry resets a volume's position.
-        let advanced_bytes = position.saturating_sub(file.position);
-        file.position = position;
+        // Retransmitting an earlier prefix must not count twice toward package completion.
+        let credited_bytes = position.min(size).max(file.credited_bytes);
+        let completed_bytes_delta = credited_bytes - file.credited_bytes;
+        file.credited_bytes = credited_bytes;
+        file.attempt_position = position;
         file.activity = activity;
         DownloadUpdate {
             name,
             size,
-            position,
+            position: file.attempt_position,
             activity,
             became_active,
-            advanced_bytes,
+            completed_bytes_delta,
         }
     }
 
@@ -94,5 +97,69 @@ impl DownloadAccounting {
         self.files
             .get(name)
             .is_some_and(|file| file.activity == FileActivity::Completed)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn retries_do_not_credit_the_same_package_bytes_twice() {
+        let mut accounting = DownloadAccounting::new(1);
+        accounting.register("client.wgpkg");
+        let events = [
+            DownloadEvent::Started {
+                name: "client.wgpkg".into(),
+                size: 100,
+                resumed_at: 40,
+            },
+            DownloadEvent::Progress {
+                name: "client.wgpkg".into(),
+                size: 100,
+                downloaded: 80,
+            },
+            DownloadEvent::Started {
+                name: "client.wgpkg".into(),
+                size: 100,
+                resumed_at: 0,
+            },
+            DownloadEvent::Progress {
+                name: "client.wgpkg".into(),
+                size: 100,
+                downloaded: 50,
+            },
+            DownloadEvent::Completed {
+                name: "client.wgpkg".into(),
+                size: 100,
+            },
+        ];
+        let updates = events.map(|event| accounting.observe(event));
+        assert_eq!(
+            updates.each_ref().map(|update| update.position),
+            [40, 80, 0, 50, 100]
+        );
+        assert_eq!(
+            updates
+                .each_ref()
+                .map(|update| update.completed_bytes_delta),
+            [40, 40, 0, 0, 20]
+        );
+        assert!(accounting.all_complete());
+    }
+
+    #[test]
+    fn cache_hits_complete_packages_without_active_transfers_or_double_credit() {
+        let mut accounting = DownloadAccounting::new(1);
+        accounting.register("client.wgpkg");
+        assert!(!accounting.all_complete());
+        let skipped = || DownloadEvent::Skipped {
+            name: "client.wgpkg".into(),
+            size: 100,
+        };
+        assert_eq!(accounting.observe(skipped()).completed_bytes_delta, 100);
+        assert_eq!(accounting.observe(skipped()).completed_bytes_delta, 0);
+        assert!(accounting.all_complete());
+        assert!(!accounting.is_transferring());
     }
 }

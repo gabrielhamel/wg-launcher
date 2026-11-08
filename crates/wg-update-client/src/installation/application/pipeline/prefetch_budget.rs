@@ -16,7 +16,7 @@ impl PrefetchBudget {
                     planned
                         .volumes
                         .iter()
-                        .map(|volume| u128::from(volume.transport.size))
+                        .map(|volume| u128::from(volume.size))
                         .sum()
                 })
                 .collect(),

@@ -1,39 +1,47 @@
-use super::super::infrastructure::wgus::WgusClient;
+use super::super::infrastructure::wgus::{DiscoveredProduct, WgusClient};
 use crate::catalog::ComponentVersions;
-use crate::catalog::{
-    GameMetadata, Product, ResolvedRelease, SelectedProductRequest, required_volumes,
-};
+use crate::catalog::{ResolvedRelease, SelectedProductRequest, required_volumes};
 use crate::{Error, Result};
 
 pub(crate) async fn resolve(selection: &SelectedProductRequest<'_>) -> Result<ResolvedRelease> {
-    let product = &selection.product;
     let client = WgusClient::new()?;
+    let discovered = client.discover(&selection.product).await?;
     if let Some(client_type) = selection.client_type {
-        return client
-            .release_for_product(product, client_type, selection.language)
+        return discovered
+            .resolve_release(
+                &client,
+                client_type,
+                selection.language,
+                &Default::default(),
+            )
             .await
             .map_err(Into::into);
     }
 
-    let metadata = client.metadata_for_product(product).await?;
+    let metadata = discovered.metadata();
     if let Some(default_client_type) = metadata.publisher_default_client_type() {
-        return client
-            .release_for_product(product, default_client_type, selection.language)
+        return discovered
+            .resolve_release(
+                &client,
+                default_client_type,
+                selection.language,
+                &Default::default(),
+            )
             .await
             .map_err(Into::into);
     }
 
-    resolve_smallest_installable_variant(&client, product, &metadata, selection.language).await
+    resolve_smallest_installable_variant(&client, &discovered, selection.language).await
 }
 
 /// Resolve candidates in publisher order; equal sizes keep the first candidate,
 /// and total failure preserves the first resolution or planning error.
 async fn resolve_smallest_installable_variant(
     client: &WgusClient,
-    product: &Product,
-    metadata: &GameMetadata,
+    discovered: &DiscoveredProduct,
     language: Option<&str>,
 ) -> Result<ResolvedRelease> {
+    let metadata = discovered.metadata();
     let available = metadata
         .client_types
         .iter()
@@ -43,8 +51,8 @@ async fn resolve_smallest_installable_variant(
     let mut best: Option<(u64, ResolvedRelease)> = None;
     let mut first_error: Option<Error> = None;
     for client_type in &metadata.client_types {
-        match client
-            .release_for_product(product, &client_type.id, language)
+        match discovered
+            .resolve_release(client, &client_type.id, language, &Default::default())
             .await
         {
             Ok(release) => match required_volumes(&release, &Default::default()) {

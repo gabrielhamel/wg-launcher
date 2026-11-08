@@ -31,7 +31,7 @@ fn staged_download_reuses_cache_and_extracts_offline_from_current_directory() {
     assert!(!game.join("payload.pkg").exists());
     assert!(!game.join(".wg-launcher/state.json").exists());
     let before_retry = server.requests();
-    assert_eq!(before_retry.len(), 5);
+    assert_eq!(before_retry.len(), 4);
     success(sandbox.run(&sandbox.path, &args));
     assert_eq!(
         server.requests(),
@@ -85,8 +85,8 @@ fn filtered_download_preserves_manifest_and_extraction_requires_remaining_packag
         ],
     ));
     let requests = server.requests();
-    assert_eq!(requests.len(), 4);
-    assert_eq!(requests[3].path, "/client.wgpkg");
+    assert_eq!(requests.len(), 3);
+    assert_eq!(requests[2].path, "/client.wgpkg");
     let manifest_path = game.join(".wg-launcher/download/manifest.json");
     let pinned = fs::read(&manifest_path).unwrap();
     let manifest: serde_json::Value = serde_json::from_slice(&pinned).unwrap();
@@ -145,8 +145,8 @@ fn filtered_download_preserves_manifest_and_extraction_requires_remaining_packag
         ],
     ));
     let requests = server.requests();
-    assert_eq!(requests.len(), 5);
-    assert_eq!(requests[4].path, "/locale.wgpkg");
+    assert_eq!(requests.len(), 4);
+    assert_eq!(requests[3].path, "/locale.wgpkg");
     assert_eq!(fs::read(&manifest_path).unwrap(), pinned);
     success(sandbox.run(&game, &["extract"]));
     assert_installed(&game, Release::V1);

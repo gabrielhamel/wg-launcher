@@ -1,19 +1,21 @@
 use crate::catalog::ComponentVersions;
 mod conversion;
+mod discovery;
+pub(crate) use discovery::DiscoveredProduct;
 mod error;
 mod patch_chain_conversion;
 mod request;
 mod wire;
 
-use self::error::{Result, WgusError as Error};
+use self::error::Result;
 pub use error::WgusError;
 
 use crate::catalog::{GameMetadata, Product, ResolvedRelease};
-use conversion::{metadata_from_wire, normalize_language, release_from_wire};
-use request::{patch_chain_query, product_endpoint, redirect_product};
+use conversion::metadata_from_wire;
+use request::product_endpoint;
 use reqwest::Client;
 use std::time::Duration;
-use wire::{MetadataXml, PatchesXml};
+use wire::MetadataXml;
 
 /// WGUS protocol version sent in metadata and patch-chain requests.
 pub const PROTOCOL_VERSION: &str = "100500.6969696";
@@ -35,7 +37,7 @@ impl WgusClient {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::Http`] if the HTTP client cannot be built.
+    /// Returns [`WgusError::Http`] if the HTTP client cannot be built.
     pub fn new() -> Result<Self> {
         let http = Client::builder()
             .connect_timeout(Duration::from_secs(15))
@@ -49,33 +51,11 @@ impl WgusClient {
         Ok(Self { http })
     }
 
-    /// Fetches metadata from a caller-supplied product without writing files.
-    ///
-    /// # Errors
-    /// Returns an error for invalid product configuration or failed HTTP/XML requests.
-    pub async fn metadata_for_product(&self, product: &Product) -> Result<GameMetadata> {
-        let (_, metadata) = self.fetch_metadata(product).await?;
-        Ok(metadata)
-    }
-
-    /// Resolves a product's full installation chain without downloading assets.
-    /// The original product configuration is pinned even after protocol redirects.
-    ///
-    /// # Errors
-    /// Returns errors for invalid configuration or the same protocol failures as [`Self::release_from_versions`].
-    pub async fn release_for_product(
-        &self,
-        product: &Product,
-        client_type: &str,
-        language: Option<&str>,
-    ) -> Result<ResolvedRelease> {
-        self.release_from_versions(
-            product,
-            client_type,
-            language,
-            &ComponentVersions::default(),
-        )
-        .await
+    /// Discover a product once so its variants share one metadata response.
+    pub(crate) async fn discover(&self, product: &Product) -> Result<DiscoveredProduct> {
+        product.validate_identity()?;
+        let (wire, metadata) = self.fetch_metadata(product).await?;
+        Ok(DiscoveredProduct::new(product.clone(), wire, metadata))
     }
 
     /// Resolves update packages using the installed version of each component.
@@ -93,54 +73,10 @@ impl WgusClient {
         language: Option<&str>,
         component_versions: &ComponentVersions,
     ) -> Result<ResolvedRelease> {
-        product.validate_identity()?;
-        let mut resolved = product.clone();
-
-        for hop in 0..=MAX_REDIRECTS {
-            let (wire_metadata, metadata) = self.fetch_metadata(&resolved).await?;
-            let selected = metadata.require_client_type(client_type)?.clone();
-            let language = normalize_language(language.unwrap_or(&metadata.default_language));
-            metadata.validate_language(&language)?;
-            let endpoint = product_endpoint(&resolved, "patches_chain")?;
-            let query = patch_chain_query(
-                &wire_metadata,
-                &metadata,
-                &selected,
-                &language,
-                component_versions,
-            );
-
-            let text = self
-                .http
-                .get(endpoint)
-                .query(&query)
-                .send()
-                .await?
-                .error_for_status()?
-                .text()
-                .await?;
-            let response: PatchesXml = quick_xml::de::from_str(&text)?;
-
-            if let Some(redirected) = redirect_product(&resolved, response.redirect_url())? {
-                if hop == MAX_REDIRECTS {
-                    return Err(Error::RedirectLimit(product.application_id().to_owned()));
-                }
-                resolved = redirected;
-                continue;
-            }
-
-            return release_from_wire(
-                product,
-                resolved.service_base_url().host_str().unwrap().to_owned(),
-                metadata,
-                &selected,
-                language,
-                response,
-                component_versions,
-            );
-        }
-
-        Err(Error::RedirectLimit(product.application_id().to_owned()))
+        self.discover(product)
+            .await?
+            .resolve_release(self, client_type, language, component_versions)
+            .await
     }
 
     async fn fetch_metadata(&self, product: &Product) -> Result<(MetadataXml, GameMetadata)> {

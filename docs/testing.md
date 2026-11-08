@@ -40,6 +40,19 @@ the original pinned release can still be extracted offline afterward. Recovery
 assertions also check that extraction summaries omit checkpointed components and
 that a finalization-only install retry reports zero packages and zero bytes.
 
+Discovery scenarios also assert that listing multiple variants and choosing a
+publisher default or smallest variant reuse one product metadata response.
+Redirect coverage verifies fresh metadata requests at each hop and preservation
+of the configured product and component versions.
+
+Focused unit regressions cover selected volume identity and archive-size matching,
+ambiguous sources, retry-safe package completion accounting, and supported
+candidate version formats. The launcher packages enable their unit-test harnesses
+so these checks run with `cargo test --workspace --locked`. They use no network,
+package archives, additional dependencies, or process harnesses.
+The overall download bar credits package bytes once across retries; each file bar
+continues to show the current attempt's position, including a restarted prefix.
+
 ## Run end-to-end tests
 
 The CLI end-to-end scenarios exercise complete workflows using local fixtures.

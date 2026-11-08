@@ -113,11 +113,12 @@ crates/
           build_identity.rs   Shared published identity, flattened in saved records
           build_selection.rs  Public discovery input and the validated selected product request
           release/resolved_release.rs  Published release data and component enumeration
-          release/component_release.rs  Component-facing validation, completion, and planning; delegate traversal and volume lookup
+          release/component_release.rs  Component-facing validation, completion, and ordered patch selection
           release/component_versions.rs  Known component versions and the missing-component baseline
           release/patch_chain.rs  Version traversal and full-package fallback
           release/transport_volume.rs  Downloadable transport volumes and HTTP seeds
-          release/package_plan.rs  Pair selected volume declarations with resolved download sources
+          release/package_plan.rs  Assemble selected patches with validated transport volumes
+          release/volume_index.rs  Match selected volume identities and reject ambiguous or inconsistent sources
         application/          list, inspect, and live build/update release resolution
           list.rs             Listing options, build summaries, and per-variant warnings
           inspect.rs          Read-only inspection options and workflow
@@ -125,7 +126,8 @@ crates/
           reports.rs          Consumer build identity and inspection/patch summaries
           directory_name.rs   Suggested directory names shared by inspect and installation
         infrastructure/wgus/  WGUS transport and response translation
-          mod.rs              HTTP exchange, redirect loop, and release resolution
+          mod.rs              HTTP client setup and product metadata transport
+          discovery.rs        Discovered product metadata, variant resolution, and redirect loop
           request.rs          WGUS query encoding, language mapping, endpoints, redirect targets
           conversion.rs       Release assembly and metadata conversion
           patch_chain_conversion.rs  Publisher chain normalization state, targets, and package URLs
@@ -195,10 +197,11 @@ crates/
           progress/           Shared display with separate download/extraction renderers
             installation.rs   InstallationProgress owns their terminal surface and coordinates both renderers
             download.rs       Stable download bars and styles
-            download_accounting.rs  Package positions, lifecycle transitions, and completion without terminal widgets
+            download_accounting.rs  Attempt positions, monotonic package completion credits, and lifecycle transitions
       self_update/            CLI executable update context
         domain/               Release comparison and ownership/path rules
           artifact.rs         Select archive/checksum pair from an explicit host target
+          candidate.rs        Parse supported version-output formats and require the expected semantic version
           ownership.rs        Direct, managed, or unresolved executable ownership and path rules
         progress.rs           Shared self-update stages, events, and observer contract
         application/          Release checks, ownership discovery, executable update workflow and outcomes
@@ -206,7 +209,7 @@ crates/
         infrastructure/       Release HTTP, archives, ownership detection, replacement
           release.rs          Discover published launcher releases
           artifact.rs         Prepare an extracted candidate from a checksum-verified archive
-          executable.rs       Extracted/verified candidates, version-output parsing, verification, and replacement
+          executable.rs       Extracted/verified candidates, process execution, verification, and replacement
           http.rs             Shared HTTPS, redirect, and bounded-transfer policy
         presentation/         Command handlers, notices, update instructions, event rendering
           error.rs            Render typed failures with terminal recovery guidance

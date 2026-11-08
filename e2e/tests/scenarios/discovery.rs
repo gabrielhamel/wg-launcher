@@ -46,10 +46,26 @@ fn omitted_client_type_prefers_the_publisher_default_then_the_smallest_variant()
 
     let output = success(sandbox.run(&sandbox.path, &args));
     assert!(output.contains("Client:        large"));
+    assert_eq!(
+        server
+            .requests()
+            .iter()
+            .filter(|request| request.path.ends_with("/metadata/"))
+            .count(),
+        1
+    );
 
     server.replace_resources(resources_with_client_types(&fixture, "missing"));
     let output = success(sandbox.run(&sandbox.path, &args));
     assert!(output.contains("Client:        small"));
+    assert_eq!(
+        server
+            .requests()
+            .iter()
+            .filter(|request| request.path.ends_with("/metadata/"))
+            .count(),
+        2
+    );
 
     let mut explicit_args = args.to_vec();
     explicit_args.extend(["--client-type", "large"]);
@@ -336,8 +352,8 @@ fn cyclic_discovery_redirects_stop_without_downloading_packages() {
         ),
         "WGUS redirect limit exceeded",
     );
-    // Omitted client type first fetches metadata to choose the publisher default.
-    assert_eq!(origin.requests().len(), 5);
+    // The publisher-default choice reuses the first metadata response.
+    assert_eq!(origin.requests().len(), 4);
     assert_eq!(mirror.requests().len(), 4);
     assert!(!sandbox.game().exists());
 }
@@ -402,5 +418,39 @@ fn missing_component_targets_preserve_first_variant_failure() {
             .requests()
             .iter()
             .all(|request| !request.path.ends_with(".wgpkg"))
+    );
+}
+
+#[test]
+fn listing_variants_reuses_one_product_metadata_response() {
+    let sandbox = Sandbox::new();
+    let fixture = sandbox.fixture(Release::V1);
+    let server = WgUpdateService::start(resources_with_client_types(&fixture, "large"));
+    let config = sandbox.configuration(&server);
+    let output = success(sandbox.run(
+        &sandbox.path,
+        &["list", "--product", config.to_str().unwrap()],
+    ));
+    assert!(output.contains("LARGE"));
+    assert!(output.contains("SMALL"));
+    let requests = server.requests();
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|request| request.path.ends_with("/metadata/"))
+            .count(),
+        1
+    );
+    assert_eq!(
+        requests
+            .iter()
+            .filter(|request| request.path.ends_with("/patches_chain/"))
+            .count(),
+        2
+    );
+    assert!(
+        requests
+            .iter()
+            .all(|request| request.path.starts_with("/updates/api/v1/"))
     );
 }

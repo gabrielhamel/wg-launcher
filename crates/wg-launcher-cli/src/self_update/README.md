@@ -28,6 +28,7 @@ game versions belong to [installation](../installation/README.md).
 | Candidate preparation | Download the selected archive, verify its published checksum, and extract the launcher for executable verification. |
 | Candidate | The downloaded launcher being checked before it can replace the current one. |
 | Extracted candidate | A launcher extracted from a checksum-verified archive, awaiting its executable version check. |
+| Candidate version | The semantic version read from a supported launcher version-output format. Verification requires the exact expected version, including prerelease and build metadata. |
 | Verified candidate | An extracted launcher that passed the expected-version check and can be supplied to executable replacement. |
 | Verification | Checks that the downloaded launcher matches the published release and reports the expected version. |
 | Host target | Explicit operating system, processor architecture, and build environment used to select a compatible launcher archive. |
@@ -46,8 +47,9 @@ explicit from release selection through extraction.
 
 `prepare_candidate` names the complete artifact preparation operation. It returns
 an `ExtractedCandidate`; executable verification consumes it and returns a
-`VerifiedCandidate`. The executable adapter parses the supported `--version` output
-formats; release comparison remains in the domain. Replacement accepts only that
+`VerifiedCandidate`. The executable adapter runs the candidate with a timeout;
+`domain/candidate.rs` parses the supported `--version` output formats and compares the reported semantic
+version with the expected release. Replacement accepts only that
 verified value. The staging directory remains beside the current executable until
 the operation finishes.
 

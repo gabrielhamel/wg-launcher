@@ -22,9 +22,11 @@ selection to prepare the game on someone's machine.
 | Catalog | The collection of products available to choose from. |
 | Region | The publisher's label for an offering, such as Europe or worldwide. |
 | Channel | A stream of releases, such as the regular game or a public test. |
-| Component release | A view associating one selected component with its target, published patches, and transport volumes. Planning requires a target; completion checks whether that target was reached. |
-| Planned volume | One selected archive volume, keeping its declared size and archive metadata together with its resolved download source. |
+| Component release | A view associating one selected component with its target and published patches. Planning requires a target; completion checks whether that target was reached. |
+| Volume binding | Match a selected archive declaration to one download source by filename, component, source version, and target version, then confirm its compressed and optional archive sizes agree. Ambiguous sources are rejected. |
+| Planned volume | One selected transport volume whose identity and archive sizes have been checked against its patch declaration. |
 | Resolved release | The selected published build, its component targets, and the packages the publisher offers. It contains no local installation progress. |
+| Discovered product | One product together with its metadata response, reused when choosing and resolving variants. A publisher redirect discovers fresh metadata at the redirected endpoint while retaining the configured product identity. |
 | Selected product request | A validated product choice, with edition and language still allowed to use publisher defaults. Discovery and cache matching use this same choice. |
 | Build selection request | A discovery request that can leave edition or language to publisher defaults and optionally supply a replacement catalog. |
 | Build identity | The published application, region, channel, version, edition, language, and payload target describing a build. It stays distinct from the configured product endpoint. |
@@ -53,11 +55,11 @@ selection to prepare the game on someone's machine.
 | `domain/product.rs`, `builtin.rs`, and selection modules | Product validation, built-in offerings, and resolving a build selection request to a selected product request. |
 | `domain/build_identity.rs` | Published application, version, edition, language, and payload target. |
 | `domain/release/resolved_release.rs` | Published build data, separate from local progress. |
-| `domain/release/component_release.rs` | Component-facing target validation, completion checks, and planning; delegates chain traversal and volume lookup to focused helpers. |
+| `domain/release/component_release.rs` | Component-facing target validation, completion checks, and ordered patch selection; delegates chain traversal to a focused helper. |
 | `domain/release/patch_chain.rs` | Version traversal, cycle detection, and full-package fallback. |
-| `domain/release/package_plan.rs` | Assemble release plans and resolve selected patches through a transport-volume index. |
+| `domain/release/package_plan.rs`, `volume_index.rs` | Assemble selected patch plans and bind their declarations through one release-wide volume index. |
 | `application/` | Listing, inspection, release resolution, consumer reports, and suggested directory names. |
-| `infrastructure/wgus/` | HTTP/XML, query encoding, redirects, language normalization, and response conversion. Patch conversion names absent-chain handling, seed parsing, transport URL resolution, torrent parsing, and component target collection separately. |
+| `infrastructure/wgus/` | `discovery.rs` owns discovered metadata and redirect-aware variant resolution; `mod.rs` owns HTTP client setup and metadata transport. HTTP/XML, query encoding, redirects, language normalization, and response conversion. Patch conversion names absent-chain handling, seed parsing, transport URL resolution, torrent parsing, and component target collection separately. |
 
 ## Invariants
 
@@ -66,7 +68,13 @@ selection to prepare the game on someone's machine.
   constructing a WGUS client.
 - Component views visit selections in publisher order. Planning rejects missing
   targets and missing volumes for selected steps, while leaving unused publisher
-  alternatives alone. Each planned volume pairs its archive declaration with its resolved download source; local cache binding does not depend on parallel lists. The saved release keeps its flat collections.
+  alternatives alone. Each planned volume is one transport description validated
+  against its archive declaration; local cache binding does not depend on parallel
+  lists. The saved release keeps its flat collections. Duplicate names cannot
+  silently overwrite another source.
+- Discovery reuses one metadata response per product across variant selection and
+  resolution. Redirect hops fetch their own metadata; there is no persistent or
+  global metadata cache.
 - Explicit client variants take precedence. Otherwise resolution chooses a valid
   publisher default, then the smallest installable variant. Equal sizes retain
   publisher order; total failure retains the first resolution or planning error.

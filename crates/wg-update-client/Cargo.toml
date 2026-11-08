@@ -11,7 +11,7 @@ readme = "README.md"
 keywords = ["wargaming", "launcher", "wgus"]
 
 [lib]
-test = false
+test = true
 doctest = false
 
 [dependencies]

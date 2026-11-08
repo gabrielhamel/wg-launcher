@@ -44,6 +44,9 @@ pub enum ReleaseError {
     /// A patch volume name was absent from the resolved asset list.
     #[error("manifest asset is missing for patch volume: {0}")]
     MissingPatchAsset(String),
+    /// A selected volume has ambiguous sources or disagrees with its patch declaration.
+    #[error("inconsistent or ambiguous download source for patch volume: {0}")]
+    ConflictingPatchAsset(String),
     /// A component patch chain revisited an already processed version.
     #[error("cyclic patch chain for {part} at version {version}")]
     BrokenPatchChain {

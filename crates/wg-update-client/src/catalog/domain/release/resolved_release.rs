@@ -52,7 +52,6 @@ impl ResolvedRelease {
                 id: component_id,
                 target: self.component_versions.get(component_id),
                 published_patches: &self.patches,
-                transport_volumes: &self.volumes,
             })
     }
 }

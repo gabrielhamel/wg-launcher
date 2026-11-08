@@ -371,8 +371,9 @@ the CLI.
   resolution, including publisher-default/smallest-variant selection.
 - `crates/wg-update-client/src/catalog/infrastructure/wgus/`: WGUS-compatible HTTP/XML,
   private wire representations, redirects, and publisher-specific normalization.
-  `mod.rs` owns transport and redirects; `conversion.rs` assembles release identity
-  and metadata, while `patch_chain_conversion.rs` normalizes publisher chains and
+  `mod.rs` owns HTTP client setup and metadata transport; `discovery.rs` owns
+  discovered product metadata, variant resolution, and redirects. `conversion.rs`
+  assembles release identity and metadata, while `patch_chain_conversion.rs` normalizes publisher chains and
   resolves component targets and transport packages.
 - `crates/wg-update-client/src/installation/`: local installation lifecycle bounded
   context. `mod.rs` exposes its workflows, models, and observer contracts.

@@ -1,4 +1,5 @@
 pub(super) mod artifact;
+pub(super) mod candidate;
 pub(super) mod ownership;
 
 use reqwest::Url;

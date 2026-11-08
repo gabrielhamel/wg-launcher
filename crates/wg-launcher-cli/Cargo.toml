@@ -15,7 +15,7 @@ keywords = ["cli", "wargaming", "launcher"]
 [[bin]]
 name = "wg-launcher"
 path = "src/main.rs"
-test = false
+test = true
 
 [dependencies]
 wg-update-client = { path = "../wg-update-client" }

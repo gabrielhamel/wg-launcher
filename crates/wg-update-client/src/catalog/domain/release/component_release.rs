@@ -1,6 +1,6 @@
 //! Associate a selected component with its target and published patch steps.
 
-use super::{ComponentVersions, Patch, ReleaseError, TransportVolume, error::Result};
+use super::{ComponentVersions, Patch, ReleaseError, error::Result};
 
 /// Borrowed component data; missing targets remain visible to each consumer's rules.
 /// This view does not change the release's saved representation.
@@ -8,7 +8,6 @@ pub(crate) struct ComponentRelease<'a> {
     pub(super) id: &'a str,
     pub(super) target: Option<&'a str>,
     pub(super) published_patches: &'a [Patch],
-    pub(super) transport_volumes: &'a [TransportVolume],
 }
 
 impl<'a> ComponentRelease<'a> {
@@ -33,13 +32,12 @@ impl<'a> ComponentRelease<'a> {
             })
     }
 
-    /// Plan this component from known versions, resolving only the chosen steps' volumes.
-    pub(super) fn planned_patches(
+    /// Select this component's ordered steps from known versions.
+    pub(super) fn ordered_patches(
         &self,
         base_versions: &ComponentVersions,
-    ) -> Result<Vec<super::package_plan::PlannedPatch>> {
-        let patches = super::patch_chain::ordered_patches(self, base_versions)?;
-        super::package_plan::resolve_patch_volumes(patches, self.transport_volumes)
+    ) -> Result<Vec<&'a Patch>> {
+        super::patch_chain::ordered_patches(self, base_versions)
     }
 
     pub(crate) fn reached_by(&self, versions: &ComponentVersions) -> bool {

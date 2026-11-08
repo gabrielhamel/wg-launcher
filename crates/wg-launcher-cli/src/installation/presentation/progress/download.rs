@@ -88,7 +88,7 @@ impl DownloadProgress {
             bar.reset_eta();
             bar.enable_steady_tick(Duration::from_millis(100));
         }
-        state.overall.inc(update.advanced_bytes);
+        state.overall.inc(update.completed_bytes_delta);
         bar.set_position(update.position);
         if update.activity == FileActivity::Completed {
             bar.disable_steady_tick();

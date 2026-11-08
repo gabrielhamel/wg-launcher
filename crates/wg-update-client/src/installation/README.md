@@ -45,7 +45,7 @@ installation manages the copy on a person's machine.
 | Patch identity | The component, source version, and target version that identify the patch whose original files are preserved for retry. |
 | Patch workspace | Temporary files and preserved originals for the patch being applied. They remain available after failure until that patch is saved as complete. |
 | Patch contents | The files decoded from a patch: complete replacement files and delta files that change existing content. Replacements are installed before deltas are applied. |
-| Local patch | A planned patch bound to safe package paths in the installation cache. Each planned volume supplies its own declaration and download source. The same paths are used for verification, archive reading, and package release; binding paths alone does not verify their contents. |
+| Local patch | A planned patch bound to safe package paths in the installation cache. Each planned volume supplies a download source already checked against its archive declaration. The same paths are used for verification, archive reading, and package release; binding paths alone does not verify their contents. |
 | Patch completion | Apply a patch successfully, save its checkpoint, then release its recovery files and, when cleanup is enabled, its downloaded packages. |
 | Selection mismatch | The product, region, edition, or language fields that make cached work incompatible with a request. Omitted edition and language accept the pinned choice. |
 | Release differences | The published fields that differ between requested and saved work. The same comparison decides whether work can resume and explains why it cannot. |
@@ -93,7 +93,7 @@ installation manages the copy on a person's machine.
 - Streaming overlaps later downloads with ordered patch execution. The prefetch
   budget limits bytes queued ahead of the applying patch; one complete patch may
   cross the threshold. Download and extraction use the same resolved steps.
-- Planned patches bind their resolved volumes to safe local paths once. Staged
+- Planned patches bind their validated transport volumes to safe local paths once. Staged
   extraction verifies declared patch sizes; archive reading retains filename ordering
   for split volumes. Execution and package release consume those same paths.
 - Each patch is applied, checkpointed, then its recovery files and eligible packages

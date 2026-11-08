@@ -9,6 +9,7 @@ mod patch;
 pub(crate) mod patch_chain;
 mod resolved_release;
 mod transport_volume;
+mod volume_index;
 
 pub use error::ReleaseError;
 pub use metadata::{ClientPart, ClientType, Executable, GameMetadata};

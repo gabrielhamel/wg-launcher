@@ -28,8 +28,8 @@ impl LocalPatch {
             .iter()
             .map(|volume| {
                 Ok(LocalVolume {
-                    path: cache.join(safe_relative_path(&volume.transport.name)?),
-                    expected_bytes: volume.declaration.size,
+                    path: cache.join(safe_relative_path(&volume.name)?),
+                    expected_bytes: volume.size,
                 })
             })
             .collect::<Result<Vec<_>>>()?;

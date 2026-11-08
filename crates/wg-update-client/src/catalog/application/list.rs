@@ -90,10 +90,16 @@ async fn list_with_client(client: &WgusClient, options: ListOptions) -> Result<L
     let mut warnings = Vec::new();
 
     for product in products {
-        let metadata = client.metadata_for_product(&product).await?;
+        let discovered = client.discover(&product).await?;
+        let metadata = discovered.metadata();
         for client_type in &metadata.client_types {
-            let resolved = client
-                .release_for_product(&product, &client_type.id, Some(&metadata.default_language))
+            let resolved = discovered
+                .resolve_release(
+                    client,
+                    &client_type.id,
+                    Some(&metadata.default_language),
+                    &Default::default(),
+                )
                 .await
                 .map_err(crate::Error::from)
                 .and_then(|release| {
