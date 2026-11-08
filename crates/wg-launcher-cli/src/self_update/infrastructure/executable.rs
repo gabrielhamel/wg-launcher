@@ -1,6 +1,23 @@
 use super::super::Result;
 use semver::Version;
-use std::{path::Path, time::Duration};
+use std::{path::PathBuf, time::Duration};
+
+/// Launcher extracted from an archive whose checksum has been verified.
+/// The executable's compatibility and embedded version still need checking.
+pub(crate) struct ExtractedCandidate {
+    path: PathBuf,
+}
+
+impl ExtractedCandidate {
+    pub(super) fn from_archive(path: PathBuf) -> Self {
+        Self { path }
+    }
+}
+
+/// Executable that passed the expected-version check; only this value can replace the launcher.
+pub(crate) struct VerifiedCandidate {
+    path: PathBuf,
+}
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ExecutableError {
@@ -35,9 +52,12 @@ pub(crate) fn staging_directory() -> Result<tempfile::TempDir> {
     Ok(work)
 }
 
-pub(crate) async fn verify(binary: &Path, expected: &Version) -> Result<()> {
+pub(crate) async fn verify(
+    binary: ExtractedCandidate,
+    expected: &Version,
+) -> Result<VerifiedCandidate> {
     // Check compatibility and the embedded version before touching the installed executable.
-    let mut candidate = tokio::process::Command::new(binary);
+    let mut candidate = tokio::process::Command::new(&binary.path);
     candidate
         .arg("--version")
         .env("WG_LAUNCHER_NO_UPDATE_CHECK", "1")
@@ -52,10 +72,10 @@ pub(crate) async fn verify(binary: &Path, expected: &Version) -> Result<()> {
     if !output.status.success() || version != Some(expected.to_string().as_str()) {
         return Err(ExecutableError::VersionMismatch.into());
     }
-    Ok(())
+    Ok(VerifiedCandidate { path: binary.path })
 }
 
-pub(crate) fn replace(binary: &Path) -> Result<()> {
-    self_replace::self_replace(binary).map_err(ExecutableError::Replacement)?;
+pub(crate) fn replace(binary: VerifiedCandidate) -> Result<()> {
+    self_replace::self_replace(&binary.path).map_err(ExecutableError::Replacement)?;
     Ok(())
 }

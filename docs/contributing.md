@@ -111,7 +111,8 @@ crates/
         mod.rs                Context entry points and exported models
         domain/               Built-ins, products, selections, release/patch rules
           build_identity.rs   Shared published identity, flattened in saved records
-          release/resolved_release.rs  Published release and validated component views
+          release/resolved_release.rs  Published release data and component enumeration
+          release/component_release.rs  Associate component targets and steps; target validation and completion checks
           release/component_versions.rs  Known component versions and the missing-component baseline
           release/patch_chain.rs  Version traversal and full-package fallback
           release/transport_volume.rs  Downloadable transport volumes and HTTP seeds
@@ -144,7 +145,8 @@ crates/
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
           pipeline/           InstallationPipeline execution strategies
-            session.rs        Owned installation lock, layout, checkpoints, patch execution, and finalization
+            session.rs        Owned lock, layout, restored checkpoints, execution plan, and finalization
+            execution_plan.rs  Remaining patches resolved under the lock and their consumer summary
             reports.rs        Execution totals, public options, and internal package-retention policy
             extraction.rs     Apply already downloaded patches
             finalization.rs   Record the installed build and clean up successful work
@@ -192,7 +194,8 @@ crates/
           error.rs            Exhaustive SelfUpdateError contract retaining concrete causes
         infrastructure/       Release HTTP, archives, ownership detection, replacement
           release.rs          Discover published launcher releases
-          artifact.rs         Prepare a candidate by downloading, verifying, and extracting the artifact
+          artifact.rs         Prepare an extracted candidate from a checksum-verified archive
+          executable.rs       Extracted/verified candidate types, executable verification, and replacement
           http.rs             Shared HTTPS, redirect, and bounded-transfer policy
         presentation/         Command handlers, notices, update instructions, event rendering
           error.rs            Render typed failures with terminal recovery guidance
@@ -243,6 +246,12 @@ recovery. Its `PinnedManifest` combines a resolved release with component
 checkpoints; only installation advances those checkpoints. The shared internal `BuildIdentity` holds published build fields separately from
 the configured product. The persistence adapter retains the existing flat JSON
 fields through Serde flattening.
+
+The session resolves one execution plan after restoring checkpoints under its lock.
+Both its observer summary and local/streaming execution use those selected patches
+and volumes. Component views associate targets with patch steps for planning and
+completion checks. Internal application IDs and resolved hostnames retain the saved
+`game_id` and `host` keys.
 
 Patch sources distinguish full content from changes to a specific version, while
 retaining the saved `version_from` string or null representation. Planned patches

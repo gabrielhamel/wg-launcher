@@ -34,7 +34,11 @@ pub(super) fn patch_chain_from_wire(
                 patches: Vec::new(),
             }
         }
-        None => return Err(Error::MissingPatchChain(product.game_id.to_owned())),
+        None => {
+            return Err(Error::MissingPatchChain(
+                product.application_id().to_owned(),
+            ));
+        }
     };
     let web_seeds = seeds
         .urls
@@ -76,7 +80,7 @@ pub(super) fn patch_chain_from_wire(
                 version_to: patch.version_to.clone(),
                 name: volume.name.clone(),
                 url: seed
-                    .ok_or_else(|| Error::MissingWebSeed(product.game_id.clone()))?
+                    .ok_or_else(|| Error::MissingWebSeed(product.application_id().to_owned()))?
                     .url
                     .join(&volume.name)?,
                 size: volume.size,

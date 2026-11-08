@@ -2,14 +2,12 @@
 
 use super::patch::PatchProgress;
 use super::prefetch::{DOWNLOAD_PREFETCH_BYTES, PatchDownloads, merge_download_report};
-use super::session::InstallationSession;
 use super::{
     ExtractionEvent, ExtractionOptions, InstallationEvent, InstallationPipeline, InstallationReport,
 };
-use crate::installation::infrastructure::filesystem::InstallationLayout;
-use crate::installation::{DownloadOptions, PinnedManifest, VolumeDownloader};
+use crate::installation::{DownloadOptions, VolumeDownloader};
 use crate::{Error, Result};
-use std::{path::Path, sync::Arc};
+use std::sync::Arc;
 
 impl InstallationPipeline {
     /// Streams package downloads and ordered extraction under the installation lock.
@@ -30,10 +28,8 @@ impl InstallationPipeline {
     /// filesystem, archive, delta, or background-task failures. On extraction failure,
     /// pending downloads are cancelled before returning the error.
     pub async fn download_and_extract_with_observer<F>(
-        &self,
+        self,
         downloader: VolumeDownloader,
-        manifest: PinnedManifest,
-        install_root: impl AsRef<Path>,
         download_options: DownloadOptions,
         extraction_options: ExtractionOptions,
         observer: F,
@@ -41,12 +37,10 @@ impl InstallationPipeline {
     where
         F: Fn(InstallationEvent) + Send + Sync + 'static,
     {
-        let install_root = install_root.as_ref().to_path_buf();
-        let storage = InstallationLayout::for_root(&install_root);
-        let cache = storage.cache.clone();
-        let mut session = InstallationSession::resume(manifest, storage)?;
+        let mut session = self.session;
+        let cache = session.layout.cache.clone();
         let _lock = session.retain_lock();
-        let patches = session.manifest.planned_patches()?;
+        let patches = std::mem::take(&mut session.execution_plan.patches);
         let observer: Arc<dyn Fn(InstallationEvent) + Send + Sync> = Arc::new(observer);
         let extraction_observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = {
             let observer = Arc::clone(&observer);

@@ -76,9 +76,9 @@ impl FromStr for Game {
     }
 }
 
-fn worldwide_product(game_id: &str, name: &str) -> Product {
+fn worldwide_product(application_id: &str, name: &str) -> Product {
     Product {
-        game: game_id
+        game: application_id
             .split('.')
             .next()
             .expect("built-in application family")
@@ -88,7 +88,7 @@ fn worldwide_product(game_id: &str, name: &str) -> Product {
         host: "https://wgus-eu.wargaming.net/"
             .parse()
             .expect("built-in catalog URL"),
-        game_id: game_id.into(),
+        game_id: application_id.into(),
         channel: "production".into(),
     }
 }
@@ -138,7 +138,7 @@ impl Region {
 
     /// Returns the publisher endpoint and product identity for this region.
     pub fn product(self) -> Product {
-        let (name, host, game_id, channel) = match self {
+        let (name, service_hostname, application_id, channel) = match self {
             Self::Eu => (
                 "World of Tanks EU",
                 "wgus-woteu.wargaming.net",
@@ -186,10 +186,10 @@ impl Region {
             game: "wot".into(),
             region: self.to_string(),
             name: name.into(),
-            host: format!("https://{host}/")
+            host: format!("https://{service_hostname}/")
                 .parse()
                 .expect("built-in catalog URL"),
-            game_id: game_id.into(),
+            game_id: application_id.into(),
             channel: channel.into(),
         }
     }

@@ -30,24 +30,25 @@ pub struct InstallPlan {
     pub compressed_bytes: u64,
 }
 
-pub(super) fn build_plan(
+pub(super) fn build_plan<'a>(
     manifest: &PinnedManifest,
     root: PathBuf,
-    volumes: &[TransportVolume],
+    volumes: impl IntoIterator<Item = &'a TransportVolume>,
 ) -> InstallPlan {
-    let compressed_bytes = volumes.iter().map(|volume| volume.size).sum();
+    let packages = volumes
+        .into_iter()
+        .map(|volume| PackageSummary {
+            name: volume.name.clone(),
+            size: volume.size,
+        })
+        .collect::<Vec<_>>();
+    let compressed_bytes = packages.iter().map(|package| package.size).sum();
     let cache = InstallationLayout::for_root(&root).cache;
     InstallPlan {
         build: BuildInfo::from_release(&manifest.release),
         root,
         cache,
-        packages: volumes
-            .iter()
-            .map(|volume| PackageSummary {
-                name: volume.name.clone(),
-                size: volume.size,
-            })
-            .collect(),
+        packages,
         compressed_bytes,
     }
 }

@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct BuildIdentity {
     /// Publisher application identifier.
-    pub game_id: String,
+    #[serde(rename = "game_id")]
+    pub application_id: String,
     /// Publisher catalog region.
     pub region: String,
     /// Publisher release channel.

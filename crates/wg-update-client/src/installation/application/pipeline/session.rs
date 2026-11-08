@@ -1,5 +1,6 @@
 //! Mutable execution state shared by local extraction and streaming installation.
 
+use super::execution_plan::ExecutionPlan;
 use super::finalization::finalize_installation;
 use super::patch::{PatchCompletion, PatchProgress, apply_and_checkpoint_patch};
 use super::{ExtractionEvent, ExtractionOptions, ExtractionReport};
@@ -17,6 +18,7 @@ use std::sync::Arc;
 pub(super) struct InstallationSession {
     pub(super) manifest: PinnedManifest,
     pub(super) layout: InstallationLayout,
+    pub(super) execution_plan: ExecutionPlan,
     applied_deltas: usize,
     lock: Arc<InstallationLock>,
 }
@@ -29,7 +31,9 @@ impl InstallationSession {
             Some(pending) => manifest.resume_from(pending)?,
             None => manifest,
         };
+        let execution_plan = ExecutionPlan::resolve(&manifest, layout.root().to_path_buf())?;
         Ok(Self {
+            execution_plan,
             manifest,
             layout,
             applied_deltas: 0,

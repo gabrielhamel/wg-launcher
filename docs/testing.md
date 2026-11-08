@@ -36,7 +36,9 @@ every candidate fails. These checks resolve metadata without downloading package
 Custom-product staged installation checks that saved manifests retain their `assets`,
 patch `files`, `component_versions`, and `base_versions` fields. Cache rejection
 names mismatched products, client types, and languages without new service requests;
-the original pinned release can still be extracted offline afterward.
+the original pinned release can still be extracted offline afterward. Recovery
+assertions also check that extraction summaries omit checkpointed components and
+that a finalization-only install retry reports zero packages and zero bytes.
 
 ## Run end-to-end tests
 

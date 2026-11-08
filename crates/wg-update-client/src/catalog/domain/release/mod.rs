@@ -1,3 +1,5 @@
+mod component_release;
+pub(crate) use component_release::ComponentRelease;
 mod component_versions;
 pub(crate) use component_versions::ComponentVersions;
 mod error;

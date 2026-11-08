@@ -10,7 +10,6 @@ pub use application::{
 };
 pub(crate) use application::{resolve, resolve_update_release};
 pub(crate) use domain::release::package_plan::{PlannedPatch, planned_patches};
-pub(crate) use domain::release::patch_chain::ordered_patches;
 pub(crate) use domain::release::{
     ClientPart, ClientType, ComponentVersions, Executable, GameMetadata, Patch, PatchSource,
     PatchVolume, ReleaseError, ResolvedRelease, TransportVolume, WebSeed, required_volumes,

@@ -42,12 +42,12 @@ pub(crate) fn planned_patches(
         .collect::<HashMap<_, _>>();
     let mut planned = Vec::new();
     for component in release.components() {
-        planned.extend(component?.planned_patches(base_versions, &volumes)?);
+        planned.extend(component.planned_patches(base_versions, &volumes)?);
     }
     Ok(planned)
 }
 
-impl super::resolved_release::ComponentRelease<'_> {
+impl super::ComponentRelease<'_> {
     /// Validate the volumes of the selected steps, leaving unused publisher
     /// alternatives alone. Planning does not change the persisted release.
     fn planned_patches(

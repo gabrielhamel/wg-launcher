@@ -2,8 +2,8 @@ use super::error::{InstallationError as Error, Result as InstallationResult};
 use super::{InstalledBuild, component_progress::ComponentProgress};
 use crate::catalog::ComponentVersions;
 use crate::catalog::{
-    Patch, PlannedPatch, ReleaseError, ResolvedRelease, TransportVolume, ordered_patches,
-    planned_patches, required_volumes,
+    Patch, PlannedPatch, ReleaseError, ResolvedRelease, TransportVolume, planned_patches,
+    required_volumes,
 };
 use serde::{Deserialize, Serialize};
 
@@ -28,14 +28,15 @@ impl From<ResolvedRelease> for PinnedManifest {
 impl PinnedManifest {
     /// Produce installed identity only when every selected component reached its target.
     pub(crate) fn complete_installation(&self) -> InstallationResult<InstalledBuild> {
-        for part in &self.release.parts {
-            let target = self.release.component_versions.get(part);
-            let reached = self.reached_versions().version_or_zero(part);
-            if target.is_none() || Some(reached) != target {
+        for component in self.release.components() {
+            if !component.reached_by(self.reached_versions()) {
                 return Err(Error::IncompleteInstallation {
-                    component: part.clone(),
-                    reached: reached.to_owned(),
-                    target: target.unwrap_or("unknown").to_owned(),
+                    component: component.id.to_owned(),
+                    reached: self
+                        .reached_versions()
+                        .version_or_zero(component.id)
+                        .to_owned(),
+                    target: component.target.unwrap_or("unknown").to_owned(),
                 });
             }
         }
@@ -55,10 +56,6 @@ impl PinnedManifest {
         &self,
     ) -> std::result::Result<Vec<TransportVolume>, ReleaseError> {
         required_volumes(&self.release, self.progress.versions())
-    }
-
-    pub(crate) fn ordered_patches(&self) -> std::result::Result<Vec<&Patch>, ReleaseError> {
-        ordered_patches(&self.release, self.progress.versions())
     }
 
     pub(crate) fn planned_patches(&self) -> std::result::Result<Vec<PlannedPatch>, ReleaseError> {

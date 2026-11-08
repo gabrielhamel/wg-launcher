@@ -52,9 +52,9 @@ pub(crate) async fn run(observer: &Observer<'_>) -> Result<SelfUpdateOutcome> {
     let artifact = ReleaseArtifact::for_host(&release, &host)?;
     let binary = artifact::prepare_candidate(&release, &artifact, work.path(), observer).await?;
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::VerifyingExecutable))?;
-    executable::verify(&binary, &release.version).await?;
+    let binary = executable::verify(binary, &release.version).await?;
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::ReplacingExecutable))?;
-    executable::replace(&binary)?;
+    executable::replace(binary)?;
     Ok(SelfUpdateOutcome::Updated(release.version))
 }
 

@@ -2,6 +2,7 @@
 
 use super::{
     archive,
+    executable::ExtractedCandidate,
     http::{client, fetch},
 };
 use crate::self_update::progress::{Observer, SelfUpdateEvent, SelfUpdateStage};
@@ -10,11 +11,7 @@ use crate::self_update::{
     domain::{Release, artifact::ReleaseArtifact},
 };
 use sha2::{Digest, Sha256};
-use std::{
-    io::Write,
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::{io::Write, path::Path, time::Duration};
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ArtifactDownloadError {
@@ -31,7 +28,7 @@ pub(crate) async fn prepare_candidate(
     artifact: &ReleaseArtifact,
     directory: &Path,
     observer: &Observer<'_>,
-) -> Result<PathBuf> {
+) -> Result<ExtractedCandidate> {
     let client = client(Duration::from_secs(120))?;
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::FetchingChecksum))?;
     let checksum = fetch(&client, release.base.join(&artifact.checksum_name)?, 4096).await?;
@@ -73,5 +70,6 @@ pub(crate) async fn prepare_candidate(
         return Err(ArtifactDownloadError::ChecksumMismatch.into());
     }
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::OpeningArchive))?;
-    archive::extract(&archive, directory, artifact.format, observer)
+    let binary = archive::extract(&archive, directory, artifact.format, observer)?;
+    Ok(ExtractedCandidate::from_archive(binary))
 }

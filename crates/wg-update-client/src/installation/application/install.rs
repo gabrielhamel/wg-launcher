@@ -1,4 +1,4 @@
-use super::{BuildSelection, InstallPlan, plan::build_plan, resolution::resolve_installation};
+use super::{BuildSelection, InstallPlan, resolution::resolve_installation};
 use crate::Result;
 use crate::installation::{
     DownloadOptions, InstallationEvent, InstallationPipeline, InstallationReport, VolumeDownloader,
@@ -92,16 +92,13 @@ pub(super) async fn install_resolved<F>(
 where
     F: Fn(InstallEvent) + Send + Sync + 'static,
 {
-    let assets = manifest.required_volumes()?;
-    let plan = build_plan(&manifest, root, &assets);
+    let pipeline = InstallationPipeline::new(manifest, &root)?;
+    let plan = pipeline.plan().clone();
     observer(InstallEvent::Planned(Box::new(plan.clone())));
 
-    let pipeline = InstallationPipeline::new();
     let report = pipeline
         .download_and_extract_with_observer(
             VolumeDownloader::new()?,
-            manifest,
-            &plan.root,
             download,
             Default::default(),
             move |event| observer(InstallEvent::Progress(event)),

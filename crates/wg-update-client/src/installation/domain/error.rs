@@ -52,8 +52,8 @@ impl std::fmt::Display for super::selection::SelectionDescription {
             self.language.as_deref().unwrap_or("publisher default"),
             self.product.game(),
             self.product.name,
-            self.product.host,
-            self.product.game_id,
+            self.product.service_base_url(),
+            self.product.application_id(),
             self.product.channel
         )
     }

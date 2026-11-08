@@ -1,4 +1,4 @@
-use super::{InstallPlan, plan::build_plan};
+use super::InstallPlan;
 use crate::installation::infrastructure::filesystem::records::load_pinned_manifest;
 use crate::installation::{ExtractionEvent, ExtractionReport, InstallationPipeline};
 use crate::{Result, installation::infrastructure::filesystem::InstallationLayout};
@@ -72,11 +72,11 @@ where
     let manifest = load_pinned_manifest(&cache).await?.ok_or_else(|| {
         crate::installation::ExtractError::DownloadManifestNotFound(cache.clone())
     })?;
-    let assets = manifest.required_volumes()?;
-    let plan = build_plan(&manifest, root, &assets);
+    let pipeline = InstallationPipeline::new(manifest, &root)?;
+    let plan = pipeline.plan().clone();
     observer(ExtractEvent::Planned(Box::new(plan.clone())));
-    let report = InstallationPipeline::new()
-        .extract_with_observer(manifest, &plan.root, move |event| {
+    let report = pipeline
+        .extract_with_observer(move |event| {
             observer(ExtractEvent::Progress(event));
         })
         .await?;

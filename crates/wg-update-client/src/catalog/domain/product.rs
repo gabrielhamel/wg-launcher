@@ -32,6 +32,16 @@ impl Product {
         self.game.trim().to_ascii_lowercase()
     }
 
+    /// Publisher application identity, distinct from the catalog's game label.
+    pub(crate) fn application_id(&self) -> &str {
+        &self.game_id
+    }
+
+    /// Complete service base URL, including any configured port and path prefix.
+    pub(crate) fn service_base_url(&self) -> &url::Url {
+        &self.host
+    }
+
     /// Validates the service URL and required identity fields without network access.
     ///
     /// # Errors

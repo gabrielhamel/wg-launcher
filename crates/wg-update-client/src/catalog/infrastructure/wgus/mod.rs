@@ -123,7 +123,7 @@ impl WgusClient {
 
             if let Some(redirected) = redirect_product(&resolved, response.redirect_url())? {
                 if hop == MAX_REDIRECTS {
-                    return Err(Error::RedirectLimit(product.game_id.clone()));
+                    return Err(Error::RedirectLimit(product.application_id().to_owned()));
                 }
                 resolved = redirected;
                 continue;
@@ -131,7 +131,7 @@ impl WgusClient {
 
             return release_from_wire(
                 product,
-                resolved.host.host_str().unwrap().to_owned(),
+                resolved.service_base_url().host_str().unwrap().to_owned(),
                 metadata,
                 &selected,
                 language,
@@ -140,7 +140,7 @@ impl WgusClient {
             );
         }
 
-        Err(Error::RedirectLimit(product.game_id.clone()))
+        Err(Error::RedirectLimit(product.application_id().to_owned()))
     }
 
     async fn fetch_metadata(&self, product: &Product) -> Result<(MetadataXml, GameMetadata)> {
@@ -149,7 +149,7 @@ impl WgusClient {
             .http
             .get(endpoint)
             .query(&[
-                ("guid", product.game_id.as_str()),
+                ("guid", product.application_id()),
                 ("chain_id", "unknown"),
                 ("protocol_version", PROTOCOL_VERSION),
             ])

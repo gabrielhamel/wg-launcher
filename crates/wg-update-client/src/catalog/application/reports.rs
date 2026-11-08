@@ -39,7 +39,7 @@ impl BuildInfo {
         Self {
             game: product.game(),
             name: product.name.clone(),
-            game_id: identity.game_id.clone(),
+            game_id: identity.application_id.clone(),
             region: identity.region.clone(),
             channel: identity.channel.clone(),
             version: identity.version.clone(),

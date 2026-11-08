@@ -1,32 +1,19 @@
+use super::Patch;
 use super::error::{ReleaseError as Error, Result};
-use super::{Patch, ResolvedRelease};
 use crate::catalog::ComponentVersions;
 use std::collections::{HashMap, HashSet};
 
-pub(crate) fn ordered_patches<'a>(
-    release: &'a ResolvedRelease,
-    base_versions: &ComponentVersions,
-) -> Result<Vec<&'a Patch>> {
-    let mut ordered = Vec::new();
-    for component in release.components() {
-        ordered.extend(component?.ordered_patches(base_versions)?);
-    }
-    Ok(ordered)
-}
-
-impl<'a> super::resolved_release::ComponentRelease<'a> {
+impl<'a> super::ComponentRelease<'a> {
     pub(super) fn ordered_patches(
         &self,
         base_versions: &ComponentVersions,
     ) -> Result<Vec<&'a Patch>> {
         let mut ordered = Vec::new();
         let part = self.id;
-        let target = self.target;
+        let target = self.require_target()?;
         let mut version = base_versions.version_or_zero(part);
         let by_from = self
-            .patches
-            .iter()
-            .copied()
+            .patches()
             .filter_map(|patch| patch.source.version().map(|from| (from, patch)))
             .collect::<HashMap<_, _>>();
         // A publisher may replace an obsolete delta chain with a full package.

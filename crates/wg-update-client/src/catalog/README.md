@@ -14,12 +14,15 @@ selection to prepare the game on someone's machine.
 | --- | --- |
 | Patch chain normalization | Read publisher steps in order, infer omitted sources from the known component versions, and advance those versions to each step's target. |
 | Publisher | The organisation providing a game and its updates, such as Wargaming or Lesta. |
+| Application ID | The publisher identifier used in service requests, such as `WOT.EU.PRODUCTION`; distinct from the game label `wot`. |
+| Service base URL | The configured HTTP(S) address of a product, including its optional port and path prefix. |
+| Resolved hostname | The hostname reached after publisher redirects; it does not replace the configured product identity. |
 | Game | The game being selected, such as World of Tanks or World of Warships. |
 | Product | A publisher's offering for one game and region, with its own release channel. |
 | Catalog | The collection of products available to choose from. |
 | Region | The publisher's label for an offering, such as Europe or worldwide. |
 | Channel | A stream of releases, such as the regular game or a public test. |
-| Component release | One selected component together with its target version and the published patches belonging to it. |
+| Component release | A view associating one selected component with its target and published patches. Planning requires a target; completion checks whether that target was reached. |
 | Resolved release | The selected published build, its component targets, and the packages the publisher offers. It contains no local installation progress. |
 | Build selection request | A discovery request that can leave edition or language to publisher defaults and optionally supply a replacement catalog. |
 | Build identity | The published application, region, channel, version, edition, language, and payload target describing a build. It stays distinct from the configured product endpoint. |
@@ -41,37 +44,37 @@ selection to prepare the game on someone's machine.
 | Required volumes | The volumes needed for the patch chain selected from starting component versions; cached bytes are not subtracted. |
 | Payload platform | The kind of computer the game content is intended for. It can differ from the computer running the launcher. |
 
-The catalog application resolves update releases from a product, client type,
-language, and known component versions. Installation owns local progress and
-pending-manifest precedence. WGUS request encoding and redirect targets remain
-inside the protocol adapter; redirects preserve the configured product identity.
-`conversion.rs` assembles release identity and metadata; `patch_chain_conversion.rs`
-normalizes source versions and resolves packages, seeds, and component targets.
+## Responsibilities
 
-Build identity is shared internally by resolved releases and installed records.
-Consumer reports project that identity without exposing persistence models. Patch
-chain selection visits validated component releases in publisher order, keeping each
-component target and its patches together without a package lookup. Package planning
-builds its own release-wide volume index, without changing saved release data.
-Each component resolves its selected steps to complete planned patches and rejects
-missing packages before execution.
-It owns version traversal and full-package fallback; package planning resolves
-the transport volumes for those selected steps.
+| Module | Owns |
+| --- | --- |
+| `domain/product.rs`, `builtin.rs`, and selection modules | Product validation, built-in offerings, and selection rules. |
+| `domain/build_identity.rs` | Published application, version, edition, language, and payload target. |
+| `domain/release/resolved_release.rs` | Published build data, separate from local progress. |
+| `domain/release/component_release.rs` | Component targets, associated patch steps, and target-reached checks. |
+| `domain/release/patch_chain.rs` | Version traversal, cycle detection, and full-package fallback. |
+| `domain/release/package_plan.rs` | Resolve selected steps to transport volumes through a release-wide index. |
+| `application/` | Listing, inspection, release resolution, consumer reports, and suggested directory names. |
+| `infrastructure/wgus/` | HTTP/XML, query encoding, redirects, language normalization, and response conversion. |
 
-The application names smallest-installable-variant resolution explicitly. Candidates
-are visited in publisher order, equal sizes keep the first candidate, and total
-failure reports the first resolution or package-planning error. A missing component
-target is reported separately from a missing full-install patch.
+## Invariants
 
-Catalog entry points own WGUS client construction and reuse during resolution.
-Installation asks for a resolved release without constructing a protocol client.
-Internal size queries distinguish `published_volume_bytes()` from `required_volumes()`.
-Listing and inspection have separate application modules: `list.rs` owns listing
-options, summaries, and warnings; `inspect.rs` owns read-only inspection. Internal
-release, patch, and planned-patch collections use `volumes` for transport pieces.
-Saved manifests retain `assets` and patch `files` keys, and public consumer reports
-retain their existing package names.
-
-WGUS `PatchChainNormalization` owns the temporary component versions used during
-conversion. Explicit sources remain authoritative; omitted sources use the last
-known version or `0`. The accumulated versions supply the selected component targets.
+- A resolved release contains publisher data; installation owns checkpoints and
+  pending-work precedence. Installation calls catalog entry points without
+  constructing a WGUS client.
+- Component views visit selections in publisher order. Planning rejects missing
+  targets and missing volumes for selected steps, while leaving unused publisher
+  alternatives alone. The saved release keeps its flat collections.
+- Explicit client variants take precedence. Otherwise resolution chooses a valid
+  publisher default, then the smallest installable variant. Equal sizes retain
+  publisher order; total failure retains the first resolution or planning error.
+- Redirects preserve the configured product. Internal `application_id` and
+  `resolved_hostname` names distinguish publisher identity from game labels and
+  service addresses. Public fields and saved keys remain `game_id` and `host`.
+- WGUS chain normalization preserves explicit sources and infers omitted sources
+  from the last known component version, initially `0` when unknown. The final
+  versions become component targets.
+- Published volume bytes include all offered volumes. Required volumes describe
+  the selected chain from supplied starting versions; neither subtracts cached bytes.
+- Consumer reports expose build and patch information without exposing protocol,
+  transport execution, or persistence models.

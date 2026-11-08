@@ -8,7 +8,7 @@ use crate::catalog::{ClientPart, ClientType, Executable, GameMetadata, Product, 
 
 pub(super) fn release_from_wire(
     product: &Product,
-    host: String,
+    resolved_hostname: String,
     metadata: GameMetadata,
     selected: &ClientType,
     language: String,
@@ -33,7 +33,7 @@ pub(super) fn release_from_wire(
         identity: crate::catalog::BuildIdentity {
             region: product.region.clone(),
             channel: product.channel.clone(),
-            game_id: metadata.game_id.clone(),
+            application_id: metadata.application_id.clone(),
             platform: "windows".to_owned(),
             architecture: selected.architecture.clone(),
             client_type: selected.id.clone(),
@@ -42,7 +42,7 @@ pub(super) fn release_from_wire(
             version,
         },
         product: product.clone(),
-        host,
+        resolved_hostname,
         available_languages: metadata.supported_languages,
         publisher_ids: metadata.publisher_ids,
         parts: selected.parts.iter().map(|part| part.id.clone()).collect(),
@@ -57,7 +57,7 @@ pub(super) fn metadata_from_wire(wire: &MetadataXml) -> GameMetadata {
     let predefined = &wire.predefined_section;
     GameMetadata {
         metadata_version: wire.version.clone(),
-        game_id: predefined.app_id.clone(),
+        application_id: predefined.app_id.clone(),
         name: predefined.name.clone(),
         filesystem_name: predefined.filesystem_name.clone(),
         environment: predefined.environment.clone(),

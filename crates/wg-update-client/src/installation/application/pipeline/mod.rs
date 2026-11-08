@@ -1,5 +1,6 @@
 //! Shared streaming and local installation orchestration.
 
+mod execution_plan;
 mod extraction;
 mod finalization;
 mod patch;
@@ -18,8 +19,28 @@ pub use reports::{ExtractionOptions, ExtractionReport, InstallationReport};
 /// on Tokio's blocking pool. Game-owned inner `.pkg` files remain packed. These
 /// lower-level methods accept and pin a resolved manifest without discovery.
 /// An error can leave partially changed game files; no whole-install rollback is provided.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct InstallationPipeline;
+pub(crate) struct InstallationPipeline {
+    session: session::InstallationSession,
+}
+
+impl InstallationPipeline {
+    /// Restore checkpoints and resolve the remaining work while holding the lock.
+    pub(crate) fn new(
+        manifest: crate::installation::PinnedManifest,
+        root: impl AsRef<std::path::Path>,
+    ) -> crate::Result<Self> {
+        let layout = crate::installation::infrastructure::filesystem::InstallationLayout::for_root(
+            root.as_ref(),
+        );
+        Ok(Self {
+            session: session::InstallationSession::resume(manifest, layout)?,
+        })
+    }
+
+    pub(crate) fn plan(&self) -> &crate::installation::InstallPlan {
+        &self.session.execution_plan.summary
+    }
+}
 
 /// Failure of a background installation worker.
 #[derive(Debug, thiserror::Error)]

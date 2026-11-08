@@ -13,7 +13,8 @@ pub struct ResolvedRelease {
     /// This is one product, never the full input catalog.
     pub product: super::super::Product,
     /// Resolved WGUS-compatible hostname after protocol redirects.
-    pub host: String,
+    #[serde(rename = "host")]
+    pub resolved_hostname: String,
     /// Normalized languages advertised for this build.
     pub available_languages: Vec<String>,
     /// Publisher identifiers advertised in metadata.
@@ -41,7 +42,7 @@ impl ResolvedRelease {
             )*};
         }
         compare!(
-            identity => "build identity", product => "product", host => "publisher endpoint",
+            identity => "build identity", product => "product", resolved_hostname => "publisher endpoint",
             available_languages => "available languages", publisher_ids => "publisher identifiers",
             parts => "selected components", component_versions => "component targets",
             patches => "patch chains", web_seeds => "download endpoints", volumes => "transport volumes",
@@ -58,32 +59,13 @@ impl ResolvedRelease {
     }
 }
 
-/// A selected component's target and published steps, borrowed from a release.
-/// This view groups related data without changing the saved release representation.
-pub(super) struct ComponentRelease<'a> {
-    pub(super) id: &'a str,
-    pub(super) target: &'a str,
-    pub(super) patches: Vec<&'a Patch>,
-}
-
 impl ResolvedRelease {
-    /// Validate each selected component as it is visited in publisher order.
-    pub(super) fn components(
-        &self,
-    ) -> impl Iterator<Item = super::error::Result<ComponentRelease<'_>>> {
-        self.parts.iter().map(move |part| {
-            let target = self.component_versions.get(part).ok_or_else(|| {
-                super::ReleaseError::MissingComponentTarget { part: part.clone() }
-            })?;
-            Ok(ComponentRelease {
-                id: part,
-                target,
-                patches: self
-                    .patches
-                    .iter()
-                    .filter(|patch| &patch.part == part)
-                    .collect(),
-            })
+    /// Visit selected components in publisher order, including incomplete saved data.
+    pub(crate) fn components(&self) -> impl Iterator<Item = super::ComponentRelease<'_>> {
+        self.parts.iter().map(move |part| super::ComponentRelease {
+            id: part,
+            target: self.component_versions.get(part),
+            published_patches: &self.patches,
         })
     }
 }

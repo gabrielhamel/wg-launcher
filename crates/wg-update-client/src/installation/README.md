@@ -37,6 +37,7 @@ installation manages the copy on a person's machine.
 | Installation session | One execution owning exclusive installation access, its layout, saved progress, and completed delta count. Its lock stays with blocking workers until they finish. |
 | Package retention | Whether successfully applied packages are released after each saved checkpoint and removed at final cleanup, or kept for reuse. |
 | Installation completion | Confirm every selected component has reached its target before creating the installed build identity. |
+| Execution plan | The remaining ordered patches and their resolved volumes, selected after the session restores checkpoints under its lock. Its summary supplies the public installation plan. |
 | Installation pipeline | Coordinates package downloads and patch application, including the lock, saved progress, and final cleanup. |
 | Delta filename | A publisher filename whose extension, version segment, and hexadecimal checksum segment identify a delta and its target game package. Recognition checks naming syntax, not checksum correctness; unrecognized names remain replacement files. |
 | Delta | Changes that need an existing game file, rather than another complete copy of that file. |
@@ -50,70 +51,56 @@ installation manages the copy on a person's machine.
 | Resume / retry | Continue unfinished work, reusing completed steps and downloads where possible. |
 | Cleanup | Remove packages and temporary work after success, while retaining the installed game's identity. |
 
-Saved installed identity is checked before status or update discovery. An invalid
-product or a region that differs from its saved product is reported as invalid
-installation data, including when unfinished work is pinned locally.
+## Responsibilities
 
-Status and update share validated installed-record loading and report construction.
-The installed-build domain compares versions without requiring a pinned manifest.
-The application separately estimates package bytes from explicit starting component
-versions and builds the public status report. Status uses installed versions;
-updates use the pinned manifest's progress, including completed checkpoints. Download
-preparation inspects local files before HTTP execution, keeping reuse, promotion,
-and resumed transfer explicit without changing retry or cleanup behavior.
+| Module | Owns |
+| --- | --- |
+| `domain/installed_build.rs` | Installed identity, selection consistency, and comparison with a target build. |
+| `domain/pinned_manifest.rs`, `component_progress.rs` | Pinned release, starting versions, saved checkpoints, and checked completion. |
+| `domain/selection.rs` | Cache compatibility and structured mismatch facts. |
+| `application/` | Public workflows, options, reports, and observer contracts. |
+| `application/resolution.rs`, `update_target.rs` | Pinned-cache reuse, pending update precedence, live fallback, and starting-version seeding. |
+| `application/installed.rs`, `comparison.rs`, `plan.rs` | Validated state loading and consumer status/plan projections. |
+| `application/pipeline/session.rs` | Exclusive installation access, authoritative checkpoints, execution plan, and execution totals. |
+| `application/pipeline/execution_plan.rs` | Resolve remaining work once and project its consumer summary. |
+| `application/pipeline/extraction.rs`, `streaming.rs` | Local execution or overlapping downloads and patch application. |
+| `application/pipeline/patch.rs`, `finalization.rs` | Apply/checkpoint/release ordering, installed-state writes, and successful cleanup. |
+| `application/pipeline/prefetch.rs`, `prefetch_budget.rs` | Download coordination, cancellation, and queued-byte policy. |
+| `infrastructure/transfer/` | Cache reuse, partial-file promotion, resumable HTTP transfer, and retries. |
+| `infrastructure/packages/` | Split-volume reading, archive decoding, replacement/delta classification, and application. |
+| `infrastructure/filesystem/` | Layout, locks, persistence, safe paths, patch workspaces, replacement, and cleanup. |
 
-The pipeline decides how saved checkpoints resume a manifest and when a completed
-manifest becomes installed identity. Filesystem records only load and save those
-values. Package application owns full-patch replacement and source-dependent delta execution.
-Archive decoding reports each fully decoded entry without deciding where live game
-files are installed. Full content is decoded before each live file is replaced;
-delta contents stay in the patch workspace until application. Storage failures
-retain their technical causes rather than becoming decoder error strings. Split-volume
-reading lives separately from archive decoding and replacement policy.
+## Invariants
 
-Shared finalization records successful work for both local extraction and streaming
-installation. `pipeline/prefetch_budget.rs` owns the byte-budget rule and names the applying
-and candidate patch positions. `pipeline/prefetch.rs` owns async download
-coordination and cancellation.
-Background worker failures retain their technical causes and are distinguished from
-a download coordinator ending before every planned patch is ready. Installation
-layout describes the root and derived paths without reading or creating files.
-Preparation, locking, patch execution, and finalization receive that layout
-instead of independent root and storage arguments.
-
-Component progress exposes the versions reached locally, including saved patch
-completions. Restoring saved checkpoints explicitly gives those values precedence.
-Both asynchronous and synchronous record loaders call the same saved record a pinned
-manifest; their names distinguish execution mode rather than implying different records.
-Patch workspaces name the patch identity explicitly while preserving its saved array
-representation. Package `patch_application.rs` owns replacement-first execution and
-source preservation; `delta.rs` reconstructs and replaces an individual file.
-Finalization counts files before state writes and cleanup, including pre-existing files
-and launcher metadata, reported as `ExtractionReport.files_before_finalization`. The count is unchanged;
-it includes launcher metadata and cached packages still present before cleanup.
-
-`application/update_target.rs` owns pending-manifest precedence, selection validation,
-live fallback, and starting-version seeding for updates. Status remains live-only.
-Shared observer events live in `application/progress.rs`; pipeline reports and
-execution options live in `application/pipeline/reports.rs`. Package directory
-classification delegates publisher filename recognition to `packages/delta_filename.rs`.
-
-Cache compatibility records the differing selection fields before error formatting;
-diagnostics name those fields and show both selections. Component progress uses the
-catalog's component-version value while retaining ownership of seeding and saved
-checkpoint precedence. Its JSON representation remains a component-to-version map.
-Shared update target and source types live beside target resolution; status report
-construction remains in `application/comparison.rs`.
-
-`pipeline/session.rs` carries mutable execution state through local extraction and
-streaming workers. Both strategies acquire exclusive access through the session, resume saved
-checkpoints, prepare storage, apply patches, and finalize through it. Streaming
-moves the session between workers rather than cloning the manifest for each patch.
-A shared lock guard protects pending downloads until cancellation finishes, even
-if patch execution fails. Blocking workers retain exclusive access if their awaiting
-future is dropped. `PackageRetention` names the existing release-or-keep policy
-inside execution; `ExtractionOptions.clean_download_cache` remains unchanged.
-Pinned manifests produce installed identity through `complete_installation`,
-which checks all selected component targets before any state write or cleanup.
-The internal `VolumeDownloader` transfers transport volumes; public workflow,
-report, event, and saved JSON names are unchanged.
+- All installation-owned files live beneath `.wg-launcher/`. Moving the complete
+  folder preserves installed identity and resumable work. The folder name retains
+  its initial build identity after updates.
+- Status and update validate installed identity before discovery. Status compares
+  with the live catalog; update prefers a pending manifest and retains its selection.
+- A session acquires the mutation lock, restores authoritative saved checkpoints,
+  then resolves its execution plan. Install and extract publish the summary of that
+  same plan before progress. Package-only downloads retain their component filter
+  and pin the complete manifest.
+- Starting versions seed missing checkpoints; saved completions take precedence.
+  A component view supplies its target to planning and installation completion.
+  Completion requires every selected component to reach its target before state
+  is written.
+- Streaming overlaps later downloads with ordered patch execution. The prefetch
+  budget limits bytes queued ahead of the applying patch; one complete patch may
+  cross the threshold. Download and extraction use the same resolved steps.
+- Each patch is applied, checkpointed, then its recovery files and eligible packages
+  are released. Failures retain uncheckpointed packages and original delta sources.
+  Package retention controls both early release and final cache cleanup.
+- Full content is decoded before each live file replacement. Delta patches install
+  replacements before applying source-dependent changes. Recognized delta filenames
+  select an encoding and game-package target; their checksum segments are syntax,
+  not verified identity. Inner game-owned `.pkg` files remain packed.
+- Blocking workers retain the session lock if their awaiting future is dropped.
+  Extraction failure cancels pending downloads before exclusive access is released.
+  Background worker failures retain their technical causes.
+- Finalization validates completion, counts files, writes installed identity, and
+  removes temporary work and eligible cache data. `files_before_finalization`
+  includes existing game files and launcher metadata, not just newly extracted files.
+- Persistence retains the existing JSON layout: the release is flat, component
+  progress uses `base_versions`, and active patch identity is an array. Records
+  load/save values; domain and application code own compatibility and resume rules.

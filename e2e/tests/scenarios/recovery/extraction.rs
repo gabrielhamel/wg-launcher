@@ -46,7 +46,11 @@ fn later_corrupt_archive_preserves_checkpoint_and_retries_offline() {
     assert!(!recovery.game.join(".wg-launcher/state.json").exists());
     fs::write(cache.join("locale.wgpkg"), locale).unwrap();
     let before = recovery.server.requests();
-    success(recovery.sandbox.run(&recovery.game, &["extract"]));
+    let output = success(recovery.sandbox.run(&recovery.game, &["extract"]));
+    assert!(
+        output.lines().next().unwrap().contains(": 1 assets,"),
+        "{output}"
+    );
     assert_eq!(recovery.server.requests(), before);
     assert_installed(&recovery.game, Release::V1);
 }
@@ -66,7 +70,15 @@ fn blocked_state_write_retries_without_reapplying_completed_patches() {
     assert!(!cache.join("locale.wgpkg").exists());
     fs::remove_dir(marker_part).unwrap();
     let before = recovery.server.requests();
-    success(recovery.run("install"));
+    let output = success(recovery.run("install"));
+    assert!(
+        output
+            .lines()
+            .next()
+            .unwrap()
+            .contains(": 0 assets, 0 B ->"),
+        "{output}"
+    );
     assert_eq!(recovery.server.requests(), before);
     assert_installed(&recovery.game, Release::V1);
 }

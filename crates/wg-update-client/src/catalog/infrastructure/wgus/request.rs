@@ -70,6 +70,6 @@ pub(super) fn product_endpoint(product: &Product, route: &str) -> Result<Url> {
     product.validate_identity()?;
     Ok(Url::parse(&format!(
         "{}/api/v1/{route}/",
-        product.host.as_str().trim_end_matches('/')
+        product.service_base_url().as_str().trim_end_matches('/')
     ))?)
 }

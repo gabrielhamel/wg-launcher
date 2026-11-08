@@ -6,7 +6,8 @@ pub struct GameMetadata {
     /// Publisher metadata revision, distinct from the game version.
     pub metadata_version: String,
     /// Publisher application identifier.
-    pub game_id: String,
+    #[serde(rename = "game_id")]
+    pub application_id: String,
     /// Human-readable game name.
     pub name: String,
     /// Publisher-suggested filesystem name.

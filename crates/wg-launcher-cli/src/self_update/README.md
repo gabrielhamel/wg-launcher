@@ -26,6 +26,8 @@ game versions belong to [installation](../installation/README.md).
 | Managed installation | A launcher copy maintained by a package manager, such as Homebrew or APT. Updates go through that manager. |
 | Candidate preparation | Download the selected archive, verify its published checksum, and extract the launcher for executable verification. |
 | Candidate | The downloaded launcher being checked before it can replace the current one. |
+| Extracted candidate | A launcher extracted from a checksum-verified archive, awaiting its executable version check. |
+| Verified candidate | An extracted launcher that passed the expected-version check and can be supplied to executable replacement. |
 | Verification | Checks that the downloaded launcher matches the published release and reports the expected version. |
 | Host target | Explicit operating system, processor architecture, and build environment used to select a compatible launcher archive. |
 | Host platform | The kind of computer running the launcher, which determines which launcher download is suitable. |
@@ -42,8 +44,9 @@ instruction rendering never performs filesystem discovery. Archive format remain
 explicit from release selection through extraction.
 
 `prepare_candidate` names the complete artifact preparation operation. It returns
-the extracted launcher path; the application then verifies the executable version
-and replaces the current direct installation.
+an `ExtractedCandidate`; executable verification consumes it and returns a
+`VerifiedCandidate`. Replacement accepts only that verified value. The staging
+directory remains beside the current executable until the operation finishes.
 
 The context's `progress.rs` owns shared stages, events, and the observer contract.
 Application orchestration, infrastructure adapters, and terminal presentation all
