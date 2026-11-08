@@ -18,6 +18,7 @@ selection to prepare the game on someone's machine.
 | Catalog | The collection of products available to choose from. |
 | Region | The publisher's label for an offering, such as Europe or worldwide. |
 | Channel | A stream of releases, such as the regular game or a public test. |
+| Component release | One selected component together with its target version and the published patches belonging to it. |
 | Resolved release | The selected published build, its component targets, and the packages the publisher offers. It contains no local installation progress. |
 | Build selection request | A discovery request that can leave edition or language to publisher defaults and optionally supply a replacement catalog. |
 | Build identity | The published application, region, channel, version, edition, language, and payload target describing a build. It stays distinct from the configured product endpoint. |
@@ -42,5 +43,7 @@ inside the protocol adapter; redirects preserve the configured product identity.
 
 Build identity is shared internally by resolved releases and installed records.
 Consumer reports project that identity without exposing persistence models. Patch
-chain selection owns version traversal and full-package fallback; package planning
-resolves the transport volumes for those selected steps.
+chain selection visits validated component releases in publisher order, keeping each
+component target and its patches together without changing saved release data.
+It owns version traversal and full-package fallback; package planning resolves
+the transport volumes for those selected steps.

@@ -111,6 +111,7 @@ crates/
         mod.rs                Context entry points and exported models
         domain/               Built-ins, products, selections, release/patch rules
           build_identity.rs   Shared published identity, flattened in saved records
+          release/resolved_release.rs  Published release and validated component views
           release/patch_chain.rs  Version traversal and full-package fallback
           release/package_plan.rs  Resolve selected patch steps to transport packages
         application/          list, inspect, and live build/update release resolution
@@ -129,11 +130,13 @@ crates/
           installed_build.rs  Saved identity, consistency, selection, and build comparison
         application/          download, extract, install, status, update
           installed.rs        Shared validated installed-record loading
-          comparison.rs       Project domain build comparison into status reports
+          comparison.rs       Compare targets and estimate packages from explicit starting versions
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
           pipeline/           InstallationPipeline, checkpoint resumption, and shared contracts
-            extraction.rs     Local extraction and installation finalization
+            extraction.rs     Apply already downloaded patches
+            finalization.rs   Record the installed build and clean up successful work
+            prefetch.rs       Prefetch budget policy and async patch download coordination
             streaming.rs      Overlapping downloads and ordered patch execution
             patch.rs          Apply a patch, persist its checkpoint, then release packages
         infrastructure/
@@ -145,7 +148,7 @@ crates/
             volumes.rs        Read split transport volumes as one seekable archive
             contents.rs       Classify replacement files and typed deltas before execution
           filesystem/         Installation filesystem adapters
-            storage.rs        Installation-relative paths and staging preparation
+            storage.rs        Infallible installation layout and explicit staging preparation
             lock.rs           Exclusive installation mutation lock
             cache.rs          Package verification and release
             records.rs        Read/write records with one file replacement policy
@@ -218,6 +221,15 @@ Patch sources distinguish full content from changes to a specific version, while
 retaining the saved `version_from` string or null representation. Planned patches
 keep each step with its resolved packages; prefetch delivers the patch with its
 transfer result instead of coordinating separate patch and package lists.
+Component release views validate and group each selected component target with
+its patches, preserving publisher order and the saved release format. Build
+comparison is independent of package estimation: status supplies installed versions,
+while update supplies saved component progress. Shared pipeline finalization writes
+the installed identity and cleans up after all patches succeed. Prefetch policy
+allows a whole patch to cross the byte budget, while coordination owns task
+cancellation. Worker errors preserve their source chain and distinguish premature
+download termination from a failed background task.
+
 The patch coordinator persists each checkpoint before releasing its workspace
 and cached volumes. `PatchWorkspace` owns the active patch's staging paths and
 original sources, without deleting recovery files on failure.

@@ -5,7 +5,7 @@ use crate::catalog::resolve_update_release;
 use crate::installation::DownloadOptions;
 use crate::installation::domain::selection::validate_cached_selection;
 use crate::installation::infrastructure::filesystem::records::load_cache_manifest;
-use crate::{Result, installation::infrastructure::filesystem::installation_storage};
+use crate::{Result, installation::infrastructure::filesystem::InstallationStorage};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -60,7 +60,7 @@ where
     F: Fn(InstallEvent) + Send + Sync + 'static,
 {
     let path = std::path::absolute(options.path)?;
-    let storage = installation_storage(&path)?;
+    let storage = InstallationStorage::for_root(&path);
     let installed = load_installed_build(&path).await?;
     let (mut manifest, target_source) =
         if let Some(pending) = load_cache_manifest(&storage.cache).await? {
@@ -83,7 +83,13 @@ where
     // A package-only download may have pinned a full installation chain. Start
     // that chain at the installed versions, retaining any completed checkpoints.
     manifest.seed_missing_component_versions(&installed);
-    let status = build_status(path, installed, &manifest, target_source)?;
+    let status = build_status(
+        path,
+        &installed,
+        &manifest.release,
+        manifest.starting_versions(),
+        target_source,
+    )?;
     if !status.update_available {
         return Ok(UpdateOutcome {
             status,

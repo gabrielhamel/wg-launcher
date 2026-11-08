@@ -7,7 +7,7 @@ use crate::installation::infrastructure::filesystem::records::{
 use crate::{
     Result,
     catalog::{Asset, WgusClient},
-    installation::infrastructure::filesystem::{InstallationLock, installation_storage},
+    installation::infrastructure::filesystem::{InstallationLock, InstallationStorage},
     installation::{AssetDownloader, DownloadEvent, DownloadOptions, DownloadReport},
 };
 use serde::Serialize;
@@ -90,7 +90,7 @@ where
     let client = WgusClient::new()?;
     let (manifest, root) =
         resolve_installation(&client, &options.selection, options.output).await?;
-    let storage = installation_storage(&root)?;
+    let storage = InstallationStorage::for_root(&root);
     let _lock = InstallationLock::acquire(&storage, &root)?;
     // Discovery happens before locking; another workflow could have checkpointed
     // this installation meanwhile. Read its authoritative manifest under the lock.
@@ -107,7 +107,7 @@ where
             crate::installation::DownloadError::EmptySelection(options.parts.join(", ")).into(),
         );
     }
-    let plan = build_plan(&manifest, root, &assets)?;
+    let plan = build_plan(&manifest, root, &assets);
     observer(DownloadAssetsEvent::Planned(Box::new(plan.clone())));
     save_manifest(&manifest, &storage)?;
     let report = AssetDownloader::new()?

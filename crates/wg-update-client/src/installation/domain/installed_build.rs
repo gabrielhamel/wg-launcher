@@ -54,30 +54,8 @@ impl InstalledBuild {
         }
     }
 
-    pub(crate) fn compare_with(
-        &self,
-        manifest: &PinnedManifest,
-    ) -> std::result::Result<BuildComparison, crate::catalog::ReleaseError> {
-        let update_available = self.identity.version != manifest.release.identity.version
-            || self.component_versions != manifest.release.component_versions;
-        let download_bytes = if update_available {
-            manifest
-                .installation_assets()?
-                .iter()
-                .map(|asset| asset.size)
-                .sum()
-        } else {
-            0
-        };
-        Ok(BuildComparison {
-            update_available,
-            download_bytes,
-        })
+    pub(crate) fn differs_from(&self, target: &crate::catalog::ResolvedRelease) -> bool {
+        self.identity.version != target.identity.version
+            || self.component_versions != target.component_versions
     }
-}
-
-/// Whether the target differs and the package bytes needed to reach it.
-pub(crate) struct BuildComparison {
-    pub(crate) update_available: bool,
-    pub(crate) download_bytes: u64,
 }

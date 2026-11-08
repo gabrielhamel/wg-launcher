@@ -25,6 +25,10 @@ impl From<ResolvedRelease> for PinnedManifest {
 }
 
 impl PinnedManifest {
+    pub(crate) fn starting_versions(&self) -> &std::collections::BTreeMap<String, String> {
+        self.progress.versions()
+    }
+
     pub(crate) fn installation_assets(&self) -> std::result::Result<Vec<Asset>, ReleaseError> {
         installation_assets(&self.release, self.progress.versions())
     }

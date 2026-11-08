@@ -1,13 +1,13 @@
 //! Overlapping downloads and ordered patch application under one installation lock.
 
-use super::extraction::finalize_installation;
+use super::finalization::finalize_installation;
 use super::patch::{PatchProgress, apply_and_checkpoint_patch};
 use super::prefetch::{DOWNLOAD_PREFETCH_BYTES, PatchDownloads, merge_download_report};
 use super::{
     ExtractionEvent, ExtractionOptions, InstallationEvent, InstallationPipeline, InstallationReport,
 };
 use crate::installation::infrastructure::filesystem::{
-    InstallationLock, installation_storage, records, storage::prepare_installation,
+    InstallationLock, InstallationStorage, records, storage::prepare_installation,
 };
 use crate::installation::{AssetDownloader, DownloadOptions, PinnedManifest};
 use crate::{Error, Result};
@@ -44,7 +44,7 @@ impl InstallationPipeline {
         F: Fn(InstallationEvent) + Send + Sync + 'static,
     {
         let install_root = install_root.as_ref().to_path_buf();
-        let storage = installation_storage(&install_root)?;
+        let storage = InstallationStorage::for_root(&install_root);
         let _lock = InstallationLock::acquire(&storage, &install_root)?;
         let cache = storage.cache.clone();
         let mut manifest = super::resume_manifest(manifest, &storage)?;
@@ -60,9 +60,7 @@ impl InstallationPipeline {
         let prepare_storage = storage.clone();
         tokio::task::spawn_blocking(move || prepare_installation(&prepare_root, &prepare_storage))
             .await
-            .map_err(|error| {
-                crate::installation::PipelineError::ExtractionTask(error.to_string())
-            })??;
+            .map_err(crate::installation::PipelineError::WorkerFailed)??;
 
         let total = patches.len();
         let mut report = InstallationReport::default();
@@ -97,9 +95,9 @@ impl InstallationPipeline {
                     )?;
                     Ok::<_, Error>((completion, checkpoint_manifest))
                 });
-                let (completion, checkpoint_manifest) = extraction.await.map_err(|error| {
-                    crate::installation::PipelineError::ExtractionTask(error.to_string())
-                })??;
+                let (completion, checkpoint_manifest) = extraction
+                    .await
+                    .map_err(crate::installation::PipelineError::WorkerFailed)??;
                 manifest = checkpoint_manifest;
                 report.extraction.applied_deltas += completion.applied_deltas;
                 report.released_package_bytes += completion.released_package_bytes;
@@ -130,7 +128,7 @@ impl InstallationPipeline {
             )
         })
         .await
-        .map_err(|error| crate::installation::PipelineError::ExtractionTask(error.to_string()))??;
+        .map_err(crate::installation::PipelineError::WorkerFailed)??;
         Ok(report)
     }
 }

@@ -39,3 +39,34 @@ impl ResolvedRelease {
         self.assets.iter().map(|asset| asset.size).sum()
     }
 }
+
+/// A selected component's target and published steps, borrowed from a release.
+/// This view groups related data without changing the saved release representation.
+pub(super) struct ComponentRelease<'a> {
+    pub(super) id: &'a str,
+    pub(super) target: &'a str,
+    pub(super) patches: Vec<&'a Patch>,
+}
+
+impl ResolvedRelease {
+    /// Validate each selected component as it is visited in publisher order.
+    pub(super) fn components(
+        &self,
+    ) -> impl Iterator<Item = super::error::Result<ComponentRelease<'_>>> {
+        self.parts.iter().map(|part| {
+            let target = self
+                .component_versions
+                .get(part)
+                .ok_or_else(|| super::ReleaseError::MissingFullPatch { part: part.clone() })?;
+            Ok(ComponentRelease {
+                id: part,
+                target,
+                patches: self
+                    .patches
+                    .iter()
+                    .filter(|patch| &patch.part == part)
+                    .collect(),
+            })
+        })
+    }
+}

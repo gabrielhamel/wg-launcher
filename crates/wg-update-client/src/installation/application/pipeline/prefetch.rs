@@ -40,10 +40,7 @@ impl PatchDownloads {
             for (index, planned) in patches.into_iter().enumerate() {
                 loop {
                     let current = *current_rx.borrow_and_update();
-                    let queued_bytes = sizes[current.saturating_add(1).min(index)..index]
-                        .iter()
-                        .sum::<u128>();
-                    if index <= current || queued_bytes < u128::from(prefetch_bytes) {
+                    if can_prefetch_patch(&sizes, current, index, prefetch_bytes) {
                         break;
                     }
                     if current_rx.changed().await.is_err() {
@@ -90,11 +87,11 @@ impl PatchDownloads {
         match self.reports.recv().await {
             Some(result) => result,
             None => {
-                let detail = match self.tasks.join_next().await {
-                    Some(Err(error)) => error.to_string(),
-                    _ => "Package downloads stopped before all packages were ready".to_owned(),
+                let error = match self.tasks.join_next().await {
+                    Some(Err(error)) => crate::installation::PipelineError::WorkerFailed(error),
+                    _ => crate::installation::PipelineError::DownloadsStopped,
                 };
-                Err(crate::installation::PipelineError::ExtractionTask(detail).into())
+                Err(error.into())
             }
         }
     }
@@ -114,4 +111,14 @@ pub(super) fn merge_download_report(total: &mut DownloadReport, patch: DownloadR
 pub(super) struct DownloadedPatch {
     pub(super) patch: Patch,
     pub(super) report: DownloadReport,
+}
+
+/// The current patch is always allowed. Later patches may start while the packages
+/// already queued ahead of extraction are below the budget. The new patch's own
+/// size is excluded so a single large patch can cross the budget and still finish.
+fn can_prefetch_patch(sizes: &[u128], current: usize, next: usize, budget: u64) -> bool {
+    let queued_bytes = sizes[current.saturating_add(1).min(next)..next]
+        .iter()
+        .sum::<u128>();
+    next <= current || queued_bytes < u128::from(budget)
 }

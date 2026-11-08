@@ -53,6 +53,21 @@ fn pending_update_preserves_directory_and_selection_and_changes_installed_versio
     let mut resources = initial.service_resources("updates");
     resources.extend(updated.packages.clone());
     server.replace_resources(resources);
+    // Status compares against the live v1, without adopting or changing pending v2.
+    let manifest_path = game.join(".wg-launcher/download/manifest.json");
+    let pinned = fs::read(&manifest_path).unwrap();
+    let installed = fs::read(&state_path).unwrap();
+    let before_status = server.requests().len();
+    let output = success(sandbox.run(&game, &["status"]));
+    assert!(output.contains("Up to date."));
+    assert!(!output.contains("Update size:"));
+    assert_eq!(fs::read(&manifest_path).unwrap(), pinned);
+    assert_eq!(fs::read(&state_path).unwrap(), installed);
+    assert!(
+        server.requests()[before_status..]
+            .iter()
+            .all(|request| { !request.path.ends_with(".wgpkg") })
+    );
     let before_update = server.requests().len();
     success(sandbox.run(&game, &["update"]));
     assert_installed(&game, Release::V2);

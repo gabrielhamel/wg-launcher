@@ -3,17 +3,27 @@
 use super::status::{StatusReport, UpdateTarget, UpdateTargetSource};
 use crate::{
     Result,
-    installation::{InstalledBuild, PinnedManifest},
+    catalog::{ResolvedRelease, installation_assets},
+    installation::InstalledBuild,
 };
 use std::path::PathBuf;
 
 pub(super) fn build_status(
     path: PathBuf,
-    installed: InstalledBuild,
-    manifest: &PinnedManifest,
+    installed: &InstalledBuild,
+    target: &ResolvedRelease,
+    starting_versions: &std::collections::BTreeMap<String, String>,
     source: UpdateTargetSource,
 ) -> Result<StatusReport> {
-    let comparison = installed.compare_with(manifest)?;
+    let update_available = installed.differs_from(target);
+    let download_bytes = if update_available {
+        installation_assets(target, starting_versions)?
+            .iter()
+            .map(|asset| asset.size)
+            .sum()
+    } else {
+        0
+    };
     Ok(StatusReport {
         path,
         installed: crate::catalog::BuildInfo::from_identity(
@@ -21,10 +31,10 @@ pub(super) fn build_status(
             &installed.identity,
         ),
         target: UpdateTarget {
-            version: manifest.release.identity.version.clone(),
+            version: target.identity.version.clone(),
             source,
         },
-        update_available: comparison.update_available,
-        update_download_bytes: comparison.download_bytes,
+        update_available,
+        update_download_bytes: download_bytes,
     })
 }

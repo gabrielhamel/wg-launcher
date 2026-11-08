@@ -2,7 +2,6 @@ use super::comparison::build_status;
 use super::installed::load_installed_build;
 use crate::Result;
 use crate::catalog::{BuildInfo, resolve_update_release};
-use crate::installation::PinnedManifest;
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -74,7 +73,11 @@ pub async fn status(options: StatusOptions) -> Result<StatusReport> {
         &installed.component_versions,
     )
     .await?;
-    let mut latest = PinnedManifest::from(latest);
-    latest.seed_missing_component_versions(&installed);
-    build_status(path, installed, &latest, UpdateTargetSource::LiveCatalog)
+    build_status(
+        path,
+        &installed,
+        &latest,
+        &installed.component_versions,
+        UpdateTargetSource::LiveCatalog,
+    )
 }

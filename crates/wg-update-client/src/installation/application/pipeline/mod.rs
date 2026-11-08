@@ -1,6 +1,7 @@
 //! Shared streaming and local installation orchestration.
 
 mod extraction;
+mod finalization;
 mod patch;
 mod prefetch;
 mod streaming;
@@ -22,9 +23,12 @@ pub struct InstallationPipeline;
 /// Failure of a background installation worker.
 #[derive(Debug, thiserror::Error)]
 pub enum PipelineError {
-    /// A background extraction or download-coordination task failed.
-    #[error("background extraction task failed: {0}")]
-    ExtractionTask(String),
+    /// A background installation worker panicked or was cancelled.
+    #[error("background installation worker failed: {0}")]
+    WorkerFailed(#[source] tokio::task::JoinError),
+    /// The download coordinator ended without producing every planned patch.
+    #[error("package downloads stopped before all patches were ready")]
+    DownloadsStopped,
 }
 
 /// Restore saved component checkpoints under the installation lock.

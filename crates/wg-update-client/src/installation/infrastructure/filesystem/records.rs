@@ -1,10 +1,10 @@
 use super::error::Result;
-use super::{installation_storage, replacement::replace_file, storage::InstallationStorage};
+use super::{InstallationStorage, replacement::replace_file};
 use crate::installation::{DOWNLOAD_MANIFEST_FILE, InstalledBuild, PinnedManifest};
 use std::{fs, path::Path};
 
 pub(crate) async fn load_installed_build(root: &Path) -> Result<Option<InstalledBuild>> {
-    let installed_state = installation_storage(root)?.installed_state;
+    let installed_state = InstallationStorage::for_root(root).installed_state;
     match tokio::fs::read(&installed_state).await {
         Ok(bytes) => Ok(Some(serde_json::from_slice(&bytes)?)),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),

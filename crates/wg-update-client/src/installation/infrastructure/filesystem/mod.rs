@@ -9,4 +9,4 @@ pub(crate) mod records;
 pub(crate) mod storage;
 pub(crate) use lock::InstallationLock;
 pub(crate) use storage::DOWNLOAD_MANIFEST_FILE;
-pub(crate) use storage::installation_storage;
+pub(crate) use storage::InstallationStorage;

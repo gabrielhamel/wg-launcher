@@ -99,7 +99,10 @@ Synthetic full archives and source-dependent librsync deltas are grouped in
 [tests/scenarios/updates/](../e2e/tests/scenarios/updates/); they verify component
 versions in requests and state, delta-only transfers, unchanged components,
 publisher full-chain fallback, empty current responses, incomplete-chain rejection,
-and retries after completed and partially applied patches. Those update retry tests induce ordinary extraction failures. The recovery category
+and retries after completed and partially applied patches. Status also compares
+against the live catalog without modifying a different pending manifest or saved
+identity; the subsequent update still uses the pinned target without discovery.
+Those update retry tests induce ordinary extraction failures. The recovery category
 also terminates real processes at observed transfer and extraction phases, as
 described below. Neither category claims whole-install transactional rollback. The harness builds missing
 workspace binaries before launching them. Tests are included in

@@ -29,8 +29,10 @@ installation manages the copy on a person's machine.
 | Install | Download and prepare the selected game in one operation. |
 | Status | A comparison of the recorded installation with what the publisher currently offers. |
 | Update | Bring an existing installation to the required build while keeping its folder and selection. |
-| Build comparison | Whether the recorded build or component versions differ from the target, and the compressed package bytes still needed to reach it. |
+| Build comparison | Whether the recorded build or component versions differ from the target, independent of the packages needed to reach it. |
 | Update target | The build chosen for comparison with the installed game. Its source is either the live catalog or the pinned manifest for unfinished work. A pinned target need not be the publisher's latest release. |
+| Prefetch budget | The limit on packages queued ahead of the patch currently being applied. A new patch may start below the limit even if finishing it exceeds the limit. |
+| Finalization | Record the completed build and remove temporary work and, when requested, cached packages after all patches succeed. |
 | Installation pipeline | Coordinates package downloads and patch application, including the lock, saved progress, and final cleanup. |
 | Delta | Changes that need an existing game file, rather than another complete copy of that file. |
 | Patch workspace | Temporary files and preserved originals for the patch being applied. They remain available after failure until that patch is saved as complete. |
@@ -45,8 +47,10 @@ product or a region that differs from its saved product is reported as invalid
 installation data, including when unfinished work is pinned locally.
 
 Status and update share validated installed-record loading and report construction.
-The installed-build domain compares versions and estimates remaining package bytes;
-the application projects that result into the public status report. Download
+The installed-build domain compares versions without requiring a pinned manifest.
+The application separately estimates package bytes from explicit starting component
+versions and builds the public status report. Status uses installed versions;
+updates use the pinned manifest's progress, including completed checkpoints. Download
 preparation inspects local files before HTTP execution, keeping reuse, promotion,
 and resumed transfer explicit without changing retry or cleanup behavior.
 
@@ -56,3 +60,10 @@ values. Package execution exposes separate full-patch installation and staged
 patch decoding operations: full content is decoded before each live file is
 replaced; delta contents stay in the patch workspace until application. Split-volume
 reading lives separately from archive decoding and replacement policy.
+
+Shared finalization records successful work for both local extraction and streaming
+installation. Prefetch budget decisions are separate from async download coordination.
+Background worker failures retain their technical causes and are distinguished from
+a download coordinator ending before every planned patch is ready. Installation
+storage describes paths without reading or creating files; preparation and locking
+perform the filesystem operations.

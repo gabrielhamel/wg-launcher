@@ -7,16 +7,14 @@ pub(crate) fn ordered_patches<'a>(
     base_versions: &BTreeMap<String, String>,
 ) -> Result<Vec<&'a Patch>> {
     let mut ordered = Vec::new();
-    for part in &release.parts {
-        let target = release
-            .component_versions
-            .get(part)
-            .ok_or_else(|| Error::MissingFullPatch { part: part.clone() })?;
+    for component in release.components() {
+        let component = component?;
+        let part = component.id;
+        let target = component.target;
         let mut version = base_versions.get(part).map(String::as_str).unwrap_or("0");
-        let by_from = release
+        let by_from = component
             .patches
-            .iter()
-            .filter(|patch| &patch.part == part)
+            .into_iter()
             .filter_map(|patch| patch.source.version().map(|from| (from, patch)))
             .collect::<HashMap<_, _>>();
         // A publisher may replace an obsolete delta chain with a full package.
@@ -27,7 +25,7 @@ pub(crate) fn ordered_patches<'a>(
         while version != target {
             if !seen.insert(version) {
                 return Err(Error::BrokenPatchChain {
-                    part: part.clone(),
+                    part: part.to_owned(),
                     version: version.to_owned(),
                 });
             }
@@ -35,9 +33,9 @@ pub(crate) fn ordered_patches<'a>(
                 .get(version)
                 .copied()
                 .ok_or_else(|| Error::MissingUpdatePatch {
-                    part: part.clone(),
+                    part: part.to_owned(),
                     version: version.to_owned(),
-                    target: target.clone(),
+                    target: target.to_owned(),
                 })?;
             ordered.push(next);
             version = &next.version_to;

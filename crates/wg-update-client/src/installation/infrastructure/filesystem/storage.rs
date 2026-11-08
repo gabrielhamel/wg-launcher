@@ -21,13 +21,16 @@ pub(crate) struct InstallationStorage {
     pub lock: PathBuf,
 }
 
-pub(crate) fn installation_storage(install_root: &Path) -> Result<InstallationStorage> {
-    Ok(InstallationStorage {
-        cache: install_root.join(DOWNLOAD_CACHE_DIRECTORY),
-        staging: install_root.join(STAGING_DIRECTORY),
-        installed_state: install_root.join(INSTALLED_STATE_FILE),
-        lock: install_root.join(INSTALL_LOCK_FILE),
-    })
+impl InstallationStorage {
+    /// Describes the installation layout without reading or creating files.
+    pub(crate) fn for_root(install_root: &Path) -> Self {
+        Self {
+            cache: install_root.join(DOWNLOAD_CACHE_DIRECTORY),
+            staging: install_root.join(STAGING_DIRECTORY),
+            installed_state: install_root.join(INSTALLED_STATE_FILE),
+            lock: install_root.join(INSTALL_LOCK_FILE),
+        }
+    }
 }
 
 pub(crate) fn prepare_installation(

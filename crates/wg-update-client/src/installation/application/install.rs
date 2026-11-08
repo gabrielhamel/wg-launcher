@@ -96,7 +96,7 @@ where
     F: Fn(InstallEvent) + Send + Sync + 'static,
 {
     let assets = manifest.installation_assets()?;
-    let plan = build_plan(&manifest, root, &assets)?;
+    let plan = build_plan(&manifest, root, &assets);
     observer(InstallEvent::Planned(Box::new(plan.clone())));
 
     let pipeline = InstallationPipeline::new();

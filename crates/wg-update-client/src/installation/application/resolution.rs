@@ -4,7 +4,7 @@ use crate::catalog::{BuildSelection, WgusClient};
 use crate::installation::PinnedManifest;
 use crate::installation::{
     domain::selection::validate_cached_request,
-    infrastructure::filesystem::{installation_storage, records::load_cache_manifest},
+    infrastructure::filesystem::{InstallationStorage, records::load_cache_manifest},
 };
 use std::path::PathBuf;
 
@@ -15,7 +15,7 @@ pub(super) async fn resolve_installation(
 ) -> Result<(PinnedManifest, PathBuf)> {
     selection.selected_product()?;
     if let Some(root) = requested_root {
-        let storage = installation_storage(&root)?;
+        let storage = InstallationStorage::for_root(&root);
         if let Some(manifest) = load_cache_manifest(&storage.cache).await? {
             validate_cached_request(&manifest, selection)?;
             return Ok((manifest, root));
@@ -25,7 +25,7 @@ pub(super) async fn resolve_installation(
 
     let live = PinnedManifest::from(resolve(client, selection).await?);
     let root = BuildInfo::from_release(&live.release).default_output_directory();
-    let storage = installation_storage(&root)?;
+    let storage = InstallationStorage::for_root(&root);
     if let Some(manifest) = load_cache_manifest(&storage.cache).await? {
         validate_cached_request(&manifest, selection)?;
         return Ok((manifest, root));
