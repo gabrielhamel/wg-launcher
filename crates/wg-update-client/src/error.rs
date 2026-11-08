@@ -61,7 +61,13 @@ fn release_kind(error: &ReleaseError) -> ErrorKind {
         ReleaseError::UnknownClientType { .. } | ReleaseError::UnsupportedLanguage { .. } => {
             ErrorKind::InvalidSelection
         }
-        _ => ErrorKind::InvalidResponse,
+        ReleaseError::MissingComponentTarget { .. }
+        | ReleaseError::MissingFullPatch { .. }
+        | ReleaseError::MissingUpdatePatch { .. }
+        | ReleaseError::MissingPatchAsset(_)
+        | ReleaseError::ConflictingPatchAsset(_)
+        | ReleaseError::AmbiguousPatchTransition { .. }
+        | ReleaseError::BrokenPatchChain { .. } => ErrorKind::InvalidResponse,
     }
 }
 
@@ -70,6 +76,7 @@ fn installation_kind(error: &InstallationError) -> ErrorKind {
         InstallationError::CachedSelectionMismatch(_)
         | InstallationError::PinnedReleaseMismatch { .. } => ErrorKind::IncompatibleCache,
         InstallationError::Catalog(_) => ErrorKind::InvalidSelection,
+        InstallationError::Release(error) => release_kind(error),
         InstallationError::InvalidInstalledProduct(_)
         | InstallationError::InstalledRegionMismatch { .. }
         | InstallationError::IncompleteInstallation { .. } => ErrorKind::InvalidData,
@@ -103,7 +110,10 @@ fn package_kind(error: &PackageError) -> ErrorKind {
         PackageError::Storage(error) => storage_kind(error),
         PackageError::Release(error) => release_kind(error),
         PackageError::InvalidDeltaPath(_) => ErrorKind::UnsafePath,
-        _ => ErrorKind::InvalidPackage,
+        PackageError::ArchiveExtraction(_)
+        | PackageError::DeltaDecode { .. }
+        | PackageError::MissingDeltaTarget(_)
+        | PackageError::EmptyDeltaOutput(_) => ErrorKind::InvalidPackage,
     }
 }
 
@@ -137,7 +147,11 @@ fn wgus_kind(error: &WgusError) -> ErrorKind {
         WgusError::Http(_) => ErrorKind::Network,
         WgusError::Catalog(_) => ErrorKind::InvalidSelection,
         WgusError::Release(error) => release_kind(error),
-        _ => ErrorKind::InvalidResponse,
+        WgusError::Xml(_)
+        | WgusError::Url(_)
+        | WgusError::MissingPatchChain(_)
+        | WgusError::MissingWebSeed(_)
+        | WgusError::RedirectLimit(_) => ErrorKind::InvalidResponse,
     }
 }
 

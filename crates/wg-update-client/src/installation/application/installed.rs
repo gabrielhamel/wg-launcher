@@ -3,10 +3,11 @@
 pub(super) async fn load_installed_build(
     root: &std::path::Path,
 ) -> crate::Result<crate::installation::InstalledBuild> {
-    let installed =
-        crate::installation::infrastructure::filesystem::records::load_installed_build(root)
-            .await?
-            .ok_or_else(|| InstalledBuildError::InstallationNotFound(root.to_path_buf()))?;
+    let installed = crate::installation::infrastructure::filesystem::records::load_installed_build(
+        &crate::installation::infrastructure::filesystem::InstallationLayout::for_root(root),
+    )
+    .await?
+    .ok_or_else(|| InstalledBuildError::InstallationNotFound(root.to_path_buf()))?;
     installed.validate_consistency()?;
     Ok(installed)
 }

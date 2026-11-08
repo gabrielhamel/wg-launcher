@@ -25,7 +25,7 @@ impl LockedInstallation {
         discovered: PinnedManifest,
         request: &SelectedProductRequest<'_>,
     ) -> Result<PinnedManifest> {
-        match records::load_pinned_manifest(&self.layout.cache).await? {
+        match records::load_pinned_manifest(&self.layout).await? {
             Some(pending) => {
                 validate_cached_request(&pending, request)?;
                 Ok(pending)

@@ -29,6 +29,7 @@ impl PinnedManifest {
     /// Produce installed identity only when every selected component reached its target.
     pub(crate) fn complete_installation(&self) -> InstallationResult<InstalledBuild> {
         for component in self.release.components() {
+            let component = component?;
             if !component.reached_by(self.reached_versions()) {
                 return Err(Error::IncompleteInstallation {
                     component: component.id().to_owned(),
@@ -36,7 +37,7 @@ impl PinnedManifest {
                         .reached_versions()
                         .version_or_zero(component.id())
                         .to_owned(),
-                    target: component.target_version().unwrap_or("unknown").to_owned(),
+                    target: component.target_version().to_owned(),
                 });
             }
         }

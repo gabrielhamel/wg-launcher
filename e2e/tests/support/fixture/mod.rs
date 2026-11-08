@@ -1,5 +1,6 @@
 pub mod cli_update;
 mod delta;
+mod patch_chains;
 pub mod recovery;
 mod volumes;
 pub use delta::DeltaFixture;

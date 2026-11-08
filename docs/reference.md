@@ -177,4 +177,9 @@ Discovery reports per-variant failures in `ListReport.warnings`; a metadata
 request failure stops discovery. Successful transfers and partial files may remain
 after a failed operation, allowing another attempt with the same selection.
 
+Patch planning requires a target version for every selected component. If multiple
+published patches start at a version needed by the selected chain, the operation
+fails with an ambiguous patch-chain diagnostic instead of choosing by response
+order. Ambiguity in unused alternatives does not prevent installation.
+
 [Back to documentation](README.md)

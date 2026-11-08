@@ -47,6 +47,14 @@ pub enum ReleaseError {
     /// A selected volume has ambiguous sources or disagrees with its patch declaration.
     #[error("inconsistent or ambiguous download source for patch volume: {0}")]
     ConflictingPatchAsset(String),
+    /// More than one published patch starts at a required component version.
+    #[error("ambiguous patch chain for {part} at version {version}: multiple patches start here")]
+    AmbiguousPatchTransition {
+        /// Affected component identifier.
+        part: String,
+        /// Source version shared by the conflicting patches.
+        version: String,
+    },
     /// A component patch chain revisited an already processed version.
     #[error("cyclic patch chain for {part} at version {version}")]
     BrokenPatchChain {

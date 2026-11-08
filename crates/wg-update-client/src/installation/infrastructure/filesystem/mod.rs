@@ -1,4 +1,5 @@
 pub(crate) mod cache;
+pub(crate) mod cleanup;
 mod error;
 mod lock;
 pub(crate) mod replacement;

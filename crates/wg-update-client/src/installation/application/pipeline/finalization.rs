@@ -3,10 +3,12 @@
 use super::reports::PackageRetention;
 use crate::Result;
 use crate::installation::infrastructure::filesystem::{
-    paths::walk_files, records::save_installed_build, storage::InstallationLayout,
+    cleanup::{count_files_before_finalization, remove_download_cache, remove_staging},
+    records::save_installed_build,
+    storage::InstallationLayout,
 };
 use crate::installation::{ExtractionEvent, ExtractionOptions, ExtractionReport, PinnedManifest};
-use std::{fs, path::Path, sync::Arc};
+use std::sync::Arc;
 
 pub(super) fn finalize_installation(
     manifest: &PinnedManifest,
@@ -16,22 +18,18 @@ pub(super) fn finalize_installation(
     observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<ExtractionReport> {
     let installed = manifest.complete_installation()?;
-    let files_before_finalization = count_files_before_finalization(storage.root())?;
+    let files_before_finalization = count_files_before_finalization(storage)?;
     let mut report = ExtractionReport {
         files_before_finalization,
         applied_deltas,
         cache_removed: false,
     };
     observer(ExtractionEvent::Finalizing);
-    save_installed_build(&installed, &storage.installed_state)?;
-    if storage.staging.exists() {
-        fs::remove_dir_all(&storage.staging)?;
-    }
+    save_installed_build(&installed, storage)?;
+    remove_staging(storage)?;
     if let PackageRetention::ReleaseAfterCheckpoint = options.package_retention() {
         observer(ExtractionEvent::CleaningCache);
-        if storage.cache.exists() {
-            fs::remove_dir_all(&storage.cache)?;
-        }
+        remove_download_cache(storage)?;
         report.cache_removed = true;
     }
     observer(ExtractionEvent::Completed {
@@ -40,10 +38,4 @@ pub(super) fn finalize_installation(
         cache_removed: report.cache_removed,
     });
     Ok(report)
-}
-
-/// Count the whole tree before state writes and cleanup, including existing game
-/// files and launcher metadata; it does not measure files installed by this operation.
-fn count_files_before_finalization(install_root: &Path) -> Result<usize> {
-    Ok(walk_files(install_root)?.len())
 }

@@ -31,24 +31,24 @@ pub(super) async fn resolve_update_target(
     installed: &InstalledBuild,
     storage: &InstallationLayout,
 ) -> Result<(PinnedManifest, UpdateTargetSource)> {
-    let (mut manifest, target_source) =
-        if let Some(pending) = load_pinned_manifest(&storage.cache).await? {
-            validate_cached_selection(&pending, &installed.selection())?;
-            (pending, UpdateTargetSource::PinnedManifest)
-        } else {
-            (
-                crate::installation::PinnedManifest::from(
-                    resolve_update_release(
-                        &installed.product,
-                        &installed.identity.client_type,
-                        &installed.identity.language,
-                        &installed.component_versions,
-                    )
-                    .await?,
-                ),
-                UpdateTargetSource::LiveCatalog,
-            )
-        };
+    let (mut manifest, target_source) = if let Some(pending) = load_pinned_manifest(storage).await?
+    {
+        validate_cached_selection(&pending, &installed.selection())?;
+        (pending, UpdateTargetSource::PinnedManifest)
+    } else {
+        (
+            crate::installation::PinnedManifest::from(
+                resolve_update_release(
+                    &installed.product,
+                    &installed.identity.client_type,
+                    &installed.identity.language,
+                    &installed.component_versions,
+                )
+                .await?,
+            ),
+            UpdateTargetSource::LiveCatalog,
+        )
+    };
     // A package-only download may have pinned a full installation chain. Start
     // that chain at the installed versions, retaining any completed checkpoints.
     manifest.seed_missing_component_versions(installed);

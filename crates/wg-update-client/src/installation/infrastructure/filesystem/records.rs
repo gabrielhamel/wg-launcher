@@ -1,19 +1,22 @@
 use super::error::Result;
 use super::{InstallationLayout, replacement::replace_file};
 use crate::installation::{DOWNLOAD_MANIFEST_FILE, InstalledBuild, PinnedManifest};
-use std::{fs, path::Path};
+use std::fs;
 
-pub(crate) async fn load_installed_build(root: &Path) -> Result<Option<InstalledBuild>> {
-    let installed_state = InstallationLayout::for_root(root).installed_state;
-    match tokio::fs::read(&installed_state).await {
+pub(crate) async fn load_installed_build(
+    storage: &InstallationLayout,
+) -> Result<Option<InstalledBuild>> {
+    match tokio::fs::read(&storage.installed_state).await {
         Ok(bytes) => Ok(Some(serde_json::from_slice(&bytes)?)),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error.into()),
     }
 }
 
-pub(crate) async fn load_pinned_manifest(cache: &Path) -> Result<Option<PinnedManifest>> {
-    let path = cache.join(DOWNLOAD_MANIFEST_FILE);
+pub(crate) async fn load_pinned_manifest(
+    storage: &InstallationLayout,
+) -> Result<Option<PinnedManifest>> {
+    let path = storage.cache.join(DOWNLOAD_MANIFEST_FILE);
     match tokio::fs::read(&path).await {
         Ok(bytes) => Ok(Some(serde_json::from_slice(&bytes)?)),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
@@ -23,8 +26,9 @@ pub(crate) async fn load_pinned_manifest(cache: &Path) -> Result<Option<PinnedMa
 
 pub(crate) fn save_installed_build(
     installed_build: &InstalledBuild,
-    installed_state: &Path,
+    storage: &InstallationLayout,
 ) -> Result<()> {
+    let installed_state = &storage.installed_state;
     let bytes = serde_json::to_vec_pretty(installed_build)?;
     if let Some(parent) = installed_state.parent() {
         fs::create_dir_all(parent)?;

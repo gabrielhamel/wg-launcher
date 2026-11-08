@@ -2,6 +2,7 @@ mod cli_update;
 mod custom_products;
 mod discovery;
 mod downloads;
+mod patch_planning;
 mod recovery;
 mod service;
 mod updates;

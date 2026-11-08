@@ -68,9 +68,9 @@ where
     F: Fn(ExtractEvent) + Send + Sync + 'static,
 {
     let root = std::path::absolute(options.path)?;
-    let cache = InstallationLayout::for_root(&root).cache;
-    let manifest = load_pinned_manifest(&cache).await?.ok_or_else(|| {
-        crate::installation::ExtractError::DownloadManifestNotFound(cache.clone())
+    let storage = InstallationLayout::for_root(&root);
+    let manifest = load_pinned_manifest(&storage).await?.ok_or_else(|| {
+        crate::installation::ExtractError::DownloadManifestNotFound(storage.cache.clone())
     })?;
     let pipeline = InstallationPipeline::new(manifest, &root)?;
     let plan = pipeline.plan().clone();

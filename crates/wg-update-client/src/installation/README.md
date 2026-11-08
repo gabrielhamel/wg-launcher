@@ -73,7 +73,7 @@ installation manages the copy on a person's machine.
 | `application/pipeline/prefetch.rs`, `prefetch_budget.rs` | Download coordination, cancellation, and queued-byte policy. |
 | `infrastructure/transfer/` | `contracts.rs` owns options, events, and reports; `downloader.rs` owns concurrency, retries, and totals; `local.rs` and `attempt.rs` own cache preparation and HTTP attempts. |
 | `infrastructure/packages/` | Split-volume reading, archive decoding, replacement/delta classification, and application. |
-| `infrastructure/filesystem/` | Layout, locks, persistence, safe paths, local patch bindings in `cache.rs`, patch workspaces, replacement, and cleanup. |
+| `infrastructure/filesystem/` | Layout, locks, persistence through consistent layout-based record operations, safe paths, local patch bindings in `cache.rs`, patch workspaces, and replacement. `cleanup.rs` owns file counting and successful staging/cache removal; application finalization owns their order. |
 
 ## Invariants
 
@@ -87,7 +87,7 @@ installation manages the copy on a person's machine.
   and extract publish the summary of that same plan before progress. Package-only downloads retain their component filter
   and pin the complete manifest.
 - Starting versions seed missing checkpoints; saved completions take precedence.
-  A component view supplies its target to planning and installation completion.
+  A validated component view requires a target before planning or installation completion.
   Completion requires every selected component to reach its target before state
   is written.
 - Streaming overlaps later downloads with ordered patch execution. The prefetch

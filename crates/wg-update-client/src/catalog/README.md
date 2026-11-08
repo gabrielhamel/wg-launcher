@@ -22,7 +22,8 @@ selection to prepare the game on someone's machine.
 | Catalog | The collection of products available to choose from. |
 | Region | The publisher's label for an offering, such as Europe or worldwide. |
 | Channel | A stream of releases, such as the regular game or a public test. |
-| Component release | A view associating one selected component with its target and published patches. Planning requires a target; completion checks whether that target was reached. |
+| Component release | A validated view associating one selected component with its required target and published patches. Planning and completion use the same target. |
+| Patch transitions | Published patch steps grouped by their starting version. A required step must have exactly one successor; unused alternatives do not affect planning. |
 | Volume binding | Match a selected archive declaration to one download source by filename, component, source version, and target version, then confirm its compressed and optional archive sizes agree. Ambiguous sources are rejected. |
 | Planned volume | One selected transport volume whose identity and archive sizes have been checked against its patch declaration. |
 | Resolved release | The selected published build, its component targets, and the packages the publisher offers. It contains no local installation progress. |
@@ -59,7 +60,7 @@ selection to prepare the game on someone's machine.
 | `domain/release/patch_identity.rs` | Shared transition identity for patch/volume matching and installation recovery. |
 | `domain/release/resolved_release.rs` | Published build data, separate from local progress. |
 | `domain/release/component_release.rs` | Component-facing target validation, completion checks, and ordered patch selection; delegates chain traversal to a focused helper. |
-| `domain/release/patch_chain.rs` | Version traversal, cycle detection, and full-package fallback. |
+| `domain/release/patch_chain.rs` | Version traversal, required-transition ambiguity rejection, cycle detection, and full-package fallback. |
 | `domain/release/package_plan.rs`, `volume_index.rs` | Assemble selected patch plans and bind their declarations through one release-wide volume index. |
 | `application/` | Listing, inspection, release resolution, consumer reports, and suggested directory names. |
 | `infrastructure/wgus/` | `discovery.rs` owns discovered metadata and redirect-aware variant resolution; `mod.rs` owns HTTP client setup and metadata transport. HTTP/XML, query encoding, redirects, language normalization, and response conversion. `patch_chain_normalization.rs` returns patches and targets without resolving download sources; `patch_chain_conversion.rs` parses web seeds and binds normalized patches to HTTP volumes. |

@@ -116,7 +116,7 @@ crates/
           release/component_release.rs  Component-facing validation, completion, and ordered patch selection
           release/component_versions.rs  Known component versions and the missing-component baseline
           release/patch_identity.rs  Borrowed component transition identity for volume matching and recovery
-          release/patch_chain.rs  Version traversal and full-package fallback
+          release/patch_chain.rs  Version traversal, required-transition ambiguity checks, and full-package fallback
           release/transport_volume.rs  Downloadable transport volumes and HTTP seeds
           release/package_plan.rs  Assemble selected patches with validated transport volumes
           release/volume_index.rs  Match selected volume identities and reject ambiguous or inconsistent sources
@@ -179,7 +179,8 @@ crates/
             storage.rs        InstallationLayout owns the root and derived paths; explicit staging preparation
             lock.rs           Exclusive installation mutation lock
             cache.rs          Bind planned patches to local volume paths, verify packages, and release them
-            records.rs        Load pinned manifests and installed identity; save with file replacement
+            records.rs        Layout-based record loading and saving with file replacement
+            cleanup.rs        Count installation files and remove successful staging/cache work
             patch_workspace.rs  Recovery identity encoding, active staging, and preserved original sources
             replacement.rs    File replacement with rollback on rename failure
       error.rs                Public Error, ErrorKind classification, and Result alias

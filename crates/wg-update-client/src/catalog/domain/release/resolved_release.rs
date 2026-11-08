@@ -44,14 +44,16 @@ impl ResolvedRelease {
 }
 
 impl ResolvedRelease {
-    /// Visit selected components in publisher order, including incomplete saved data.
-    pub(crate) fn components(&self) -> impl Iterator<Item = super::ComponentRelease<'_>> {
-        self.component_ids
-            .iter()
-            .map(move |component_id| super::ComponentRelease {
-                id: component_id,
-                target: self.component_versions.get(component_id),
-                published_patches: &self.patches,
-            })
+    /// Validate selected component targets in publisher order, leaving unused patches alone.
+    pub(crate) fn components(
+        &self,
+    ) -> impl Iterator<Item = Result<super::ComponentRelease<'_>, super::ReleaseError>> {
+        self.component_ids.iter().map(move |component_id| {
+            super::ComponentRelease::new(
+                component_id,
+                self.component_versions.get(component_id),
+                &self.patches,
+            )
+        })
     }
 }

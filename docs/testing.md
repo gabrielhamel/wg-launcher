@@ -30,6 +30,11 @@ payload bytes, installed identity, retained or released cache files, and observe
 HTTP requests. Preserve the bounded process execution and server shutdown when
 adding failure scenarios.
 
+Patch-planning scenarios reject ambiguous required transitions before package requests
+or manifest/state writes, while unused ambiguous alternatives still allow installation.
+Domain unit regressions cover required component targets, intermediate ambiguity,
+full-package fallback, already-reached targets, and cyclic chains.
+
 Discovery regression coverage includes publisher-order tie breaking for equally
 sized variants and retention of the first missing-component-target error when
 every candidate fails. These checks resolve metadata without downloading packages.

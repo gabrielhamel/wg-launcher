@@ -33,6 +33,9 @@ pub enum InstallationError {
         reached: String,
         target: String,
     },
+    /// A selected release component has invalid published data.
+    #[error(transparent)]
+    Release(#[from] crate::catalog::ReleaseError),
     /// Failure from the underlying catalog operation.
     #[error(transparent)]
     Catalog(#[from] CatalogError),

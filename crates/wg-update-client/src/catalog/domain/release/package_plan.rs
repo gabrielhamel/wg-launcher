@@ -38,7 +38,7 @@ pub(crate) fn planned_patches(
     let volumes = VolumeIndex::new(&release.volumes);
     let mut planned = Vec::new();
     for component in release.components() {
-        for patch in component.ordered_patches(base_versions)? {
+        for patch in component?.ordered_patches(base_versions)? {
             planned.push(PlannedPatch {
                 patch: patch.clone(),
                 volumes: patch
