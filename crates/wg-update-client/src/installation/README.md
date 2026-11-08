@@ -42,7 +42,7 @@ installation manages the copy on a person's machine.
 | Installation pipeline | Coordinates package downloads and patch application, including the lock, saved progress, and final cleanup. |
 | Delta filename | A publisher filename whose extension, version segment, and hexadecimal checksum segment identify a delta and its target game package. Recognition checks naming syntax, not checksum correctness; unrecognized names remain replacement files. |
 | Delta | Changes that need an existing game file, rather than another complete copy of that file. |
-| Patch identity | The component, source version, and target version that identify the patch whose original files are preserved for retry. |
+| Patch identity | The catalog-owned component, source, and target identifying a published transition. Installation reuses it to preserve the right original files for retry. |
 | Patch workspace | Temporary files and preserved originals for the patch being applied. They remain available after failure until that patch is saved as complete. |
 | Patch contents | The files decoded from a patch: complete replacement files and delta files that change existing content. Replacements are installed before deltas are applied. |
 | Local patch | A planned patch bound to safe package paths in the installation cache. Each planned volume supplies a download source already checked against its archive declaration. The same paths are used for verification, archive reading, and package release; binding paths alone does not verify their contents. |
@@ -58,7 +58,7 @@ installation manages the copy on a person's machine.
 
 | Module | Owns |
 | --- | --- |
-| `domain/patch_identity.rs` | Component transition identity, independent of its recovery-file encoding. |
+| Catalog `domain/release/patch_identity.rs` | Shared component transition identity; installation owns only its recovery-file encoding. |
 | `domain/installed_build.rs` | Installed identity, selection consistency, and comparison with a target build. |
 | `domain/pinned_manifest.rs`, `component_progress.rs` | Pinned release, starting versions, saved checkpoints, and checked completion. |
 | `domain/selection.rs`, `release_compatibility.rs` | Selection compatibility and one exhaustive comparison returning typed release differences for both resume decisions and diagnostics. |

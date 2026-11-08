@@ -373,8 +373,8 @@ the CLI.
   private wire representations, redirects, and publisher-specific normalization.
   `mod.rs` owns HTTP client setup and metadata transport; `discovery.rs` owns
   discovered product metadata, variant resolution, and redirects. `conversion.rs`
-  assembles release identity and metadata, while `patch_chain_conversion.rs` normalizes publisher chains and
-  resolves component targets and transport packages.
+  assembles release identity and metadata, while `patch_chain_normalization.rs` normalizes publisher chains and
+  component targets, and `patch_chain_conversion.rs` resolves HTTP transport packages.
 - `crates/wg-update-client/src/installation/`: local installation lifecycle bounded
   context. `mod.rs` exposes its workflows, models, and observer contracts.
 - `crates/wg-update-client/src/installation/domain/`: installed identity, pinned
@@ -425,7 +425,8 @@ the CLI.
   `domain/` owns URL/prefix constraints and template rendering with local errors;
   `application/` owns `FileService` configuration/startup/lifetime coordination;
   `infrastructure/` owns HTTP parsing, ranges, filesystem mapping and access logs;
-  `http/` separates server lifetime, request parsing, and response streaming;
+  `http/` owns release routing and response construction as well as
+  server lifetime, request parsing, and response streaming;
   `presentation/` owns CLI parsing and startup output.
 - `packaging/`: release-only Debian package/index signing and WinGet manifest
   generation; generated versions derive from the tagged source or release manifest.

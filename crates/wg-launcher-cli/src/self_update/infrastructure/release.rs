@@ -1,14 +1,22 @@
 //! Read cargo-dist's published manifest without GitHub API authentication or rate limits.
 
 use super::http::{client, fetch, validate_url};
-use crate::self_update::{Result, domain::Release};
+use crate::self_update::domain::Release;
 use reqwest::Url;
 use semver::Version;
 use serde::Deserialize;
 use std::time::Duration;
 
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum ReleaseError {
+pub(crate) enum ReleaseDiscoveryError {
+    #[error(transparent)]
+    Http(#[from] super::http::HttpError),
+    #[error(transparent)]
+    Url(#[from] url::ParseError),
+    #[error(transparent)]
+    Json(#[from] serde_json::Error),
+    #[error(transparent)]
+    Version(#[from] semver::Error),
     #[error("CLI absent from release manifest")]
     MissingCli,
     #[error("latest release is unstable")]
@@ -35,7 +43,7 @@ struct App {
     artifacts: Vec<String>,
 }
 
-pub(crate) async fn latest() -> Result<Release> {
+pub(crate) async fn latest() -> Result<Release, ReleaseDiscoveryError> {
     let mirror = std::env::var("WG_LAUNCHER_UPDATE_MANIFEST").ok();
     let url = Url::parse(mirror.as_deref().unwrap_or(concat!(
         env!("CARGO_PKG_REPOSITORY"),
@@ -49,21 +57,21 @@ pub(crate) async fn latest() -> Result<Release> {
         .releases
         .into_iter()
         .find(|app| app.app_name == PACKAGE)
-        .ok_or(ReleaseError::MissingCli)?;
+        .ok_or(ReleaseDiscoveryError::MissingCli)?;
     let version = Version::parse(
         app.app_version
             .strip_prefix('v')
             .unwrap_or(&app.app_version),
     )?;
     if manifest.announcement_is_prerelease || !version.pre.is_empty() {
-        return Err(ReleaseError::Unstable.into());
+        return Err(ReleaseDiscoveryError::Unstable);
     }
     let base = if mirror.is_some() {
         url.join("./")?
     } else {
         let mut base = Url::parse(REPOSITORY)?;
         base.path_segments_mut()
-            .map_err(|_| ReleaseError::InvalidRepository)?
+            .map_err(|_| ReleaseDiscoveryError::InvalidRepository)?
             .extend(["releases", "download", &manifest.announcement_tag, ""]);
         base
     };

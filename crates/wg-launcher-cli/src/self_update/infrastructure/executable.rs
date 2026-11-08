@@ -1,4 +1,6 @@
-use super::super::{Result, domain::candidate::CandidateVersion};
+use super::super::domain::candidate::CandidateVersion;
+
+type Result<T> = std::result::Result<T, ExecutableError>;
 use semver::Version;
 use std::{path::PathBuf, time::Duration};
 
@@ -21,6 +23,8 @@ pub(crate) struct VerifiedCandidate {
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ExecutableError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
     #[error("launcher directory unavailable")]
     MissingDirectory,
     #[error("cannot prepare update in {directory}")]
@@ -70,7 +74,7 @@ pub(crate) async fn verify(
     let stdout = String::from_utf8_lossy(&output.stdout);
     let version = CandidateVersion::parse(&stdout);
     if !output.status.success() || !version.is_some_and(|version| version.matches(expected)) {
-        return Err(ExecutableError::VersionMismatch.into());
+        return Err(ExecutableError::VersionMismatch);
     }
     Ok(VerifiedCandidate { path: binary.path })
 }

@@ -314,3 +314,94 @@ fn equal_or_older_releases_do_not_download_and_offline_checks_do_not_break_comma
     ));
     assert_eq!(server.requests(), before);
 }
+
+#[test]
+fn release_discovery_failures_keep_context_and_never_fetch_an_archive() {
+    let sandbox = Sandbox::new();
+    let launcher = sandbox.path.join("standalone").join(executable_name());
+    copy_launcher(&launcher);
+    let before = fs::read(&launcher).unwrap();
+    let fixture = sandbox.fixture(Release::V1);
+    let valid = cli_update::resources(
+        fixture.service_resources("updates"),
+        cli_update::FUTURE,
+        false,
+        false,
+    );
+    let server = WgUpdateService::start(valid.clone());
+    let manifest_url = format!("{}/dist-manifest.json", server.url());
+    for (body, diagnostic) in [
+        (b"{".to_vec(), "EOF while parsing"),
+        (
+            br#"{"announcement_tag":"v99.0.0","releases":[]}"#.to_vec(),
+            "The release manifest does not contain this CLI.",
+        ),
+        (
+            String::from_utf8(valid["dist-manifest.json"].clone())
+                .unwrap()
+                .replace(cli_update::FUTURE, "99.0.0-beta.1")
+                .into_bytes(),
+            "The latest CLI release is not a stable version.",
+        ),
+    ] {
+        let mut resources = valid.clone();
+        resources.insert("dist-manifest.json".into(), body);
+        server.replace_resources(resources);
+        let request_count = server.requests().len();
+        let output = sandbox.run_cli(
+            &launcher,
+            &sandbox.path,
+            &["self-update"],
+            &[("WG_LAUNCHER_UPDATE_MANIFEST", &manifest_url)],
+        );
+        assert!(!output.status.success());
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            stderr.contains("Cannot check the latest CLI release:"),
+            "{stderr}"
+        );
+        assert!(stderr.contains(diagnostic), "{stderr}");
+        let requests = server.requests();
+        assert_eq!(requests.len(), request_count + 1);
+        assert_eq!(requests.last().unwrap().path, "/dist-manifest.json");
+        assert_eq!(fs::read(&launcher).unwrap(), before);
+        assert_eq!(fs::read_dir(launcher.parent().unwrap()).unwrap().count(), 1);
+    }
+}
+
+#[test]
+fn invalid_checksum_metadata_preserves_the_cli_and_cleans_staging() {
+    let sandbox = Sandbox::new();
+    let launcher = sandbox.path.join("standalone").join(executable_name());
+    copy_launcher(&launcher);
+    let before = fs::read(&launcher).unwrap();
+    let mut resources = cli_update::resources(
+        sandbox.fixture(Release::V1).service_resources("updates"),
+        cli_update::FUTURE,
+        false,
+        false,
+    );
+    let checksum = resources
+        .keys()
+        .find(|name| name.ends_with(".sha256"))
+        .unwrap()
+        .clone();
+    resources.insert(checksum.clone(), b"invalid checksum".to_vec());
+    let server = WgUpdateService::start(resources);
+    let manifest_url = format!("{}/dist-manifest.json", server.url());
+    failure(
+        sandbox.run_cli(
+            &launcher,
+            &sandbox.path,
+            &["self-update"],
+            &[("WG_LAUNCHER_UPDATE_MANIFEST", &manifest_url)],
+        ),
+        "The CLI archive checksum is invalid; the installed executable was preserved.",
+    );
+    assert_eq!(fs::read(&launcher).unwrap(), before);
+    assert_eq!(fs::read_dir(launcher.parent().unwrap()).unwrap().count(), 1);
+    let requests = server.requests();
+    assert_eq!(requests.len(), 2);
+    assert_eq!(requests[0].path, "/dist-manifest.json");
+    assert_eq!(requests[1].path, format!("/{checksum}"));
+}

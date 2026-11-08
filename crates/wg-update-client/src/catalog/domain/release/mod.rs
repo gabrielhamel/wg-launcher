@@ -6,6 +6,8 @@ mod error;
 mod metadata;
 pub(crate) mod package_plan;
 mod patch;
+mod patch_identity;
+pub(crate) use patch_identity::PatchIdentity;
 pub(crate) mod patch_chain;
 mod resolved_release;
 mod transport_volume;

@@ -34,6 +34,8 @@ selection to prepare the game on someone's machine.
 | Client type | The game's edition or quality variant, such as SD or HD. |
 | Language | The language chosen for the game content. |
 | Component / part | A named portion of the game, such as its main content or a language pack. Both words refer to the same thing. |
+| Patch identity | The component, source, and target that identify one published transition. Planning uses it to match volumes; installation reuses it to retain the correct recovery sources. |
+| Normalized patch chain | Publisher patches with explicit starting versions and selected component targets, before their HTTP download sources are resolved. |
 | Patch | One step that brings a component from a starting version to a target version. It may provide the full component or changes to an existing one. |
 | Full-install patch | A patch providing a complete component, without requiring an existing component version. WGUS represents its starting version as `0`. It can also replace a component during an update. |
 | Delta patch | A patch changing an existing component from one version to another. |
@@ -54,12 +56,13 @@ selection to prepare the game on someone's machine.
 | --- | --- |
 | `domain/product.rs`, `builtin.rs`, and selection modules | Product validation, built-in offerings, and resolving a build selection request to a selected product request. |
 | `domain/build_identity.rs` | Published application, version, edition, language, and payload target. |
+| `domain/release/patch_identity.rs` | Shared transition identity for patch/volume matching and installation recovery. |
 | `domain/release/resolved_release.rs` | Published build data, separate from local progress. |
 | `domain/release/component_release.rs` | Component-facing target validation, completion checks, and ordered patch selection; delegates chain traversal to a focused helper. |
 | `domain/release/patch_chain.rs` | Version traversal, cycle detection, and full-package fallback. |
 | `domain/release/package_plan.rs`, `volume_index.rs` | Assemble selected patch plans and bind their declarations through one release-wide volume index. |
 | `application/` | Listing, inspection, release resolution, consumer reports, and suggested directory names. |
-| `infrastructure/wgus/` | `discovery.rs` owns discovered metadata and redirect-aware variant resolution; `mod.rs` owns HTTP client setup and metadata transport. HTTP/XML, query encoding, redirects, language normalization, and response conversion. Patch conversion names absent-chain handling, seed parsing, transport URL resolution, torrent parsing, and component target collection separately. |
+| `infrastructure/wgus/` | `discovery.rs` owns discovered metadata and redirect-aware variant resolution; `mod.rs` owns HTTP client setup and metadata transport. HTTP/XML, query encoding, redirects, language normalization, and response conversion. `patch_chain_normalization.rs` returns patches and targets without resolving download sources; `patch_chain_conversion.rs` parses web seeds and binds normalized patches to HTTP volumes. |
 
 ## Invariants
 
@@ -83,6 +86,7 @@ selection to prepare the game on someone's machine.
 - Redirects preserve the configured product. Internal `application_id` and
   `resolved_hostname` names distinguish publisher identity from game labels and
   service addresses. Public fields and saved keys remain `game_id` and `host`.
+- Patch identity is a borrowed component/source/target view shared by patches and transport volumes. It does not change their serialized fields or installation recovery encoding.
 - WGUS chain normalization preserves explicit sources and infers omitted sources
   from the last known component version, initially `0` when unknown. The final
   versions become component targets.

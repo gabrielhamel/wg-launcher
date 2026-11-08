@@ -1,6 +1,6 @@
 //! Progress contract shared by self-update orchestration, adapters, and presentation.
 
-use super::Result;
+use std::io;
 
 /// A step in checking and replacing the launcher executable.
 #[derive(Clone, Copy)]
@@ -26,4 +26,4 @@ pub(crate) enum SelfUpdateEvent {
     Advanced(u64),
 }
 
-pub(crate) type Observer<'a> = dyn Fn(SelfUpdateEvent) -> Result<()> + 'a;
+pub(crate) type Observer<'a> = dyn Fn(SelfUpdateEvent) -> io::Result<()> + 'a;

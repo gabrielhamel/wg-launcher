@@ -115,6 +115,7 @@ crates/
           release/resolved_release.rs  Published release data and component enumeration
           release/component_release.rs  Component-facing validation, completion, and ordered patch selection
           release/component_versions.rs  Known component versions and the missing-component baseline
+          release/patch_identity.rs  Borrowed component transition identity for volume matching and recovery
           release/patch_chain.rs  Version traversal and full-package fallback
           release/transport_volume.rs  Downloadable transport volumes and HTTP seeds
           release/package_plan.rs  Assemble selected patches with validated transport volumes
@@ -130,7 +131,8 @@ crates/
           discovery.rs        Discovered product metadata, variant resolution, and redirect loop
           request.rs          WGUS query encoding, language mapping, endpoints, redirect targets
           conversion.rs       Release assembly and metadata conversion
-          patch_chain_conversion.rs  Publisher chain normalization state, targets, and package URLs
+          patch_chain_conversion.rs  Resolve web seeds and HTTP volumes from normalized patches
+          patch_chain_normalization.rs  Publisher transitions, omitted sources, torrent metadata, and component targets
           wire.rs             XML response representations
       installation/           Local installation lifecycle context
         mod.rs                Context entry points and exported contracts
@@ -141,7 +143,6 @@ crates/
           component_progress.rs  Starting versions and saved patch completions
           installed_build.rs  Saved identity, consistency, selection, and build comparison
           pinned_manifest.rs  Pinned release, checkpoints, and checked installation completion
-          patch_identity.rs   Domain identity of the component transition preserved for retry
         application/          download, extract, install, status, update
           progress.rs         Shared package execution and installation observer events
           update_target.rs    Shared update target/source, pending precedence, live fallback, and starting versions
@@ -193,7 +194,8 @@ crates/
       installation/           Game installation CLI context
         presentation/         Arguments, summaries, observer adapters, progress
           commands.rs         download, extract, install, status, update handlers
-          observers.rs        Typed adapters owning shared progress and success/failure handling
+          observers.rs        Workflow-specific event mapping and progress finish behavior
+          progress_state.rs   Shared optional display, synchronization, and initialization warnings
           progress/           Shared display with separate download/extraction renderers
             installation.rs   InstallationProgress owns their terminal surface and coordinates both renderers
             download.rs       Stable download bars and styles
@@ -205,10 +207,10 @@ crates/
           ownership.rs        Direct, managed, or unresolved executable ownership and path rules
         progress.rs           Shared self-update stages, events, and observer contract
         application/          Release checks, ownership discovery, executable update workflow and outcomes
-          error.rs            Exhaustive SelfUpdateError contract retaining concrete causes
+          error.rs            SelfUpdateError composes operation errors without recursive wrapping
         infrastructure/       Release HTTP, archives, ownership detection, replacement
-          release.rs          Discover published launcher releases
-          artifact.rs         Prepare an extracted candidate from a checksum-verified archive
+          release.rs          Discover published releases with local ReleaseDiscoveryError
+          artifact.rs         Prepare checksum-verified candidates with local CandidatePreparationError
           executable.rs       Extracted/verified candidates, process execution, verification, and replacement
           http.rs             Shared HTTPS, redirect, and bounded-transfer policy
         presentation/         Command handlers, notices, update instructions, event rendering
@@ -223,11 +225,11 @@ crates/
       release_serving/        File-backed release serving context
         domain/               Release URL/prefix rules and template rendering
           address.rs          Validated route prefixes and public origins
-        application/          FileService startup, routing, and lifetime coordination
-          routing.rs          Interpret request paths as release resources without filesystem lookup
-          content.rs          Resolve resources using safe package lookup and describe HTTP responses
+        application/          FileService release preparation, startup, and lifetime coordination
         infrastructure/       HTTP/ranges, filesystem mapping, access logs
           http/               HTTP adapter and response-description dispatch
+            routing.rs        Interpret request paths as release resources without filesystem lookup
+            release.rs        ReleaseHandler routes requests, resolves content, and constructs HTTP responses
             server.rs         Connection lifetime and shutdown
             request.rs        Request parsing
             representation.rs  Bytes/file/missing responses and content-type classification

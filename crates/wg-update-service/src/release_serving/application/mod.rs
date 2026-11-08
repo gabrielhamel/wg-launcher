@@ -1,6 +1,3 @@
-mod content;
-mod routing;
-
 use super::domain::{PublicOrigin, ReleaseError, RoutePrefix, render_text};
 use super::infrastructure::{
     access_log, filesystem,
@@ -52,12 +49,11 @@ impl FileService {
         };
         let metadata = render_text(metadata, &public_url, METADATA_FILE)?;
         let patch_chain = render_text(patch_chain, &public_url, PATCH_CHAIN_FILE)?;
-        let routes = routing::ReleaseRoutes::new(&prefix);
-        let content = content::ReleaseContents::new(metadata, patch_chain, packages);
+        let release = http::ReleaseHandler::new(&prefix, metadata, patch_chain, packages);
         let access_log = access_log::open(options.access_log)?;
         let handler = Arc::new(move |request: &Request| {
             access_log::record(&access_log, request);
-            content.resolve(routes.resource(&request.path))
+            release.respond(request)
         });
         let handle = ServerHandle::start(listener, handler);
         Ok(Self {

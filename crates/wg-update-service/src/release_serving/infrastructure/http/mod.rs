@@ -1,6 +1,10 @@
 //! HTTP adapter: connection lifetime, request parsing, and response streaming.
 
+mod release;
 mod representation;
+mod routing;
+
+pub(crate) use release::ReleaseHandler;
 mod request;
 mod response;
 mod server;

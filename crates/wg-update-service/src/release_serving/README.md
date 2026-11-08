@@ -16,6 +16,7 @@ release on someone's machine belongs to the launcher.
 | Release | A prepared offering of game content and the information describing how to obtain it. |
 | Release resource | The metadata, patch chain, or relative package path requested, before checking whether its content exists. |
 | Release content | The prepared metadata, patch chain, or package file selected for a request. |
+| Release handler | The HTTP adapter that maps a request to release metadata, patch-chain XML, or a safely resolved package response. |
 | HTTP response description | The bytes or file to serve and its content type, or a missing-resource result. It does not expose game-release roles to the HTTP adapter. |
 | Content type | Whether a served file contains XML, JSON, or binary data. This describes its representation, rather than its role in a game patch. |
 | Release folder | The local collection of release descriptions and packages that the service makes available. |
@@ -32,19 +33,20 @@ release on someone's machine belongs to the launcher.
 | Response range | The complete body or remaining bytes selected for a response, including its offset and length. |
 | Access log | A record of requests received by the service, useful for understanding what launchers asked for. |
 
-The application separates route interpretation from content lookup.
-`application/routing.rs` interprets a path as a `ReleaseResource` without filesystem
-access or content-type classification. `application/content.rs` supplies prepared
-XML or asks the filesystem adapter to resolve a package, then builds an HTTP
-response description with bytes, a file path, or a missing-resource result.
-The filesystem adapter resolves relative package paths and enforces containment
-inside the package folder, without constructing HTTP responses.
+The application prepares release metadata and starts an HTTP release handler.
+`infrastructure/http/routing.rs` interprets a path as a `ReleaseResource`
+without filesystem access or content-type classification.
+`infrastructure/http/release.rs` owns `ReleaseHandler`: it routes requests,
+supplies prepared XML or asks the filesystem adapter to resolve a package, and
+builds HTTP response descriptions. The filesystem adapter enforces containment
+inside the package folder without constructing HTTP responses.
 
 The HTTP adapter lives in `infrastructure/http/`: `server.rs` owns connections and
 shutdown, `request.rs` parses incoming messages, and `response.rs` resolves response
 ranges and streams bodies. `representation.rs` owns response descriptions and
 XML/JSON/binary content types. `mod.rs` serves those descriptions without knowing
 whether the requested resource was metadata, a patch chain, or a package.
+Those release-specific HTTP decisions stay in `release.rs` and `routing.rs`.
 
 `domain/address.rs` owns validated route prefixes and public origins, API route
 construction, and product-host composition. Startup converts string options into

@@ -1,29 +1,40 @@
-//! Load the content for a release resource through safe filesystem lookup.
+//! Route release requests and describe their content through safe filesystem lookup.
 
-use super::routing::ReleaseResource;
+use super::{
+    Request,
+    routing::{ReleaseResource, ReleaseRoutes},
+};
+use crate::release_serving::domain::RoutePrefix;
 use crate::release_serving::infrastructure::{
     filesystem,
     http::{ContentType, HttpResponse},
 };
 use std::path::PathBuf;
 
-pub(super) struct ReleaseContents {
+pub(crate) struct ReleaseHandler {
+    routes: ReleaseRoutes,
     metadata: Vec<u8>,
     patch_chain: Vec<u8>,
     packages: PathBuf,
 }
 
-impl ReleaseContents {
-    pub(super) fn new(metadata: Vec<u8>, patch_chain: Vec<u8>, packages: PathBuf) -> Self {
+impl ReleaseHandler {
+    pub(crate) fn new(
+        prefix: &RoutePrefix,
+        metadata: Vec<u8>,
+        patch_chain: Vec<u8>,
+        packages: PathBuf,
+    ) -> Self {
         Self {
+            routes: ReleaseRoutes::new(prefix),
             metadata,
             patch_chain,
             packages,
         }
     }
 
-    pub(super) fn resolve(&self, resource: ReleaseResource<'_>) -> HttpResponse {
-        match resource {
+    pub(crate) fn respond(&self, request: &Request) -> HttpResponse {
+        match self.routes.resource(&request.path) {
             ReleaseResource::Metadata => HttpResponse::Bytes {
                 body: self.metadata.clone(),
                 content_type: ContentType::Xml,

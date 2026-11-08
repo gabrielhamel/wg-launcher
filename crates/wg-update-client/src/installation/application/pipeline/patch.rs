@@ -1,6 +1,6 @@
 use super::reports::PackageRetention;
 use crate::Result;
-use crate::installation::domain::PatchIdentity;
+use crate::catalog::PatchIdentity;
 use crate::installation::infrastructure::{
     filesystem::{
         cache::{LocalPatch, remove_patch_volumes},

@@ -4,6 +4,7 @@ mod discovery;
 pub(crate) use discovery::DiscoveredProduct;
 mod error;
 mod patch_chain_conversion;
+mod patch_chain_normalization;
 mod request;
 mod wire;
 

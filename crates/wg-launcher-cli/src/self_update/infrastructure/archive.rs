@@ -1,6 +1,8 @@
 //! Read only the executable into a fixed staging path; never unpack archive paths.
 
-use crate::self_update::{Result, domain::artifact::ArchiveFormat};
+use crate::self_update::domain::artifact::ArchiveFormat;
+
+type Result<T> = std::result::Result<T, ArchiveError>;
 
 use crate::self_update::progress::{Observer, SelfUpdateEvent, SelfUpdateStage};
 use std::{
@@ -11,6 +13,10 @@ use std::{
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum ArchiveError {
+    #[error(transparent)]
+    Io(#[from] std::io::Error),
+    #[error(transparent)]
+    Zip(#[from] zip::result::ZipError),
     #[error("archive executable is a symbolic link")]
     SymbolicLink,
     #[error("unsafe archive executable entry")]
@@ -51,7 +57,7 @@ pub(crate) fn extract(
                         .unix_mode()
                         .is_some_and(|mode| mode & 0o170000 == 0o120000)
                     {
-                        return Err(ArchiveError::SymbolicLink.into());
+                        return Err(ArchiveError::SymbolicLink);
                     }
                     observer(SelfUpdateEvent::Transfer {
                         stage: SelfUpdateStage::ExtractingExecutable,
@@ -73,7 +79,7 @@ pub(crate) fn extract(
                         .all(|part| matches!(part, Component::Normal(_)))
                         || !entry.header().entry_type().is_file()
                     {
-                        return Err(ArchiveError::UnsafeEntry.into());
+                        return Err(ArchiveError::UnsafeEntry);
                     }
                     observer(SelfUpdateEvent::Transfer {
                         stage: SelfUpdateStage::ExtractingExecutable,
@@ -85,7 +91,7 @@ pub(crate) fn extract(
         }
     }
     if !found {
-        return Err(ArchiveError::MissingExecutable.into());
+        return Err(ArchiveError::MissingExecutable);
     }
     #[cfg(unix)]
     {
@@ -102,7 +108,7 @@ fn write_binary(
     observer: &Observer<'_>,
 ) -> Result<()> {
     if *found {
-        return Err(ArchiveError::DuplicateExecutable.into());
+        return Err(ArchiveError::DuplicateExecutable);
     }
     let mut file = File::create(output)?;
     let mut reader = reader.take(LIMIT + 1);
@@ -118,7 +124,7 @@ fn write_binary(
         observer(SelfUpdateEvent::Advanced(count as u64))?;
     }
     if size == 0 || size > LIMIT {
-        return Err(ArchiveError::InvalidSize.into());
+        return Err(ArchiveError::InvalidSize);
     }
     file.flush()?;
     file.sync_all()?;

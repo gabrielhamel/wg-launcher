@@ -1,7 +1,7 @@
 //! Temporary patch files and original sources retained until a checkpoint is saved.
 
 use super::{error::Result, paths::safe_relative_path};
-use crate::installation::domain::PatchIdentity;
+use crate::catalog::PatchIdentity;
 use serde::{Serialize, Serializer};
 use std::{
     fs,

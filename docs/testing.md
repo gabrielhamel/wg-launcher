@@ -53,6 +53,11 @@ package archives, additional dependencies, or process harnesses.
 The overall download bar credits package bytes once across retries; each file bar
 continues to show the current attempt's position, including a restarted prefix.
 
+Self-update error regressions exercise malformed JSON, missing CLI entries,
+prerelease rejection, and invalid checksum metadata through both real executables.
+They check contextual diagnostics, request boundaries, unchanged launcher bytes,
+and removal or absence of self-update staging.
+
 ## Run end-to-end tests
 
 The CLI end-to-end scenarios exercise complete workflows using local fixtures.

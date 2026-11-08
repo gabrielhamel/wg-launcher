@@ -4,47 +4,22 @@ use crate::self_update::{
     application::SelfUpdateError,
     domain::artifact::ArtifactSelectionError,
     infrastructure::{
-        ArchiveError, HttpError, artifact::ArtifactDownloadError, executable::ExecutableError,
-        release::ReleaseError,
+        ArchiveError, HttpError, artifact::CandidatePreparationError, executable::ExecutableError,
+        release::ReleaseDiscoveryError,
     },
 };
 
 pub(super) fn describe(error: &SelfUpdateError) -> String {
     match error {
-        SelfUpdateError::ReleaseCheck(cause) => {
-            format!(
-                "Cannot check the latest CLI release: {}. Check your connection or release mirror and try again.",
-                describe(cause)
-            )
-        }
+        SelfUpdateError::ReleaseCheck(cause) => format!(
+            "Cannot check the latest CLI release: {}. Check your connection or release mirror and try again.",
+            describe_release(cause)
+        ),
         SelfUpdateError::ArtifactSelection(error) => match error {
             ArtifactSelectionError::UnsupportedHost => "Self-update not supported for this platform; install a compatible CLI build manually.",
             ArtifactSelectionError::MissingArtifact => "The latest release has no archive and checksum for this platform.",
         }.into(),
-        SelfUpdateError::Archive(error) => match error {
-            ArchiveError::SymbolicLink => {
-                "The CLI archive contains a symbolic link instead of an executable."
-            }
-            ArchiveError::UnsafeEntry => "The CLI archive has an unsafe executable entry.",
-            ArchiveError::MissingExecutable => {
-                "The CLI archive does not contain the launcher executable."
-            }
-            ArchiveError::DuplicateExecutable => {
-                "The CLI archive contains duplicate launcher executables."
-            }
-            ArchiveError::InvalidSize => "The CLI executable has an invalid size.",
-        }.into(),
-        SelfUpdateError::ArtifactDownload(error) => match error {
-            ArtifactDownloadError::InvalidChecksum => {
-                "The CLI archive checksum is invalid; the installed executable was preserved."
-            }
-            ArtifactDownloadError::TooLarge => {
-                "CLI archive is too large; the installed executable was preserved."
-            }
-            ArtifactDownloadError::ChecksumMismatch => {
-                "CLI archive checksum mismatch; the installed executable was preserved."
-            }
-        }.into(),
+        SelfUpdateError::CandidatePreparation(error) => describe_preparation(error),
         SelfUpdateError::Executable(error) => match error {
             ExecutableError::MissingDirectory => "Cannot locate the launcher directory.".into(),
             ExecutableError::Staging { directory, source } => format!(
@@ -55,24 +30,70 @@ pub(super) fn describe(error: &SelfUpdateError) -> String {
             ExecutableError::Replacement(source) => format!(
                 "Cannot replace the CLI executable: {source}. Check directory permissions."
             ),
+            ExecutableError::Io(_) => error.to_string(),
         },
-        SelfUpdateError::Release(error) => match error {
-            ReleaseError::MissingCli => "The release manifest does not contain this CLI.",
-            ReleaseError::Unstable => "The latest CLI release is not a stable version.",
-            ReleaseError::InvalidRepository => "Invalid CLI repository URL.",
-        }.into(),
-        SelfUpdateError::Http(error) => match error {
-            HttpError::UnsafeUrl => {
-                "CLI updates require HTTPS (HTTP is allowed only for loopback mirrors)."
-            }
-            HttpError::MetadataTooLarge => "CLI update metadata is too large.",
-        }.into(),
-        SelfUpdateError::Io(_)
-        | SelfUpdateError::Request(_)
-        | SelfUpdateError::Url(_)
-        | SelfUpdateError::Json(_)
-        | SelfUpdateError::Version(_)
-        | SelfUpdateError::Utf8(_)
-        | SelfUpdateError::Zip(_) => error.to_string(),
+        SelfUpdateError::Progress(error) => error.to_string(),
+    }
+}
+
+fn describe_release(error: &ReleaseDiscoveryError) -> String {
+    match error {
+        ReleaseDiscoveryError::MissingCli => {
+            "The release manifest does not contain this CLI.".into()
+        }
+        ReleaseDiscoveryError::Unstable => "The latest CLI release is not a stable version.".into(),
+        ReleaseDiscoveryError::InvalidRepository => "Invalid CLI repository URL.".into(),
+        ReleaseDiscoveryError::Http(error) => describe_http(error),
+        ReleaseDiscoveryError::Url(_)
+        | ReleaseDiscoveryError::Json(_)
+        | ReleaseDiscoveryError::Version(_) => error.to_string(),
+    }
+}
+
+fn describe_preparation(error: &CandidatePreparationError) -> String {
+    match error {
+        CandidatePreparationError::InvalidChecksum => {
+            "The CLI archive checksum is invalid; the installed executable was preserved.".into()
+        }
+        CandidatePreparationError::TooLarge => {
+            "CLI archive is too large; the installed executable was preserved.".into()
+        }
+        CandidatePreparationError::ChecksumMismatch => {
+            "CLI archive checksum mismatch; the installed executable was preserved.".into()
+        }
+        CandidatePreparationError::Http(error) => describe_http(error),
+        CandidatePreparationError::Archive(error) => describe_archive(error),
+        CandidatePreparationError::Request(_)
+        | CandidatePreparationError::Url(_)
+        | CandidatePreparationError::Utf8(_)
+        | CandidatePreparationError::Io(_) => error.to_string(),
+    }
+}
+
+fn describe_archive(error: &ArchiveError) -> String {
+    match error {
+        ArchiveError::SymbolicLink => {
+            "The CLI archive contains a symbolic link instead of an executable."
+        }
+        ArchiveError::UnsafeEntry => "The CLI archive has an unsafe executable entry.",
+        ArchiveError::MissingExecutable => {
+            "The CLI archive does not contain the launcher executable."
+        }
+        ArchiveError::DuplicateExecutable => {
+            "The CLI archive contains duplicate launcher executables."
+        }
+        ArchiveError::InvalidSize => "The CLI executable has an invalid size.",
+        ArchiveError::Io(_) | ArchiveError::Zip(_) => return error.to_string(),
+    }
+    .into()
+}
+
+fn describe_http(error: &HttpError) -> String {
+    match error {
+        HttpError::UnsafeUrl => {
+            "CLI updates require HTTPS (HTTP is allowed only for loopback mirrors).".into()
+        }
+        HttpError::MetadataTooLarge => "CLI update metadata is too large.".into(),
+        HttpError::Request(_) => error.to_string(),
     }
 }

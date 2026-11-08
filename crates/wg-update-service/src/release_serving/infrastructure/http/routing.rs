@@ -1,6 +1,6 @@
 //! Select release descriptions and packages for incoming service requests.
 
-use super::super::domain::RoutePrefix;
+use crate::release_serving::domain::RoutePrefix;
 use std::path::Path;
 
 /// A requested release resource, before checking whether its package file exists.

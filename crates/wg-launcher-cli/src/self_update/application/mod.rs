@@ -39,7 +39,7 @@ pub(crate) async fn run(observer: &Observer<'_>) -> Result<SelfUpdateOutcome> {
     if let ExecutableOwnership::Managed(manager) = executable_ownership() {
         return Ok(SelfUpdateOutcome::Managed(manager));
     }
-    let release = release.map_err(|cause| SelfUpdateError::ReleaseCheck(Box::new(cause)))?;
+    let release = release.map_err(SelfUpdateError::ReleaseCheck)?;
     if !is_newer(&release) {
         return Ok(SelfUpdateOutcome::Current(release.version));
     }

@@ -1,41 +1,23 @@
-//! Exhaustive self-update failures, preserving concrete causes for diagnostics.
+//! Workflow failures compose operation-specific adapter errors.
 
 use crate::self_update::{
     domain::artifact::ArtifactSelectionError,
     infrastructure::{
-        ArchiveError, HttpError, artifact::ArtifactDownloadError, executable::ExecutableError,
-        release::ReleaseError,
+        artifact::CandidatePreparationError, executable::ExecutableError,
+        release::ReleaseDiscoveryError,
     },
 };
 
 #[derive(Debug, thiserror::Error)]
 pub(crate) enum SelfUpdateError {
     #[error("release discovery failed: {0}")]
-    ReleaseCheck(#[source] Box<SelfUpdateError>),
+    ReleaseCheck(#[from] ReleaseDiscoveryError),
     #[error(transparent)]
     ArtifactSelection(#[from] ArtifactSelectionError),
     #[error(transparent)]
-    Archive(#[from] ArchiveError),
-    #[error(transparent)]
-    ArtifactDownload(#[from] ArtifactDownloadError),
+    CandidatePreparation(#[from] CandidatePreparationError),
     #[error(transparent)]
     Executable(#[from] ExecutableError),
     #[error(transparent)]
-    Release(#[from] ReleaseError),
-    #[error(transparent)]
-    Http(#[from] HttpError),
-    #[error(transparent)]
-    Io(#[from] std::io::Error),
-    #[error(transparent)]
-    Request(#[from] reqwest::Error),
-    #[error(transparent)]
-    Url(#[from] url::ParseError),
-    #[error(transparent)]
-    Json(#[from] serde_json::Error),
-    #[error(transparent)]
-    Version(#[from] semver::Error),
-    #[error(transparent)]
-    Utf8(#[from] std::str::Utf8Error),
-    #[error(transparent)]
-    Zip(#[from] zip::result::ZipError),
+    Progress(#[from] std::io::Error),
 }

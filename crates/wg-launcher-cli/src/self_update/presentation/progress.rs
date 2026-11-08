@@ -1,9 +1,6 @@
 //! A single stable progress display for CLI executable updates.
 
-use crate::self_update::{
-    Result,
-    progress::{SelfUpdateEvent, SelfUpdateStage},
-};
+use crate::self_update::progress::{SelfUpdateEvent, SelfUpdateStage};
 use crate::terminal::styles::{overall_style, spinner_style};
 use indicatif::{ProgressBar, ProgressStyle, style::TemplateError};
 use std::time::Duration;
@@ -49,9 +46,8 @@ impl SelfUpdateProgress {
         self.bar.inc(bytes);
     }
 
-    pub(crate) fn observe(&self, event: SelfUpdateEvent) -> Result<()> {
-        self.render(event)
-            .map_err(|error| std::io::Error::other(error).into())
+    pub(crate) fn observe(&self, event: SelfUpdateEvent) -> std::io::Result<()> {
+        self.render(event).map_err(std::io::Error::other)
     }
 
     fn render(&self, event: SelfUpdateEvent) -> std::result::Result<(), TemplateError> {

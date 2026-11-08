@@ -1,7 +1,7 @@
 //! Bind selected archive declarations to unambiguous, consistent download sources.
 
 use super::{
-    Patch, PatchVolume, TransportVolume,
+    Patch, PatchIdentity, PatchVolume, TransportVolume,
     error::{ReleaseError, Result},
 };
 use std::collections::HashMap;
@@ -32,11 +32,10 @@ impl<'a> VolumeIndex<'a> {
             .by_name
             .get(declaration.name.as_str())
             .ok_or_else(|| ReleaseError::MissingPatchAsset(declaration.name.clone()))?;
-        let mut matching = candidates.iter().copied().filter(|volume| {
-            volume.component_id == patch.component_id
-                && volume.source == patch.source
-                && volume.version_to == patch.version_to
-        });
+        let mut matching = candidates
+            .iter()
+            .copied()
+            .filter(|volume| PatchIdentity::from(*volume) == PatchIdentity::from(patch));
         let conflict = || ReleaseError::ConflictingPatchAsset(declaration.name.clone());
         let volume = matching.next().ok_or_else(conflict)?;
         if matching.next().is_some()

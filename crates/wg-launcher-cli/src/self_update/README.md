@@ -18,6 +18,8 @@ game versions belong to [installation](../installation/README.md).
 | Latest version | The newest launcher release offered by the release source being checked. |
 | Update notice | A message explaining that a newer launcher is available and how to obtain it. |
 | Self-update event | A progress fact from checking, downloading, verifying, or replacing the launcher. Terminal code decides how to display it. |
+| Release discovery failure | A failure reading or interpreting the launcher release manifest, retaining its HTTP or parsing cause. |
+| Candidate preparation failure | A failure downloading, checking, or extracting a launcher candidate, retaining the responsible adapter error. |
 | Self-update failure | A typed reason an update could not finish, retaining its technical cause and rendered as recovery guidance at the terminal. |
 | Self-update outcome | Whether the launcher was updated, was already current, or must be updated through its package manager. |
 | Self-update | Replace the launcher with a verified newer release. |
@@ -37,10 +39,12 @@ game versions belong to [installation](../installation/README.md).
 The application supplies the current version and host target to domain rules.
 Release comparison and artifact selection do not discover those facts themselves.
 
-Artifact selection and verification return concrete failure types beside their
-owning rules and adapters. The application exposes `SelfUpdateError`, retaining
-discovery causes and concrete adapter errors; presentation exhaustively matches that contract for recovery
-instructions without runtime downcasts. Package-manager ownership is resolved
+Each adapter returns its own concrete error: `ReleaseDiscoveryError`,
+`CandidatePreparationError`, `ArchiveError`, `HttpError`, or `ExecutableError`.
+Infrastructure never returns the application error. The application composes
+discovery, candidate preparation, executable, selection, and progress failures
+in `SelfUpdateError`; it does not recursively wrap itself. Presentation matches
+these typed causes for recovery instructions without runtime downcasts. Package-manager ownership is resolved
 by the application once per interaction and supplied to instruction rendering;
 instruction rendering never performs filesystem discovery. Archive format remains
 explicit from release selection through extraction.
@@ -55,4 +59,5 @@ the operation finishes.
 
 The context's `progress.rs` owns shared stages, events, and the observer contract.
 Application orchestration, infrastructure adapters, and terminal presentation all
-use that contract without importing progress definitions from the application.
+use that contract without importing progress definitions or errors from the application.
+Observer failures use `std::io::Error`, preserving fallible rendering and cancellation.

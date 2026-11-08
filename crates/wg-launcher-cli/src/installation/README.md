@@ -22,6 +22,7 @@ launcher.
 | Update | Bring the game in the existing installation folder up to date. |
 | Progress | Information about ongoing downloads and the preparation of game files. |
 | Installation progress | One shared terminal surface coordinating sibling download and extraction displays through the full operation. |
+| Progress state | Shared, synchronized access to an optional terminal display, including initialization warnings when a display cannot be created. |
 | Progress observer | A presentation adapter that receives workflow events and keeps the same progress display through success or failure. |
 | Download accounting | The package positions, activity transitions, and completion facts used to update the terminal display. It contains no terminal widgets. |
 | Download activity | Whether a package is queued, transferring, or complete; terminal bars display this state. |
@@ -32,7 +33,7 @@ Command handlers live in `presentation/commands.rs`. They translate arguments,
 call the client library, and render results; the library owns the workflow rules.
 `presentation/observers.rs` owns separate download, extraction, and installation
 adapters. Each adapter shares its progress state with the event callback and
-handles success or failure, keeping synchronization out of command handlers.
+handles success or failure. `presentation/progress_state.rs` owns shared optional state, synchronized access, and initialization warnings; workflow adapters retain event mapping and finish behavior.
 
 `presentation/progress/` keeps download and extraction rendering separate while
 sharing one terminal display. `progress/installation.rs` owns that surface and
