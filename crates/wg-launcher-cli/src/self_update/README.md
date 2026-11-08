@@ -18,6 +18,7 @@ game versions belong to [installation](../installation/README.md).
 | Latest version | The newest launcher release offered by the release source being checked. |
 | Update notice | A message explaining that a newer launcher is available and how to obtain it. |
 | Self-update event | A progress fact from checking, downloading, verifying, or replacing the launcher. Terminal code decides how to display it. |
+| Self-update failure | A typed reason an update could not finish, retaining its technical cause and rendered as recovery guidance at the terminal. |
 | Self-update outcome | Whether the launcher was updated, was already current, or must be updated through its package manager. |
 | Self-update | Replace the launcher with a verified newer release. |
 | Direct installation | A launcher copy installed without a package manager taking responsibility for it. |
@@ -33,9 +34,12 @@ The application supplies the current version and host target to domain rules.
 Release comparison and artifact selection do not discover those facts themselves.
 
 Artifact selection and verification return concrete failure types beside their
-owning rules and adapters. The application retains discovery causes; presentation
-renders failures and recovery instructions. Archive format remains explicit from
-release selection through extraction.
+owning rules and adapters. The application exposes `SelfUpdateError`, retaining
+discovery causes and concrete adapter errors; presentation exhaustively matches that contract for recovery
+instructions without runtime downcasts. Package-manager ownership is resolved
+by the application once per interaction and supplied to instruction rendering;
+instruction rendering never performs filesystem discovery. Archive format remains
+explicit from release selection through extraction.
 
 `prepare_candidate` names the complete artifact preparation operation. It returns
 the extracted launcher path; the application then verifies the executable version

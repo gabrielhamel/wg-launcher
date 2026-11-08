@@ -50,6 +50,11 @@ impl SelfUpdateProgress {
     }
 
     pub(crate) fn observe(&self, event: SelfUpdateEvent) -> Result<()> {
+        self.render(event)
+            .map_err(|error| std::io::Error::other(error).into())
+    }
+
+    fn render(&self, event: SelfUpdateEvent) -> std::result::Result<(), TemplateError> {
         match event {
             SelfUpdateEvent::Stage(stage) => self.stage(message(stage))?,
             SelfUpdateEvent::ReleaseChecked => self.clear(),

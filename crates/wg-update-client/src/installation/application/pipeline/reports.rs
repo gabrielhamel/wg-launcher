@@ -36,6 +36,23 @@ pub struct ExtractionOptions {
     pub clean_download_cache: bool,
 }
 
+/// Lifecycle of successfully applied transport packages.
+#[derive(Clone, Copy)]
+pub(super) enum PackageRetention {
+    ReleaseAfterCheckpoint,
+    KeepDownloaded,
+}
+
+impl ExtractionOptions {
+    pub(super) fn package_retention(self) -> PackageRetention {
+        if self.clean_download_cache {
+            PackageRetention::ReleaseAfterCheckpoint
+        } else {
+            PackageRetention::KeepDownloaded
+        }
+    }
+}
+
 impl Default for ExtractionOptions {
     fn default() -> Self {
         Self {

@@ -1,7 +1,7 @@
-use super::super::{domain::ownership::PackageManager, infrastructure::distribution::manager};
+use super::super::domain::ownership::PackageManager;
 
-pub(crate) fn unsupported_reason(stderr: bool) -> Option<String> {
-    manager().map(|manager| managed_reason(manager, stderr))
+pub(crate) fn unsupported_reason(manager: Option<PackageManager>, stderr: bool) -> Option<String> {
+    manager.map(|manager| managed_reason(manager, stderr))
 }
 
 pub(crate) fn managed_reason(manager: PackageManager, stderr: bool) -> String {
@@ -12,8 +12,8 @@ pub(crate) fn managed_reason(manager: PackageManager, stderr: bool) -> String {
     )
 }
 
-pub(crate) fn update_instruction(stderr: bool) -> String {
-    manager().map_or_else(
+pub(crate) fn update_instruction(manager: Option<PackageManager>, stderr: bool) -> String {
+    manager.map_or_else(
         || {
             format!(
                 "Run {} to update the CLI.",

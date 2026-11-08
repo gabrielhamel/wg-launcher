@@ -1,5 +1,8 @@
 //! Launcher updates are independent of game workflows and terminal presentation.
 
+mod error;
+pub(crate) use error::SelfUpdateError;
+
 use super::Result;
 use super::domain::{
     Release,
@@ -10,14 +13,15 @@ use super::infrastructure::{artifact, distribution, executable, release};
 use super::progress::{Observer, SelfUpdateEvent, SelfUpdateStage};
 use semver::Version;
 
-#[derive(Debug, thiserror::Error)]
-#[error("release discovery failed: {0}")]
-pub(crate) struct ReleaseCheckError(#[source] pub(crate) Box<dyn std::error::Error>);
-
 pub(crate) enum SelfUpdateOutcome {
     Managed(PackageManager),
     Current(Version),
     Updated(Version),
+}
+
+/// Resolve executable ownership once for an application interaction.
+pub(crate) fn installation_manager() -> Option<PackageManager> {
+    distribution::manager()
 }
 
 pub(crate) async fn check() -> Option<Release> {
@@ -32,10 +36,10 @@ pub(crate) async fn run(observer: &Observer<'_>) -> Result<SelfUpdateOutcome> {
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::CheckingRelease))?;
     let release = release::latest().await;
     observer(SelfUpdateEvent::ReleaseChecked)?;
-    if let Some(manager) = distribution::manager() {
+    if let Some(manager) = installation_manager() {
         return Ok(SelfUpdateOutcome::Managed(manager));
     }
-    let release = release.map_err(ReleaseCheckError)?;
+    let release = release.map_err(|cause| SelfUpdateError::ReleaseCheck(Box::new(cause)))?;
     if !is_newer(&release) {
         return Ok(SelfUpdateOutcome::Current(release.version));
     }

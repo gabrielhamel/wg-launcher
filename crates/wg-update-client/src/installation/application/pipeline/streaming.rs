@@ -6,7 +6,7 @@ use super::session::InstallationSession;
 use super::{
     ExtractionEvent, ExtractionOptions, InstallationEvent, InstallationPipeline, InstallationReport,
 };
-use crate::installation::infrastructure::filesystem::{InstallationLayout, InstallationLock};
+use crate::installation::infrastructure::filesystem::InstallationLayout;
 use crate::installation::{DownloadOptions, PinnedManifest, VolumeDownloader};
 use crate::{Error, Result};
 use std::{path::Path, sync::Arc};
@@ -22,7 +22,7 @@ impl InstallationPipeline {
     ///
     /// Callbacks may run concurrently on download and blocking extraction workers.
     /// Dropping the future stops pending async download work, but a started blocking
-    /// extraction task may continue; await completion before reusing its destination.
+    /// extraction task may continue while retaining the installation lock.
     ///
     /// # Errors
     ///
@@ -43,9 +43,9 @@ impl InstallationPipeline {
     {
         let install_root = install_root.as_ref().to_path_buf();
         let storage = InstallationLayout::for_root(&install_root);
-        let _lock = InstallationLock::acquire(&storage)?;
         let cache = storage.cache.clone();
         let mut session = InstallationSession::resume(manifest, storage)?;
+        let _lock = session.retain_lock();
         let patches = session.manifest.planned_patches()?;
         let observer: Arc<dyn Fn(InstallationEvent) + Send + Sync> = Arc::new(observer);
         let extraction_observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = {

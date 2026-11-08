@@ -5,22 +5,26 @@ use super::patch::{PatchCompletion, PatchProgress, apply_and_checkpoint_patch};
 use super::{ExtractionEvent, ExtractionOptions, ExtractionReport};
 use crate::installation::{
     PinnedManifest,
-    infrastructure::filesystem::{InstallationLayout, records, storage::prepare_installation},
+    infrastructure::filesystem::{
+        InstallationLayout, InstallationLock, records, storage::prepare_installation,
+    },
 };
 use crate::{Result, catalog::Patch};
 use std::sync::Arc;
 
 /// One execution's layout, authoritative checkpoints, and completed delta count.
-/// Callers retain the installation lock for the entire session lifetime.
+/// Owns exclusive access even while a blocking worker outlives its awaiting future.
 pub(super) struct InstallationSession {
     pub(super) manifest: PinnedManifest,
     pub(super) layout: InstallationLayout,
     applied_deltas: usize,
+    lock: Arc<InstallationLock>,
 }
 
 impl InstallationSession {
-    /// Restore authoritative saved checkpoints while the caller holds the lock.
+    /// Acquire exclusive access before restoring authoritative saved checkpoints.
     pub(super) fn resume(manifest: PinnedManifest, layout: InstallationLayout) -> Result<Self> {
+        let lock = Arc::new(InstallationLock::acquire(&layout)?);
         let manifest = match records::load_pinned_manifest_sync(&layout)? {
             Some(pending) => manifest.resume_from(pending)?,
             None => manifest,
@@ -29,7 +33,13 @@ impl InstallationSession {
             manifest,
             layout,
             applied_deltas: 0,
+            lock,
         })
+    }
+
+    /// Keep downloads protected until cancellation completes, even if patch execution fails.
+    pub(super) fn retain_lock(&self) -> Arc<InstallationLock> {
+        Arc::clone(&self.lock)
     }
 
     pub(super) fn prepare(&self) -> Result<()> {

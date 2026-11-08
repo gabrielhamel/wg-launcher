@@ -54,6 +54,8 @@ fn discovered_release_serves_full_head_resumed_and_unsatisfiable_responses() {
     let fixture = sandbox.fixture(Release::V1);
     let mut resources = fixture.service_resources("updates");
     resources.insert("empty.bin".into(), Vec::new());
+    resources.insert("descriptions/info.xml".into(), b"<info/>".to_vec());
+    resources.insert("descriptions/info.json".into(), b"{}".to_vec());
     let service = WgUpdateService::start(resources);
     let config = sandbox.configuration(&service);
     let listed = success(sandbox.run(
@@ -105,6 +107,44 @@ fn discovered_release_serves_full_head_resumed_and_unsatisfiable_responses() {
             assert!(headers.contains(&format!("Content-Range: bytes */{}", body.len())));
             assert!(body_response.is_empty());
         }
+    }
+    // Both package URL spellings retain their content kinds and containment rules.
+    for (name, content_type, expected) in [
+        (
+            "client.wgpkg",
+            "application/octet-stream",
+            fixture.packages["client.wgpkg"].as_slice(),
+        ),
+        (
+            "descriptions/info.xml",
+            "application/xml",
+            b"<info/>".as_slice(),
+        ),
+        (
+            "descriptions/info.json",
+            "application/json",
+            b"{}".as_slice(),
+        ),
+    ] {
+        for prefix in ["/", "/packages/"] {
+            let (headers, body) = request(&service, "GET", &format!("{prefix}{name}"), None);
+            assert!(headers.starts_with("HTTP/1.1 200 OK"), "{headers}");
+            assert!(
+                headers.contains(&format!("Content-Type: {content_type}")),
+                "{headers}"
+            );
+            assert_eq!(body, expected);
+        }
+    }
+    for path in [
+        "/../metadata.xml",
+        "/packages/../metadata.xml",
+        "/packages/",
+        "/descriptions/missing.json",
+    ] {
+        let (headers, body) = request(&service, "GET", path, None);
+        assert!(headers.starts_with("HTTP/1.1 404 Not Found"), "{headers}");
+        assert!(body.is_empty());
     }
     let (headers, body) = request(&service, "GET", "/empty.bin", None);
     assert!(headers.starts_with("HTTP/1.1 200 OK"));

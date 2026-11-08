@@ -1,5 +1,6 @@
+mod content;
 mod routing;
-pub(crate) use routing::{ContentKind, ReleaseContent};
+pub(crate) use content::{ContentKind, ReleaseContent};
 
 use super::domain::{PublicOrigin, ReleaseError, RoutePrefix, render_text};
 use super::infrastructure::{
@@ -52,11 +53,12 @@ impl FileService {
         };
         let metadata = render_text(metadata, &public_url, METADATA_FILE)?;
         let patch_chain = render_text(patch_chain, &public_url, PATCH_CHAIN_FILE)?;
-        let routes = routing::ReleaseRoutes::new(&prefix, metadata, patch_chain, packages);
+        let routes = routing::ReleaseRoutes::new(&prefix);
+        let content = content::ReleaseContents::new(metadata, patch_chain, packages);
         let access_log = access_log::open(options.access_log)?;
         let handler = Arc::new(move |request: &Request| {
             access_log::record(&access_log, request);
-            routes.resolve(&request.path)
+            content.resolve(routes.resource(&request.path))
         });
         let handle = ServerHandle::start(listener, handler);
         Ok(Self {

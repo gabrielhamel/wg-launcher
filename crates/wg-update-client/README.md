@@ -214,7 +214,8 @@ Observers must implement `Fn(Event) + Send + Sync + 'static`. Events can arrive
 concurrently. Keep callbacks quick and forward events to your UI or an event
 channel when needed. Callbacks run synchronously, so blocking work delays the
 operation. Extraction runs on Tokio's blocking pool; an already-started blocking
-task may continue after an async future is dropped. Await it before reusing the
+task may continue after an async future is dropped, retaining the installation
+lock until it finishes. Await operations to completion before reusing the
 installation directory. An already-current update emits no installation events.
 
 </details>

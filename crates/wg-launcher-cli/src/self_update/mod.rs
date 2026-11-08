@@ -8,4 +8,4 @@ mod progress;
 pub(crate) use application::check;
 pub(crate) use presentation::commands::{notify_if_newer, print_version, run};
 pub(crate) const CURRENT: &str = env!("CARGO_PKG_VERSION");
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+type Result<T> = std::result::Result<T, application::SelfUpdateError>;

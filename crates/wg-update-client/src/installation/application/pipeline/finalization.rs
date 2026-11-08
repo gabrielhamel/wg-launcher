@@ -1,5 +1,6 @@
 //! Record the completed installation and clean up successful work.
 
+use super::reports::PackageRetention;
 use crate::Result;
 use crate::installation::infrastructure::filesystem::{
     paths::walk_files, records::save_installed_build, storage::InstallationLayout,
@@ -26,7 +27,7 @@ pub(super) fn finalize_installation(
     if storage.staging.exists() {
         fs::remove_dir_all(&storage.staging)?;
     }
-    if options.clean_download_cache {
+    if let PackageRetention::ReleaseAfterCheckpoint = options.package_retention() {
         observer(ExtractionEvent::CleaningCache);
         if storage.cache.exists() {
             fs::remove_dir_all(&storage.cache)?;

@@ -1,70 +1,51 @@
 //! Select release descriptions and packages for incoming service requests.
 
-use super::super::{domain::RoutePrefix, infrastructure::filesystem};
-use std::path::{Path, PathBuf};
+use super::super::domain::RoutePrefix;
+use super::content::ContentKind;
+use std::path::Path;
 
-/// Content selected by release-serving rules, independent of HTTP representation.
-pub(crate) enum ReleaseContent {
-    Metadata(Vec<u8>),
-    PatchChain(Vec<u8>),
-    File { path: PathBuf, kind: ContentKind },
-    Missing,
-}
-
-pub(crate) enum ContentKind {
-    Xml,
-    Json,
-    Binary,
+/// A requested release resource, before checking whether its package file exists.
+pub(super) enum ReleaseResource<'a> {
+    Metadata,
+    PatchChain,
+    Package {
+        relative: &'a Path,
+        kind: ContentKind,
+    },
 }
 
 pub(super) struct ReleaseRoutes {
     metadata_route: String,
     patch_chain_route: String,
-    metadata: Vec<u8>,
-    patch_chain: Vec<u8>,
-    packages: PathBuf,
 }
 
 impl ReleaseRoutes {
-    pub(super) fn new(
-        prefix: &RoutePrefix,
-        metadata: Vec<u8>,
-        patch_chain: Vec<u8>,
-        packages: PathBuf,
-    ) -> Self {
+    pub(super) fn new(prefix: &RoutePrefix) -> Self {
         Self {
             metadata_route: prefix.api_route("metadata"),
             patch_chain_route: prefix.api_route("patches_chain"),
-            metadata,
-            patch_chain,
-            packages,
         }
     }
 
-    pub(super) fn resolve(&self, request_path: &str) -> ReleaseContent {
+    pub(super) fn resource<'a>(&self, request_path: &'a str) -> ReleaseResource<'a> {
         if request_path == self.metadata_route {
-            return ReleaseContent::Metadata(self.metadata.clone());
+            return ReleaseResource::Metadata;
         }
         if request_path == self.patch_chain_route {
-            return ReleaseContent::PatchChain(self.patch_chain.clone());
+            return ReleaseResource::PatchChain;
         }
-        file_resource(&self.packages, request_path)
+        let relative = request_path.trim_start_matches('/');
+        let relative = relative.strip_prefix("packages/").unwrap_or(relative);
+        let kind = if relative.ends_with(".xml") {
+            ContentKind::Xml
+        } else if relative.ends_with(".json") {
+            ContentKind::Json
+        } else {
+            ContentKind::Binary
+        };
+        ReleaseResource::Package {
+            relative: Path::new(relative),
+            kind,
+        }
     }
-}
-
-/// Select a release file and its content kind after safe filesystem lookup.
-fn file_resource(packages: &Path, request_path: &str) -> ReleaseContent {
-    let relative = request_path.trim_start_matches('/');
-    let relative = relative.strip_prefix("packages/").unwrap_or(relative);
-    let Some(file) = filesystem::resolve_package(packages, Path::new(relative)) else {
-        return ReleaseContent::Missing;
-    };
-    let kind = if relative.ends_with(".xml") {
-        ContentKind::Xml
-    } else if relative.ends_with(".json") {
-        ContentKind::Json
-    } else {
-        ContentKind::Binary
-    };
-    ReleaseContent::File { path: file, kind }
 }

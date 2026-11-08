@@ -144,8 +144,8 @@ crates/
           resolution.rs       Pinned-cache reuse and live-resolution coordination
           plan.rs             Consumer plan and progress package summaries
           pipeline/           InstallationPipeline execution strategies
-            session.rs        Layout, authoritative checkpoints, patch execution, and finalization
-            reports.rs        Extraction/installation totals and cache-retention options
+            session.rs        Owned installation lock, layout, checkpoints, patch execution, and finalization
+            reports.rs        Execution totals, public options, and internal package-retention policy
             extraction.rs     Apply already downloaded patches
             finalization.rs   Record the installed build and clean up successful work
             prefetch.rs       Async patch download coordination and cancellation
@@ -188,7 +188,8 @@ crates/
           artifact.rs         Select archive/checksum pair from an explicit host target
           ownership.rs        Typed package-manager ownership and path rules
         progress.rs           Shared self-update stages, events, and observer contract
-        application/          Release checks, executable update workflow and outcomes
+        application/          Release checks, ownership discovery, executable update workflow and outcomes
+          error.rs            Exhaustive SelfUpdateError contract retaining concrete causes
         infrastructure/       Release HTTP, archives, ownership detection, replacement
           release.rs          Discover published launcher releases
           artifact.rs         Prepare a candidate by downloading, verifying, and extracting the artifact
@@ -206,7 +207,8 @@ crates/
         domain/               Release URL/prefix rules and template rendering
           address.rs          Validated route prefixes and public origins
         application/          FileService startup, routing, and lifetime coordination
-          routing.rs          Select application-owned release content independently of HTTP
+          routing.rs          Interpret request paths as release resources without filesystem lookup
+          content.rs          Resolve resource content using safe package lookup
         infrastructure/       HTTP/ranges, filesystem mapping, access logs
           http/               HTTP adapter and release-content response dispatch
             server.rs         Connection lifetime and shutdown

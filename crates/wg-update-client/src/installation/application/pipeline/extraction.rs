@@ -2,22 +2,19 @@ use super::InstallationPipeline;
 use super::patch::PatchProgress;
 use super::session::InstallationSession;
 use crate::Result;
-use crate::installation::infrastructure::filesystem::InstallationLock;
 use crate::installation::infrastructure::filesystem::{InstallationLayout, cache::verify_cache};
 use crate::installation::{ExtractionEvent, ExtractionOptions, ExtractionReport, PinnedManifest};
 use std::{path::Path, sync::Arc};
 
 pub(super) fn extract_sync(
-    manifest: &PinnedManifest,
-    storage: &InstallationLayout,
+    mut session: InstallationSession,
     options: ExtractionOptions,
     observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<ExtractionReport> {
-    let cache = &storage.cache;
+    let cache = &session.layout.cache;
     observer(ExtractionEvent::CheckingCache {
-        assets: manifest.release.volumes.len(),
+        assets: session.manifest.release.volumes.len(),
     });
-    let mut session = InstallationSession::resume(manifest.clone(), storage.clone())?;
     let patches = session
         .manifest
         .ordered_patches()?
@@ -93,9 +90,9 @@ impl InstallationPipeline {
     {
         let install_root = install_root.as_ref().to_path_buf();
         let storage = InstallationLayout::for_root(&install_root);
-        let _lock = InstallationLock::acquire(&storage)?;
+        let session = InstallationSession::resume(manifest, storage)?;
         let observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = Arc::new(observer);
-        tokio::task::spawn_blocking(move || extract_sync(&manifest, &storage, options, observer))
+        tokio::task::spawn_blocking(move || extract_sync(session, options, observer))
             .await
             .map_err(crate::installation::PipelineError::WorkerFailed)?
     }

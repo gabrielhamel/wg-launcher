@@ -2239,6 +2239,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
+ "url",
  "wg-update-client",
  "zip",
 ]

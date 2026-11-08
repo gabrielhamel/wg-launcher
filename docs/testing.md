@@ -61,7 +61,8 @@ and cleanup.
 The dedicated server-crossing category also verifies parallel services receive
 distinct ports and preserve their address when restarted. `service/http.rs` also
 checks full and HEAD responses, valid and rejected resumed ranges, empty files,
-missing packages, and unsupported methods against the real service after CLI
+package URL aliases, XML/JSON/binary content types, traversal rejection, missing
+packages, and unsupported methods against the real service after CLI
 discovery:
 
 ```console

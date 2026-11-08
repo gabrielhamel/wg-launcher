@@ -1,3 +1,4 @@
+use super::reports::PackageRetention;
 use crate::Result;
 use crate::catalog::Patch;
 use crate::installation::infrastructure::{
@@ -42,10 +43,9 @@ pub(super) fn apply_and_checkpoint_patch(
     manifest.checkpoint(patch);
     save_manifest(manifest, storage)?;
     workspace.release()?;
-    let released_package_bytes = if options.clean_download_cache {
-        remove_patch_volumes(&storage.cache, patch)?
-    } else {
-        0
+    let released_package_bytes = match options.package_retention() {
+        PackageRetention::ReleaseAfterCheckpoint => remove_patch_volumes(&storage.cache, patch)?,
+        PackageRetention::KeepDownloaded => 0,
     };
     Ok(PatchCompletion {
         applied_deltas,

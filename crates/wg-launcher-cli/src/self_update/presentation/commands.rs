@@ -1,7 +1,7 @@
 //! Terminal commands for CLI version discovery and executable updates.
 
 use super::{distribution, output, progress::SelfUpdateProgress};
-use crate::self_update::{CURRENT, Result, application, domain::Release};
+use crate::self_update::{CURRENT, application, domain::Release};
 use application::SelfUpdateOutcome;
 
 pub(crate) fn notify_if_newer(release: Option<&Release>) {
@@ -9,12 +9,13 @@ pub(crate) fn notify_if_newer(release: Option<&Release>) {
         output::print_cli_update(
             CURRENT,
             &release.version.to_string(),
-            &distribution::update_instruction(true),
+            &distribution::update_instruction(application::installation_manager(), true),
         );
     }
 }
 
 pub(crate) async fn print_version() {
+    let manager = application::installation_manager();
     let latest = application::check().await;
     let update_available = latest.as_ref().is_some_and(application::is_newer);
     let version = latest.as_ref().map(|release| release.version.to_string());
@@ -22,18 +23,18 @@ pub(crate) async fn print_version() {
         CURRENT,
         version.as_deref(),
         update_available,
-        &distribution::update_instruction(false),
+        &distribution::update_instruction(manager, false),
     );
-    if let Some(reason) = distribution::unsupported_reason(false) {
+    if let Some(reason) = distribution::unsupported_reason(manager, false) {
         println!("{reason}");
     }
 }
 
-pub(crate) async fn run() -> Result<()> {
+pub(crate) async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let progress = SelfUpdateProgress::new();
     let outcome = application::run(&|event| progress.observe(event))
         .await
-        .map_err(|error| super::error::describe(error.as_ref()))?;
+        .map_err(|error| super::error::describe(&error))?;
     progress.clear();
     match outcome {
         SelfUpdateOutcome::Managed(manager) => {

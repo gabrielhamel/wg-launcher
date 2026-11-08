@@ -14,6 +14,7 @@ release on someone's machine belongs to the launcher.
 | --- | --- |
 | Publisher | The person or organisation making game content available. |
 | Release | A prepared offering of game content and the information describing how to obtain it. |
+| Release resource | The metadata, patch chain, or relative package path requested, before checking whether its content exists. |
 | Release content | The metadata, patch chain, or file selected for a request, or the fact that none exists. HTTP headers are chosen separately. |
 | Content kind | Whether a served file contains XML, JSON, or binary data. This describes its representation, rather than its role in a game patch. |
 | Release folder | The local collection of release descriptions and packages that the service makes available. |
@@ -30,7 +31,10 @@ release on someone's machine belongs to the launcher.
 | Response range | The complete body or remaining bytes selected for a response, including its offset and length. |
 | Access log | A record of requests received by the service, useful for understanding what launchers asked for. |
 
-The application release routes select release content without HTTP request or
+The application separates route interpretation from content lookup.
+`application/routing.rs` interprets a path as a `ReleaseResource` without filesystem
+access. `application/content.rs` supplies the prepared XML or asks the filesystem
+adapter to resolve a package, producing `ReleaseContent` without HTTP request or
 response models. The HTTP adapter parses requests, translates the selected content
 into MIME types and status codes, and handles ranges, headers, and streaming.
 The filesystem adapter resolves relative package paths and enforces containment
