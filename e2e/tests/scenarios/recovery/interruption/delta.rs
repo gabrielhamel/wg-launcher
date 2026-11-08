@@ -66,6 +66,9 @@ fn killed_delta_patch_preserves_original_sources_and_retries_pinned_update() {
         serde_json::from_slice(&fs::read(recovery.game.join(".wg-launcher/state.json")).unwrap())
             .unwrap();
     assert_eq!(state["version"], "1.0");
+    // Reliably model termination between moving the old target aside and
+    // installing its replacement, even when the kill above misses that window.
+    fs::remove_file(recovery.game.join(filename(0))).unwrap();
     let newer = recovery.sandbox.fixture(Release::V2);
     let mut newer_resources = newer.service_resources("updates");
     let chain = String::from_utf8(newer_resources["updates/api/v1/patches_chain/"].clone())

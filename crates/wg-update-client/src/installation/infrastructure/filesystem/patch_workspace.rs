@@ -42,11 +42,15 @@ impl PatchWorkspace {
         self.active.join("delta-output")
     }
 
-    pub(crate) fn preserve_source(&self, game: &Path, relative: &Path) -> Result<PathBuf> {
-        let original = self
+    pub(crate) fn original_source(&self, relative: &Path) -> Result<PathBuf> {
+        Ok(self
             .active
             .join("sources")
-            .join(safe_relative_path(&relative.to_string_lossy())?);
+            .join(safe_relative_path(&relative.to_string_lossy())?))
+    }
+
+    pub(crate) fn preserve_source(&self, game: &Path, relative: &Path) -> Result<PathBuf> {
+        let original = self.original_source(relative)?;
         if !original.exists() {
             if let Some(parent) = original.parent() {
                 fs::create_dir_all(parent)?;

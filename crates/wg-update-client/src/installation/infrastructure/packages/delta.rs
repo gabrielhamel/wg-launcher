@@ -33,7 +33,9 @@ pub(crate) fn apply_patch_directory(
     let mut applied_deltas = 0;
     for delta in contents.deltas {
         let target = game.join(&delta.target);
-        if !target.is_file() {
+        // A killed replacement can leave the target absent between renames.
+        // The preserved original remains authoritative until the patch checkpoint.
+        if !target.is_file() && !workspace.original_source(&delta.target)?.is_file() {
             return Err(Error::MissingDeltaTarget(target));
         }
         observer(ExtractionEvent::PreparingDelta {

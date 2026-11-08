@@ -148,7 +148,7 @@ coverage, rather than a claim that every possible failure in that area is tested
 | 8 | Kill during full extraction | Kill both between completed files and while a large file decodes in staging; retries recreate exact bytes and preserve the previous destination during decoding. |
 | 9 | Destination is blocked | User directory contents and transport volumes survive; removing the obstruction permits offline retry. |
 | 10 | Fail after applying one delta | Original sources survive and a repeated patch produces the expected source-dependent output. |
-| 11 | Kill during delta application | First target is changed, last is untouched, installed identity stays old; pinned retry completes all targets. |
+| 11 | Kill during delta application | First target is changed, last is untouched, installed identity stays old; remove the first target to model the gap between replacement renames, then verify pinned retry rebuilds every target from preserved sources. |
 | 12 | Invalid delta or missing source | Malformed librsync data preserves the target/source snapshot; repaired cached archive retries. Existing update tests cover missing sources. |
 | 13 | One patch completes before the next fails | Checkpointed patch is skipped despite its deleted transport volumes. |
 | 14 | Extraction/checkpoint/package-release boundary | Block the checkpoint write after extraction; separately kill after persisted checkpoint while cleanup delays package release. |
