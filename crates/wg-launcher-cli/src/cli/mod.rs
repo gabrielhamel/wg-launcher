@@ -19,7 +19,9 @@ pub async fn run() -> ExitCode {
                 return ExitCode::SUCCESS;
             }
             if error.kind() == clap::error::ErrorKind::DisplayHelp {
-                self_update::notify_if_newer(self_update::check().await.as_ref());
+                self_update::notify_if_newer(
+                    self_update::check_startup_release_notice().await.as_ref(),
+                );
             }
             let _ = error.print();
             return ExitCode::from(error.exit_code() as u8);
@@ -36,7 +38,7 @@ pub async fn run() -> ExitCode {
 
 async fn execute(cli: Cli) -> Result<(), Box<dyn std::error::Error>> {
     if !matches!(cli.command, Command::SelfUpdate) {
-        self_update::notify_if_newer(self_update::check().await.as_ref());
+        self_update::notify_if_newer(self_update::check_startup_release_notice().await.as_ref());
     }
     match cli.command {
         Command::List(args) => run_list(args).await?,

@@ -16,7 +16,7 @@ pub(crate) fn notify_if_newer(release: Option<&Release>) {
 
 pub(crate) async fn print_version() {
     let ownership = application::executable_ownership();
-    let latest = application::check().await;
+    let latest = application::check_startup_release_notice().await;
     let update_available = latest.as_ref().is_some_and(application::is_newer);
     let version = latest.as_ref().map(|release| release.version.to_string());
     output::print_cli_version(
@@ -32,7 +32,7 @@ pub(crate) async fn print_version() {
 
 pub(crate) async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let progress = SelfUpdateProgress::new();
-    let outcome = application::run(&|event| progress.observe(event))
+    let outcome = application::update_executable(&|event| progress.observe(event))
         .await
         .map_err(|error| super::error::describe(&error))?;
     progress.clear();

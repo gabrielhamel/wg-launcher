@@ -28,13 +28,16 @@ selection to prepare the game on someone's machine.
 | Planned volume | One selected transport volume whose identity and archive sizes have been checked against its patch declaration. |
 | Release contents | The selected components, their target versions, published patches, and download sources kept together as one immutable set. Planning checks the chain actually needed. |
 | Resolved release | The selected published build, its component targets, and the packages the publisher offers. It contains no local installation progress. |
-| Discovered product | One product together with its metadata response, reused when choosing and resolving variants. A publisher redirect discovers fresh metadata at the redirected endpoint while retaining the configured product identity. |
+| Discovery endpoint | The current HTTP(S) service address used for discovery. Redirects change this address without changing the configured product. |
+| Patch-chain request context | The publisher application ID, metadata revision, and original language spellings needed to encode requests after XML translation. |
+| Discovered product | One configured product together with its current discovery endpoint, normalized metadata, and patch-chain request context, reused when choosing and resolving variants. A publisher redirect discovers fresh metadata at the redirected endpoint while retaining the configured product identity. |
 | Selected product request | A validated product choice, with edition and language still allowed to use publisher defaults. Discovery and cache matching use this same choice. |
 | Build selection request | A discovery request that can leave edition or language to publisher defaults and optionally supply a replacement catalog. |
 | Build identity | The published application, region, channel, version, edition, language, and payload target describing a build. It stays distinct from the configured product endpoint. |
 | Build | A particular published version of a game for a chosen edition and language. |
-| Client type | The game's edition or quality variant, such as SD or HD. |
+| Client variant / client type | The game's edition or quality variant, such as SD or HD. |
 | Language | The language chosen for the game content. |
+| Component definition | A component advertised by a client variant, including its publisher flags. |
 | Component / part | A named portion of the game, such as its main content or a language pack. Both words refer to the same thing. |
 | Patch identity | The component, source, and target that identify one published transition. Planning uses it to match volumes; installation reuses it to retain the correct recovery sources. |
 | Normalized patch chain | Publisher patches with explicit starting versions and selected component targets, before their HTTP download sources are resolved. |
@@ -63,8 +66,8 @@ selection to prepare the game on someone's machine.
 | `domain/release/component_release.rs` | Component-facing target validation, completion checks, and ordered patch selection; delegates chain traversal to a focused helper. |
 | `domain/release/patch_chain.rs` | Version traversal, required-transition ambiguity rejection, cycle detection, and full-package fallback. |
 | `domain/release/package_plan.rs`, `volume_index.rs` | Assemble selected patch plans and bind their declarations through one release-wide volume index. |
-| `application/` | Listing, inspection, release resolution, consumer reports, and suggested directory names. |
-| `infrastructure/wgus/` | `discovery.rs` owns discovered metadata and redirect-aware variant resolution; `mod.rs` owns HTTP client setup and metadata transport. HTTP/XML, query encoding, redirects, language normalization, and response conversion. `patch_chain_normalization.rs` returns patches and targets without resolving download sources; `patch_chain_conversion.rs` parses web seeds and binds normalized patches to HTTP volumes. |
+| `application/` | Listing, release resolution, and consumer build/inspection reports. Installation composes the inspect workflow and supplies its suggested folder. |
+| `infrastructure/wgus/` | `discovery.rs` owns discovered metadata and redirect-aware variant resolution; `mod.rs` owns HTTP client setup and metadata transport. `endpoint.rs` owns transient discovery addresses and redirects; `request.rs` owns the protocol request context and query encoding. HTTP/XML, language normalization, and response conversion. `patch_chain_normalization.rs` returns patches and targets without resolving download sources; `patch_chain_conversion.rs` parses web seeds and binds normalized patches to HTTP volumes. |
 
 ## Invariants
 

@@ -1,7 +1,8 @@
 use crate::Result;
 use crate::catalog::SelectedProductRequest;
-use crate::catalog::{BuildInfo, resolve};
+use crate::catalog::resolve;
 use crate::installation::PinnedManifest;
+use crate::installation::domain::initial_directory_name;
 use crate::installation::{
     domain::selection::validate_cached_request,
     infrastructure::filesystem::{InstallationLayout, records::load_pinned_manifest},
@@ -31,7 +32,7 @@ pub(super) async fn resolve_installation_target(
     }
 
     let live = PinnedManifest::from(resolve(selection).await?);
-    let root = BuildInfo::from_release(&live.release).default_output_directory();
+    let root = initial_directory_name(&live.release.product, &live.release.identity);
     let storage = InstallationLayout::for_root(&root);
     if let Some(manifest) = load_pinned_manifest(&storage).await? {
         validate_cached_request(&manifest.selection(), selection)?;

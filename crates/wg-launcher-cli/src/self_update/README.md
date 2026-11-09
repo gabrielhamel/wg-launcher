@@ -16,6 +16,8 @@ game versions belong to [installation](../installation/README.md).
 | Release artifact | The launcher archive selected for the host platform, together with its published checksum file and archive format. |
 | Current version | The version of the launcher being used now. |
 | Latest version | The newest launcher release offered by the release source being checked. |
+| Startup release notice check | Optional release discovery that honors the disable setting and suppresses discovery failures so normal commands can continue. |
+| Executable update | The explicit operation that checks the release, respects package ownership, and verifies a candidate before replacing the launcher. |
 | Update notice | A message explaining that a newer launcher is available and how to obtain it. |
 | Self-update event | A progress fact from checking, downloading, verifying, or replacing the launcher. Terminal code decides how to display it. |
 | Release discovery failure | A failure reading or interpreting the launcher release manifest, retaining its HTTP or parsing cause. |
@@ -67,3 +69,6 @@ The context's `progress.rs` owns shared stages, events, and the observer contrac
 Application orchestration, infrastructure adapters, and terminal presentation all
 use that contract without importing progress definitions or errors from the application.
 Observer failures use `std::io::Error`, preserving fallible rendering and cancellation.
+
+`application::check_startup_release_notice` owns optional release discovery;
+`application::update_executable` owns the explicit executable update operation.

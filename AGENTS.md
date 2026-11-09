@@ -367,20 +367,23 @@ the CLI.
   owned product validation, and catalog/build selection. `release/` owns metadata,
   resolved releases, transport asset descriptions, variant/language rules, and patch planning.
   Resolved releases contain no local checkpoints; installation owns pinned manifests.
-- `crates/wg-update-client/src/catalog/application/`: list, inspect, and live build
+- `crates/wg-update-client/src/catalog/application/`: list, consumer inspection reports, and live build
   resolution, including publisher-default/smallest-variant selection.
 - `crates/wg-update-client/src/catalog/infrastructure/wgus/`: WGUS-compatible HTTP/XML,
   private wire representations, redirects, and publisher-specific normalization.
   `mod.rs` owns HTTP client setup and metadata transport; `discovery.rs` owns
-  discovered product metadata, variant resolution, and redirects. `conversion.rs`
+  discovered product metadata and redirect-aware variant resolution. `endpoint.rs` owns
+  transient discovery addresses; `request.rs` owns the protocol request context and query encoding. `conversion.rs`
   assembles release identity and metadata, while `patch_chain_normalization.rs` normalizes publisher chains and
   component targets, and `patch_chain_conversion.rs` resolves HTTP transport packages.
 - `crates/wg-update-client/src/installation/`: local installation lifecycle bounded
   context. `mod.rs` exposes its workflows, models, and observer contracts.
 - `crates/wg-update-client/src/installation/domain/`: installed identity, pinned
   manifests, selection compatibility, component checkpoints, and resume consistency.
-- `crates/wg-update-client/src/installation/application/`: download, extract, install,
+- `crates/wg-update-client/src/installation/application/`: inspect, download, extract, install,
   status, and update workflows with their options, events, reports, and local errors.
+  `inspect.rs` composes catalog discovery with installation-owned initial directory naming.
+  `domain/directory_name.rs` owns that naming policy without using consumer reports.
   `resolution.rs` owns pinned-cache reuse and calls catalog for live resolution;
   `plan.rs` builds informational plans.
 - `crates/wg-update-client/src/installation/application/pipeline/`: internal

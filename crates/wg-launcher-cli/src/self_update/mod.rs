@@ -5,7 +5,7 @@ mod infrastructure;
 mod presentation;
 mod progress;
 
-pub(crate) use application::check;
+pub(crate) use application::check_startup_release_notice;
 pub(crate) use presentation::commands::{notify_if_newer, print_version, run};
 pub(crate) const CURRENT: &str = env!("CARGO_PKG_VERSION");
 type Result<T> = std::result::Result<T, application::SelfUpdateError>;

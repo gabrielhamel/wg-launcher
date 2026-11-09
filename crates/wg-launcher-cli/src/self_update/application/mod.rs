@@ -26,7 +26,7 @@ pub(crate) fn executable_ownership() -> ExecutableOwnership {
     distribution::ownership()
 }
 
-pub(crate) async fn check() -> Option<Release> {
+pub(crate) async fn check_startup_release_notice() -> Option<Release> {
     if std::env::var_os("WG_LAUNCHER_NO_UPDATE_CHECK").is_some() {
         return None;
     }
@@ -34,7 +34,7 @@ pub(crate) async fn check() -> Option<Release> {
     release::latest().await.ok()
 }
 
-pub(crate) async fn run(observer: &Observer<'_>) -> Result<SelfUpdateOutcome> {
+pub(crate) async fn update_executable(observer: &Observer<'_>) -> Result<SelfUpdateOutcome> {
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::CheckingRelease))?;
     let release = release::latest().await;
     observer(SelfUpdateEvent::ReleaseChecked)?;

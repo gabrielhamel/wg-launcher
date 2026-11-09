@@ -3,6 +3,7 @@
 mod access;
 pub(crate) mod download;
 pub(crate) mod extract;
+mod inspect;
 mod install;
 mod installed;
 pub(crate) mod pipeline;
@@ -21,6 +22,7 @@ pub use download::{
     download_with_observer,
 };
 pub use extract::{ExtractEvent, ExtractOptions, ExtractOutcome, extract, extract_with_observer};
+pub use inspect::{InspectOptions, inspect};
 pub use install::{InstallEvent, InstallOptions, InstallOutcome, install, install_with_observer};
 pub use plan::{InstallPlan, PackageSummary};
 pub use status::{StatusOptions, StatusReport, status};

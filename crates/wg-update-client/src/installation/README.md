@@ -14,6 +14,8 @@ installation manages the copy on a person's machine.
 | --- | --- |
 | Installation | One local copy of a game, together with the information needed to maintain it. |
 | Installation layout | The game folder and all launcher-owned paths derived from it, passed together so filesystem work uses one consistent location. |
+| Initial directory name | The suggested folder name derived from the first chosen product and build identity. It stays unchanged when the installed version advances. |
+| Inspection | Resolve a published build and describe its content and suggested installation folder without changing files. |
 | Installation folder | The folder containing that game and its saved installation information. Moving the complete folder keeps them together. |
 | Selection | The chosen game, region, channel, client type, and language. |
 | Resolved selection | The known product, recorded region, client type, and language of an installation, with no unanswered discovery choices. Compatibility compares these values without requiring a pinned manifest. |
@@ -68,6 +70,8 @@ installation manages the copy on a person's machine.
 | `domain/installed_build.rs` | Installed identity, selection consistency, and comparison with a target build. |
 | `domain/pinned_manifest.rs`, `component_progress.rs` | Pinned release, starting versions, saved checkpoints, and checked completion. |
 | `domain/selection.rs`, `release_compatibility.rs` | Selection compatibility and diagnostics beside their types; release comparison returns typed differences for resume decisions and diagnostics. |
+| `domain/directory_name.rs` | Initial folder naming from product and build identity, without constructing consumer reports. |
+| `application/inspect.rs` | Compose catalog discovery, the initial folder name, and the consumer inspection report. |
 | `application/` | Public workflows, options, reports, and observer contracts. |
 | `application/resolution.rs`, `update_target.rs` | Named installation targets, pinned-cache reuse, and resolved update targets owning pending precedence, live fallback, starting-version seeding, and status projection. |
 | `application/installed.rs`, `status_report.rs`, `plan.rs` | Validated state loading and consumer status/plan projections. |

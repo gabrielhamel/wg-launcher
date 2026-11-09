@@ -14,5 +14,6 @@ pub use error::CatalogError;
 pub(crate) use selection::select_products;
 
 pub use product::Product;
+pub(crate) use product::validate_service_base_url;
 
 pub use builtin::{Game, Region};

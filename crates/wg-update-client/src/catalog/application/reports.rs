@@ -86,7 +86,7 @@ pub struct InspectReport {
 }
 
 impl InspectReport {
-    pub(crate) fn from_release(release: &ResolvedRelease) -> Self {
+    pub(crate) fn from_release(release: &ResolvedRelease, directory: PathBuf) -> Self {
         Self {
             build: BuildInfo::from_release(release),
             available_languages: release.available_languages.clone(),
@@ -105,7 +105,7 @@ impl InspectReport {
                 .collect(),
             package_count: release.contents.volumes().len(),
             compressed_bytes: release.published_volume_bytes(),
-            default_output_directory: BuildInfo::from_release(release).default_output_directory(),
+            default_output_directory: directory,
         }
     }
 }

@@ -5,14 +5,15 @@ use super::patch_chain_conversion::patch_chain_from_wire;
 use super::wire::{MetadataXml, PatchesXml};
 use crate::catalog::ComponentVersions;
 use crate::catalog::{
-    ClientPart, ClientType, Executable, GameMetadata, Product, ReleaseContents, ResolvedRelease,
+    ClientVariant, ComponentDefinition, Executable, GameMetadata, Product, ReleaseContents,
+    ResolvedRelease,
 };
 
 pub(super) fn release_from_wire(
     product: &Product,
     resolved_hostname: String,
     metadata: GameMetadata,
-    selected: &ClientType,
+    selected: &ClientVariant,
     language: String,
     response: PatchesXml,
     component_versions: &ComponentVersions,
@@ -48,7 +49,11 @@ pub(super) fn release_from_wire(
         available_languages: metadata.supported_languages,
         publisher_ids: metadata.publisher_ids,
         contents: ReleaseContents::new(
-            selected.parts.iter().map(|part| part.id.clone()).collect(),
+            selected
+                .components
+                .iter()
+                .map(|part| part.id.clone())
+                .collect(),
             chain.component_versions,
             patches,
             chain.volumes,
@@ -77,14 +82,14 @@ pub(super) fn metadata_from_wire(wire: &MetadataXml) -> GameMetadata {
             .client_types
             .types
             .iter()
-            .map(|client| ClientType {
+            .map(|client| ClientVariant {
                 id: client.id.clone(),
                 architecture: client.architecture.clone(),
-                parts: client
+                components: client
                     .client_parts
                     .parts
                     .iter()
-                    .map(|part| ClientPart {
+                    .map(|part| ComponentDefinition {
                         id: part.id.clone(),
                         app_type: part.app_type.clone(),
                         language_specific: part.language_specific,

@@ -2,7 +2,7 @@
 
 use super::error::{Result, WgusError as Error};
 use super::wire::{self, PatchesChainXml};
-use crate::catalog::{ClientType, ComponentVersions, Patch, PatchSource, PatchVolume, Product};
+use crate::catalog::{ClientVariant, ComponentVersions, Patch, PatchSource, PatchVolume, Product};
 use std::collections::HashMap;
 use url::Url;
 
@@ -15,7 +15,7 @@ pub(super) struct NormalizedPatchChain {
 impl NormalizedPatchChain {
     pub(super) fn from_wire(
         product: &Product,
-        selected: &ClientType,
+        selected: &ClientVariant,
         chain: Option<PatchesChainXml>,
         component_versions: &ComponentVersions,
     ) -> Result<Self> {
@@ -58,14 +58,14 @@ impl NormalizedPatchChain {
 
 fn require_patch_chain(
     product: &Product,
-    selected: &ClientType,
+    selected: &ClientVariant,
     chain: Option<PatchesChainXml>,
     component_versions: &ComponentVersions,
 ) -> Result<PatchesChainXml> {
     match chain {
         Some(chain) => Ok(chain),
         None if selected
-            .parts
+            .components
             .iter()
             .all(|part| component_versions.get(&part.id).is_some()) =>
         {
@@ -110,9 +110,9 @@ impl PatchChainNormalization {
         }
     }
 
-    fn component_targets(&self, selected: &ClientType) -> Result<ComponentVersions> {
+    fn component_targets(&self, selected: &ClientVariant) -> Result<ComponentVersions> {
         let targets = selected
-            .parts
+            .components
             .iter()
             .map(|part| {
                 self.reached_versions

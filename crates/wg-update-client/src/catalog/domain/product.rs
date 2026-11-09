@@ -51,18 +51,7 @@ impl Product {
     }
 
     pub(crate) fn validate_identity(&self) -> Result<()> {
-        if !matches!(self.host.scheme(), "http" | "https")
-            || self.host.host_str().is_none()
-            || !self.host.username().is_empty()
-            || self.host.password().is_some()
-            || self.host.query().is_some()
-            || self.host.fragment().is_some()
-        {
-            return Err(Error::InvalidProduct(
-                "host must be an absolute HTTP(S) base URL without credentials, query, or fragment"
-                    .into(),
-            ));
-        }
+        validate_service_base_url(&self.host)?;
         for (field, value) in [
             ("game", &self.game),
             ("region", &self.region),
@@ -88,4 +77,21 @@ impl Product {
 
 fn default_game() -> String {
     "wot".into()
+}
+
+/// Validate a configured or redirected service address using the same URL rules.
+pub(crate) fn validate_service_base_url(host: &url::Url) -> Result<()> {
+    if !matches!(host.scheme(), "http" | "https")
+        || host.host_str().is_none()
+        || !host.username().is_empty()
+        || host.password().is_some()
+        || host.query().is_some()
+        || host.fragment().is_some()
+    {
+        return Err(Error::InvalidProduct(
+            "host must be an absolute HTTP(S) base URL without credentials, query, or fragment"
+                .into(),
+        ));
+    }
+    Ok(())
 }

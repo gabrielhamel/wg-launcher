@@ -2,6 +2,7 @@ use crate::catalog::ComponentVersions;
 mod conversion;
 mod discovery;
 pub(crate) use discovery::DiscoveredProduct;
+mod endpoint;
 mod error;
 mod patch_chain_conversion;
 mod patch_chain_normalization;
@@ -10,9 +11,8 @@ mod wire;
 
 use self::error::Result;
 
-use crate::catalog::{GameMetadata, Product, ResolvedRelease};
-use conversion::metadata_from_wire;
-use request::product_endpoint;
+use crate::catalog::{Product, ResolvedRelease};
+use endpoint::DiscoveryEndpoint;
 use reqwest::Client;
 use std::time::Duration;
 use wire::MetadataXml;
@@ -53,9 +53,21 @@ impl WgusClient {
 
     /// Discover a product once so its variants share one metadata response.
     pub(crate) async fn discover(&self, product: &Product) -> Result<DiscoveredProduct> {
-        product.validate_identity()?;
-        let (wire, metadata) = self.fetch_metadata(product).await?;
-        Ok(DiscoveredProduct::new(product.clone(), wire, metadata))
+        let endpoint = DiscoveryEndpoint::for_product(product)?;
+        self.discover_endpoint(product, endpoint).await
+    }
+
+    async fn discover_endpoint(
+        &self,
+        product: &Product,
+        endpoint: DiscoveryEndpoint,
+    ) -> Result<DiscoveredProduct> {
+        let wire = self.fetch_metadata(product, &endpoint).await?;
+        Ok(DiscoveredProduct::from_wire(
+            product.clone(),
+            endpoint,
+            wire,
+        ))
     }
 
     /// Resolves update packages using the installed version of each component.
@@ -79,8 +91,12 @@ impl WgusClient {
             .await
     }
 
-    async fn fetch_metadata(&self, product: &Product) -> Result<(MetadataXml, GameMetadata)> {
-        let endpoint = product_endpoint(product, "metadata")?;
+    async fn fetch_metadata(
+        &self,
+        product: &Product,
+        endpoint: &DiscoveryEndpoint,
+    ) -> Result<MetadataXml> {
+        let endpoint = endpoint.route("metadata")?;
         let text = self
             .http
             .get(endpoint)
@@ -95,7 +111,6 @@ impl WgusClient {
             .text()
             .await?;
         let wire: MetadataXml = quick_xml::de::from_str(&text)?;
-        let metadata = metadata_from_wire(&wire);
-        Ok((wire, metadata))
+        Ok(wire)
     }
 }

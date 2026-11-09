@@ -4,7 +4,7 @@ use super::error::{Result, WgusError as Error};
 use super::patch_chain_normalization::NormalizedPatchChain;
 use super::wire::{PatchesChainXml, WebSeedsXml};
 use crate::catalog::ComponentVersions;
-use crate::catalog::{ClientType, Patch, Product, TransportVolume, WebSeed};
+use crate::catalog::{ClientVariant, Patch, Product, TransportVolume, WebSeed};
 use url::Url;
 
 pub(super) struct ConvertedPatchChain {
@@ -16,7 +16,7 @@ pub(super) struct ConvertedPatchChain {
 
 pub(super) fn patch_chain_from_wire(
     product: &Product,
-    selected: &ClientType,
+    selected: &ClientVariant,
     chain: Option<PatchesChainXml>,
     seeds: WebSeedsXml,
     component_versions: &ComponentVersions,

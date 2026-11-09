@@ -14,7 +14,7 @@ mod transport_volume;
 mod volume_index;
 
 pub use error::ReleaseError;
-pub use metadata::{ClientPart, ClientType, Executable, GameMetadata};
+pub use metadata::{ClientVariant, ComponentDefinition, Executable, GameMetadata};
 pub use package_plan::required_volumes;
 pub(crate) use patch::PatchSource;
 pub use patch::{Patch, PatchVolume};

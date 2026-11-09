@@ -21,7 +21,7 @@ pub struct GameMetadata {
     /// Publisher default client variant identifier; used when it names an advertised variant.
     pub default_client_type: String,
     /// Client variants and their component definitions.
-    pub client_types: Vec<ClientType>,
+    pub client_types: Vec<ClientVariant>,
     /// Executable metadata for the payload; the launcher does not run these files.
     pub executables: Vec<Executable>,
     /// Publisher identifiers advertised in metadata.
@@ -32,27 +32,28 @@ impl GameMetadata {
     /// Finds a client variant by its exact, case-sensitive identifier.
     ///
     /// Returns `None` when the publisher did not advertise that identifier.
-    pub fn client_type(&self, id: &str) -> Option<&ClientType> {
+    pub fn client_type(&self, id: &str) -> Option<&ClientVariant> {
         self.client_types.iter().find(|client| client.id == id)
     }
 }
 
 /// A publisher client variant and the components it requires.
 #[derive(Debug, Clone, Serialize)]
-pub struct ClientType {
+pub struct ClientVariant {
     /// Exact publisher client variant identifier.
     pub id: String,
     /// Game payload architecture, or `None` when not published.
     pub architecture: Option<String>,
     /// Components required by this variant.
-    pub parts: Vec<ClientPart>,
+    #[serde(rename = "parts")]
+    pub components: Vec<ComponentDefinition>,
 }
 
 /// A component referenced by a client variant.
 ///
 /// The flags describe publisher metadata; they do not enable local integrity scans.
 #[derive(Debug, Clone, Serialize)]
-pub struct ClientPart {
+pub struct ComponentDefinition {
     /// Publisher component identifier used in patch requests.
     pub id: String,
     /// Optional publisher application type.
@@ -75,7 +76,7 @@ pub struct Executable {
 }
 
 impl GameMetadata {
-    pub(crate) fn require_client_type(&self, id: &str) -> super::error::Result<&ClientType> {
+    pub(crate) fn require_client_type(&self, id: &str) -> super::error::Result<&ClientVariant> {
         self.client_type(id)
             .ok_or_else(|| super::ReleaseError::UnknownClientType {
                 requested: id.to_owned(),

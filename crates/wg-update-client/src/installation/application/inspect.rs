@@ -1,4 +1,5 @@
-use super::resolution::resolve;
+use crate::catalog::resolve;
+use crate::installation::domain::initial_directory_name;
 use crate::{
     Result,
     catalog::{BuildSelection, InspectReport},
@@ -21,5 +22,6 @@ pub struct InspectOptions {
 pub async fn inspect(options: InspectOptions) -> Result<InspectReport> {
     let request = options.selection.select_product()?;
     let release = resolve(&request).await?;
-    Ok(InspectReport::from_release(&release))
+    let directory = initial_directory_name(&release.product, &release.identity);
+    Ok(InspectReport::from_release(&release, directory))
 }

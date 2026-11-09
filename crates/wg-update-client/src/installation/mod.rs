@@ -10,10 +10,11 @@ pub use application::progress::{ExtractionEvent, InstallationEvent};
 pub use application::transfer::{DownloadEvent, DownloadOptions, DownloadReport};
 pub use application::{
     DownloadAssetsEvent, DownloadAssetsOptions, DownloadAssetsOutcome, ExtractEvent,
-    ExtractOptions, ExtractOutcome, InstallEvent, InstallOptions, InstallOutcome, InstallPlan,
-    PackageSummary, StatusOptions, StatusReport, UpdateOptions, UpdateOutcome, UpdateTarget,
-    UpdateTargetSource, download, download_with_observer, extract, extract_with_observer, install,
-    install_with_observer, status, update, update_with_observer,
+    ExtractOptions, ExtractOutcome, InspectOptions, InstallEvent, InstallOptions, InstallOutcome,
+    InstallPlan, PackageSummary, StatusOptions, StatusReport, UpdateOptions, UpdateOutcome,
+    UpdateTarget, UpdateTargetSource, download, download_with_observer, extract,
+    extract_with_observer, inspect, install, install_with_observer, status, update,
+    update_with_observer,
 };
 pub(crate) use application::{
     download::DownloadError, extract::ExtractError, pipeline::PipelineError,

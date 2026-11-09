@@ -5,15 +5,17 @@ mod domain;
 mod infrastructure;
 
 pub use application::{
-    BuildInfo, BuildSummary, InspectOptions, InspectReport, ListOptions, ListReport, ListWarning,
-    PatchSummary, inspect, list,
+    BuildInfo, BuildSummary, InspectReport, ListOptions, ListReport, ListWarning, PatchSummary,
+    list,
 };
 pub(crate) use application::{resolve, resolve_update_release};
 pub(crate) use domain::release::package_plan::{PlannedPatch, planned_patches};
 pub(crate) use domain::release::{
-    ClientPart, ClientType, ComponentVersions, Executable, GameMetadata, Patch, PatchIdentity,
-    PatchSource, PatchVolume, ReleaseContents, ReleaseError, ResolvedRelease, TransportVolume,
-    WebSeed, required_volumes,
+    ClientVariant, ComponentDefinition, ComponentVersions, Executable, GameMetadata, Patch,
+    PatchIdentity, PatchSource, PatchVolume, ReleaseContents, ReleaseError, ResolvedRelease,
+    TransportVolume, WebSeed, required_volumes,
 };
 pub(crate) use domain::{BuildIdentity, CatalogError, SelectedProductRequest};
 pub use domain::{BuildSelection, Game, Product, Region};
+
+pub(crate) use domain::validate_service_base_url;

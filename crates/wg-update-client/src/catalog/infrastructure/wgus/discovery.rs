@@ -2,9 +2,10 @@
 
 use super::{
     MAX_REDIRECTS, WgusClient,
-    conversion::{normalize_language, release_from_wire},
+    conversion::{metadata_from_wire, normalize_language, release_from_wire},
+    endpoint::DiscoveryEndpoint,
     error::{Result, WgusError},
-    request::{patch_chain_query, product_endpoint, redirect_product},
+    request::PatchChainRequestContext,
     wire::{MetadataXml, PatchesXml},
 };
 use crate::catalog::{ComponentVersions, GameMetadata, Product, ResolvedRelease};
@@ -13,15 +14,23 @@ use crate::catalog::{ComponentVersions, GameMetadata, Product, ResolvedRelease};
 /// Redirected responses are local to each release resolution, not a global cache.
 pub(crate) struct DiscoveredProduct {
     product: Product,
-    wire: MetadataXml,
+    endpoint: DiscoveryEndpoint,
+    request_context: PatchChainRequestContext,
     metadata: GameMetadata,
 }
 
 impl DiscoveredProduct {
-    pub(super) fn new(product: Product, wire: MetadataXml, metadata: GameMetadata) -> Self {
+    pub(super) fn from_wire(
+        product: Product,
+        endpoint: DiscoveryEndpoint,
+        wire: MetadataXml,
+    ) -> Self {
+        let metadata = metadata_from_wire(&wire);
+        let request_context = PatchChainRequestContext::from_wire(&wire);
         Self {
             product,
-            wire,
+            endpoint,
+            request_context,
             metadata,
         }
     }
@@ -44,14 +53,10 @@ impl DiscoveredProduct {
             let selected = metadata.require_client_type(client_type)?;
             let language = normalize_language(language.unwrap_or(&metadata.default_language));
             metadata.validate_language(&language)?;
-            let endpoint = product_endpoint(&current.product, "patches_chain")?;
-            let query = patch_chain_query(
-                &current.wire,
-                metadata,
-                selected,
-                &language,
-                component_versions,
-            );
+            let endpoint = current.endpoint.route("patches_chain")?;
+            let query = current
+                .request_context
+                .query(selected, &language, component_versions);
             let text = client
                 .http
                 .get(endpoint)
@@ -62,23 +67,18 @@ impl DiscoveredProduct {
                 .text()
                 .await?;
             let response: PatchesXml = quick_xml::de::from_str(&text)?;
-            if let Some(product) = redirect_product(&current.product, response.redirect_url())? {
+            if let Some(endpoint) = current.endpoint.redirect(response.redirect_url())? {
                 if hop == MAX_REDIRECTS {
                     return Err(WgusError::RedirectLimit(
                         self.product.application_id().to_owned(),
                     ));
                 }
-                redirected = Some(client.discover(&product).await?);
+                redirected = Some(client.discover_endpoint(&self.product, endpoint).await?);
                 continue;
             }
             return release_from_wire(
                 &self.product,
-                current
-                    .product
-                    .service_base_url()
-                    .host_str()
-                    .unwrap()
-                    .to_owned(),
+                current.endpoint.hostname().to_owned(),
                 metadata.clone(),
                 selected,
                 language,

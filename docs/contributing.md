@@ -120,16 +120,15 @@ crates/
           release/transport_volume.rs  Downloadable transport volumes and HTTP seeds
           release/package_plan.rs  Assemble selected patches with validated transport volumes
           release/volume_index.rs  Match selected volume identities and reject ambiguous or inconsistent sources
-        application/          list, inspect, and live build/update release resolution
+        application/          list and live build/update release resolution
           list.rs             Listing options, build summaries, and per-variant warnings
-          inspect.rs          Read-only inspection options and workflow
           resolution.rs       Own WGUS clients and resolve explicit/default variants, smallest variants, and updates
           reports.rs          Consumer build identity and inspection/patch summaries
-          directory_name.rs   Suggested directory names shared by inspect and installation
         infrastructure/wgus/  WGUS transport and response translation
           mod.rs              HTTP client setup and product metadata transport
           discovery.rs        Discovered product metadata, variant resolution, and redirect loop
-          request.rs          WGUS query encoding, language mapping, endpoints, redirect targets
+          endpoint.rs         Transient discovery addresses and redirect targets
+          request.rs          Protocol request context, language spelling, and WGUS query encoding
           conversion.rs       Release assembly and metadata conversion
           patch_chain_conversion.rs  Resolve web seeds and HTTP volumes from normalized patches
           patch_chain_normalization.rs  Publisher transitions, omitted sources, torrent metadata, and component targets
@@ -143,7 +142,9 @@ crates/
           component_progress.rs  Starting versions and saved patch completions
           installed_build.rs  Saved identity, consistency, selection, and build comparison
           pinned_manifest.rs  Pinned release, checkpoints, and checked installation completion
-        application/          download, extract, install, status, update
+          directory_name.rs   Initial installation folder naming from product and build identity
+        application/          inspect, download, extract, install, status, update
+          inspect.rs          Read-only discovery composed with installation naming and catalog reports
           progress.rs         Shared package execution and installation observer events
           transfer.rs         Public download options, observer events, and reports
           update_target.rs    Resolved update target, origin, status projection, pending precedence, and starting versions
