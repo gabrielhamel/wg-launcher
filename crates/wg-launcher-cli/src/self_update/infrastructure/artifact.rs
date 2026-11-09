@@ -1,17 +1,18 @@
-//! Download and verify a selected launcher archive, then extract its executable.
+//! Fetch launcher artifacts and verify their SHA-256 checksums.
 
-use super::{
-    archive,
-    executable::ExtractedCandidate,
-    http::{client, fetch},
-};
-use crate::self_update::domain::{Release, artifact::ReleaseArtifact};
-use crate::self_update::progress::{Observer, SelfUpdateEvent, SelfUpdateStage};
+use super::http::{client, fetch};
+use crate::self_update::progress::{Observer, SelfUpdateEvent};
+use reqwest::Client;
 use sha2::{Digest, Sha256};
-use std::{io::Write, path::Path, time::Duration};
+use std::{
+    io::Write,
+    path::{Path, PathBuf},
+    time::Duration,
+};
+use url::Url;
 
 #[derive(Debug, thiserror::Error)]
-pub(crate) enum CandidatePreparationError {
+pub(crate) enum ArtifactError {
     #[error(transparent)]
     Http(#[from] super::http::HttpError),
     #[error(transparent)]
@@ -22,8 +23,6 @@ pub(crate) enum CandidatePreparationError {
     Utf8(#[from] std::str::Utf8Error),
     #[error(transparent)]
     Io(#[from] std::io::Error),
-    #[error(transparent)]
-    Archive(#[from] super::archive::ArchiveError),
     #[error("invalid archive checksum")]
     InvalidChecksum,
     #[error("archive exceeds size limit")]
@@ -32,53 +31,70 @@ pub(crate) enum CandidatePreparationError {
     ChecksumMismatch,
 }
 
-pub(crate) async fn prepare_candidate(
-    release: &Release,
-    artifact: &ReleaseArtifact,
-    directory: &Path,
-    observer: &Observer<'_>,
-) -> Result<ExtractedCandidate, CandidatePreparationError> {
-    let client = client(Duration::from_secs(120))?;
-    observer(SelfUpdateEvent::Stage(SelfUpdateStage::FetchingChecksum))?;
-    let checksum = fetch(&client, release.base.join(&artifact.checksum_name)?, 4096).await?;
+/// Downloaded archive together with the digest computed while writing it.
+pub(crate) struct DownloadedArchive {
+    path: PathBuf,
+    digest: String,
+}
+
+impl DownloadedArchive {
+    pub(crate) fn verify(self, checksum: &str) -> Result<PathBuf, ArtifactError> {
+        if !self.digest.eq_ignore_ascii_case(checksum) {
+            return Err(ArtifactError::ChecksumMismatch);
+        }
+        Ok(self.path)
+    }
+}
+
+pub(crate) fn artifact_url(base: &Url, name: &str) -> Result<Url, ArtifactError> {
+    Ok(base.join(name)?)
+}
+
+pub(crate) fn download_client() -> Result<Client, ArtifactError> {
+    Ok(client(Duration::from_secs(120))?)
+}
+
+pub(crate) async fn fetch_checksum(client: &Client, url: Url) -> Result<String, ArtifactError> {
+    let checksum = fetch(client, url, 4096).await?;
     let checksum = std::str::from_utf8(&checksum)?
         .split_whitespace()
         .next()
         .unwrap_or("");
     if checksum.len() != 64 || !checksum.bytes().all(|byte| byte.is_ascii_hexdigit()) {
-        return Err(CandidatePreparationError::InvalidChecksum);
+        return Err(ArtifactError::InvalidChecksum);
     }
-    let archive = directory.join(&artifact.name);
-    let mut file = std::fs::File::create(&archive)?;
-    let mut response = client
-        .get(release.base.join(&artifact.name)?)
-        .send()
-        .await?
-        .error_for_status()?;
+    Ok(checksum.to_owned())
+}
+
+pub(crate) async fn download_archive(
+    client: &Client,
+    url: Url,
+    archive: &Path,
+    observer: &Observer<'_>,
+) -> Result<DownloadedArchive, ArtifactError> {
+    let mut file = std::fs::File::create(archive)?;
+    let mut response = client.get(url).send().await?.error_for_status()?;
     let mut hasher = Sha256::new();
     let mut size = 0usize;
     observer(SelfUpdateEvent::Transfer {
-        stage: SelfUpdateStage::DownloadingArchive,
+        stage: crate::self_update::progress::SelfUpdateStage::DownloadingArchive,
         total: response.content_length(),
     })?;
     while let Some(chunk) = response.chunk().await? {
         size = size
             .checked_add(chunk.len())
-            .ok_or(CandidatePreparationError::TooLarge)?;
+            .ok_or(ArtifactError::TooLarge)?;
         if size > 128 * 1024 * 1024 {
-            return Err(CandidatePreparationError::TooLarge);
+            return Err(ArtifactError::TooLarge);
         }
         hasher.update(&chunk);
         file.write_all(&chunk)?;
         observer(SelfUpdateEvent::Advanced(chunk.len() as u64))?;
     }
-    observer(SelfUpdateEvent::Stage(SelfUpdateStage::VerifyingArchive))?;
+    // Flushing belongs to transfer completion; the application verifies the digest next.
     file.sync_all()?;
-    drop(file);
-    if !format!("{:x}", hasher.finalize()).eq_ignore_ascii_case(checksum) {
-        return Err(CandidatePreparationError::ChecksumMismatch);
-    }
-    observer(SelfUpdateEvent::Stage(SelfUpdateStage::OpeningArchive))?;
-    let binary = archive::extract(&archive, directory, artifact.format, observer)?;
-    Ok(ExtractedCandidate::from_archive(binary))
+    Ok(DownloadedArchive {
+        path: archive.to_owned(),
+        digest: format!("{:x}", hasher.finalize()),
+    })
 }

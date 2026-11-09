@@ -16,7 +16,8 @@ installation manages the copy on a person's machine.
 | Installation layout | The game folder and all launcher-owned paths derived from it, passed together so filesystem work uses one consistent location. |
 | Installation folder | The folder containing that game and its saved installation information. Moving the complete folder keeps them together. |
 | Selection | The chosen game, region, channel, client type, and language. |
-| Resolved selection | The known product, client type, and language of an installation, with no unanswered discovery choices. |
+| Resolved selection | The known product, recorded region, client type, and language of an installation, with no unanswered discovery choices. Compatibility compares these values without requiring a pinned manifest. |
+| Installation target | The pinned release and destination chosen together for an installation or package download. Saved work takes precedence when a matching destination already contains a manifest. |
 | Installed build | The game version recorded after all required installation work succeeds. |
 | Component progress | The versions reached locally, starting with installed versions and advancing after successful patches. Saved progress takes precedence when retrying; it remains stored as `base_versions` in the pinned manifest. |
 | Component version | The recorded version of one part of the game. Different parts can change independently. Starting versions seed missing checkpoints; completed patch checkpoints take precedence. |
@@ -68,7 +69,7 @@ installation manages the copy on a person's machine.
 | `domain/pinned_manifest.rs`, `component_progress.rs` | Pinned release, starting versions, saved checkpoints, and checked completion. |
 | `domain/selection.rs`, `release_compatibility.rs` | Selection compatibility and diagnostics beside their types; release comparison returns typed differences for resume decisions and diagnostics. |
 | `application/` | Public workflows, options, reports, and observer contracts. |
-| `application/resolution.rs`, `update_target.rs` | Pinned-cache reuse and resolved update targets owning pending precedence, live fallback, starting-version seeding, and status projection. |
+| `application/resolution.rs`, `update_target.rs` | Named installation targets, pinned-cache reuse, and resolved update targets owning pending precedence, live fallback, starting-version seeding, and status projection. |
 | `application/installed.rs`, `status_report.rs`, `plan.rs` | Validated state loading and consumer status/plan projections. |
 | `application/access.rs` | Locked installation access, adopting matching downloads, exact-release resume, and record writes requiring the lock owner. |
 | `application/pipeline/session.rs` | Execution state holding locked access, authoritative checkpoints, and execution totals. |
@@ -122,6 +123,8 @@ installation manages the copy on a person's machine.
 - Finalization validates completion, counts files, writes installed identity, and
   removes temporary work and eligible cache data. `files_before_finalization`
   includes existing game files and launcher metadata, not just newly extracted files.
+- Errors classify their failures beside their owning rules or operations. Nested
+  retry and adapter errors retain the underlying category and diagnostic cause.
 - Persistence retains the existing JSON layout: the release is flat, component
   progress uses `base_versions`, and active patch identity is an array. Records
   load/save values; domain and application code own compatibility and resume rules.

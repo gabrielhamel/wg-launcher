@@ -9,7 +9,6 @@ mod request;
 mod wire;
 
 use self::error::Result;
-pub use error::WgusError;
 
 use crate::catalog::{GameMetadata, Product, ResolvedRelease};
 use conversion::metadata_from_wire;

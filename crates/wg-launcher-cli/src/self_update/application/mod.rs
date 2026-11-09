@@ -1,6 +1,8 @@
 //! Launcher updates are independent of game workflows and terminal presentation.
 
+mod candidate_preparation;
 mod error;
+pub(crate) use candidate_preparation::CandidatePreparationError;
 pub(crate) use error::SelfUpdateError;
 
 use super::Result;
@@ -9,7 +11,7 @@ use super::domain::{
     artifact::{HostTarget, ReleaseArtifact},
     ownership::{ExecutableOwnership, PackageManager},
 };
-use super::infrastructure::{artifact, distribution, executable, release};
+use super::infrastructure::{distribution, executable, release};
 use super::progress::{Observer, SelfUpdateEvent, SelfUpdateStage};
 use semver::Version;
 
@@ -50,7 +52,9 @@ pub(crate) async fn run(observer: &Observer<'_>) -> Result<SelfUpdateOutcome> {
         environment: if cfg!(target_env = "gnu") { "gnu" } else { "" },
     };
     let artifact = ReleaseArtifact::for_host(&release, &host)?;
-    let binary = artifact::prepare_candidate(&release, &artifact, work.path(), observer).await?;
+    let binary =
+        candidate_preparation::prepare_candidate(&release, &artifact, work.path(), observer)
+            .await?;
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::VerifyingExecutable))?;
     let binary = executable::verify(binary, &release.version).await?;
     observer(SelfUpdateEvent::Stage(SelfUpdateStage::ReplacingExecutable))?;

@@ -95,6 +95,8 @@ selection to prepare the game on someone's machine.
 - Published volume bytes include all offered volumes. Required volumes describe
   the selected chain from supplied starting versions; neither subtracts cached bytes.
 - Selection errors retain available identifiers in publisher order; display formatting joins them only when rendering a diagnostic.
+- Errors classify their failures beside the owning behavior; the crate root defines
+  the shared public categories and preserves diagnostic sources.
 - Consumer reports expose build and patch information without exposing protocol,
   transport execution, or persistence models.
 

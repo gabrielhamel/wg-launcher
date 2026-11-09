@@ -1,8 +1,4 @@
-use crate::catalog::{CatalogError, ReleaseError, WgusError};
-use crate::installation::{
-    DownloadError, ExtractError, InstallationError, InstalledBuildError, PackageError,
-    PipelineError, StorageError, TransferError,
-};
+use crate::installation::StorageError;
 
 /// Actionable category of a workflow failure, independent of internal implementation layers.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -50,107 +46,19 @@ pub struct Error {
 }
 
 impl Error {
+    pub(crate) fn new(
+        kind: ErrorKind,
+        source: impl std::error::Error + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            kind,
+            source: Box::new(source),
+        }
+    }
+
     /// Returns the actionable failure category, including failures nested in retries.
     pub fn kind(&self) -> ErrorKind {
         self.kind
-    }
-}
-
-fn release_kind(error: &ReleaseError) -> ErrorKind {
-    match error {
-        ReleaseError::UnknownClientType { .. } | ReleaseError::UnsupportedLanguage { .. } => {
-            ErrorKind::InvalidSelection
-        }
-        ReleaseError::MissingComponentTarget { .. }
-        | ReleaseError::MissingUpdatePatch { .. }
-        | ReleaseError::MissingPatchAsset(_)
-        | ReleaseError::ConflictingPatchAsset(_)
-        | ReleaseError::AmbiguousPatchTransition { .. }
-        | ReleaseError::BrokenPatchChain { .. } => ErrorKind::InvalidResponse,
-    }
-}
-
-fn installation_kind(error: &InstallationError) -> ErrorKind {
-    match error {
-        InstallationError::CachedSelectionMismatch(_)
-        | InstallationError::PinnedReleaseMismatch { .. } => ErrorKind::IncompatibleCache,
-        InstallationError::Catalog(_) => ErrorKind::InvalidSelection,
-        InstallationError::Release(error) => release_kind(error),
-        InstallationError::InvalidInstalledProduct(_)
-        | InstallationError::InstalledRegionMismatch { .. }
-        | InstallationError::IncompleteInstallation { .. } => ErrorKind::InvalidData,
-    }
-}
-
-fn storage_kind(error: &StorageError) -> ErrorKind {
-    match error {
-        StorageError::Io(_) => ErrorKind::Io,
-        StorageError::Json(_) => ErrorKind::InvalidData,
-        StorageError::UnsafeAssetPath(_) => ErrorKind::UnsafePath,
-        StorageError::IncompleteCache { .. } => ErrorKind::IncompleteCache,
-        StorageError::InstallationLocked(_) => ErrorKind::InstallationLocked,
-        StorageError::Installation(error) => installation_kind(error),
-    }
-}
-
-fn transfer_kind(error: &TransferError) -> ErrorKind {
-    match error {
-        TransferError::Storage(error) => storage_kind(error),
-        TransferError::Io(_) => ErrorKind::Io,
-        TransferError::SizeMismatch { .. } => ErrorKind::InvalidPackage,
-        TransferError::DownloadRetries { source, .. } => transfer_kind(source),
-        TransferError::Http(_) | TransferError::ResumeRejected { .. } => ErrorKind::Network,
-    }
-}
-
-fn package_kind(error: &PackageError) -> ErrorKind {
-    match error {
-        PackageError::Io(_) => ErrorKind::Io,
-        PackageError::Storage(error) => storage_kind(error),
-        PackageError::InvalidDeltaPath(_) => ErrorKind::UnsafePath,
-        PackageError::MissingArchiveVolumes { .. }
-        | PackageError::ArchiveExtraction(_)
-        | PackageError::DeltaDecode { .. }
-        | PackageError::MissingDeltaTarget(_)
-        | PackageError::EmptyDeltaOutput(_) => ErrorKind::InvalidPackage,
-    }
-}
-
-macro_rules! workflow_errors {
-    ($($error:ty => $classify:expr),* $(,)?) => {$(
-        #[doc(hidden)]
-        impl From<$error> for Error {
-            fn from(error: $error) -> Self {
-                Self { kind: ($classify)(&error), source: Box::new(error) }
-            }
-        }
-    )*};
-}
-
-workflow_errors!(
-    CatalogError => |_| ErrorKind::InvalidSelection,
-    DownloadError => |_| ErrorKind::InvalidSelection,
-    ReleaseError => release_kind,
-    InstallationError => installation_kind,
-    WgusError => wgus_kind,
-    TransferError => transfer_kind,
-    PackageError => package_kind,
-    StorageError => storage_kind,
-    ExtractError => |_| ErrorKind::DownloadNotFound,
-    InstalledBuildError => |_| ErrorKind::InstallationNotFound,
-    PipelineError => |_| ErrorKind::Internal,
-);
-
-fn wgus_kind(error: &WgusError) -> ErrorKind {
-    match error {
-        WgusError::Http(_) => ErrorKind::Network,
-        WgusError::Catalog(_) => ErrorKind::InvalidSelection,
-        WgusError::Release(error) => release_kind(error),
-        WgusError::Xml(_)
-        | WgusError::Url(_)
-        | WgusError::MissingPatchChain(_)
-        | WgusError::MissingWebSeed(_)
-        | WgusError::RedirectLimit(_) => ErrorKind::InvalidResponse,
     }
 }
 
@@ -162,20 +70,3 @@ impl From<std::io::Error> for Error {
 
 /// Result of a high-level launcher workflow.
 pub type Result<T> = std::result::Result<T, Error>;
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn missing_archive_volumes_are_invalid_packages_with_a_package_diagnostic() {
-        let error = Error::from(PackageError::MissingArchiveVolumes {
-            component: "client".into(),
-        });
-        assert_eq!(error.kind(), ErrorKind::InvalidPackage);
-        assert_eq!(
-            error.to_string(),
-            "cannot decode patch for client: no archive volumes were provided"
-        );
-    }
-}

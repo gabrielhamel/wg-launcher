@@ -1,4 +1,7 @@
-use super::{BuildSelection, InstallPlan, resolution::resolve_installation};
+use super::{
+    BuildSelection, InstallPlan,
+    resolution::{InstallationTarget, resolve_installation_target},
+};
 use crate::Result;
 use crate::installation::{
     DownloadOptions, InstallationEvent, InstallationPipeline, InstallationReport, VolumeDownloader,
@@ -80,7 +83,8 @@ where
     F: Fn(InstallEvent) + Send + Sync + 'static,
 {
     let request = options.selection.select_product()?;
-    let (manifest, root) = resolve_installation(&request, options.output).await?;
+    let InstallationTarget { manifest, root } =
+        resolve_installation_target(&request, options.output).await?;
     install_resolved(manifest, root, options.download, observer).await
 }
 

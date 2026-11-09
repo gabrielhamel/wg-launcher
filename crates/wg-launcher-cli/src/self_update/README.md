@@ -27,6 +27,7 @@ game versions belong to [installation](../installation/README.md).
 | Direct installation | A launcher copy installed without a package manager taking responsibility for it. |
 | Package manager | The owner responsible for updating a managed launcher. Detection returns explicit executable ownership; terminal presentation chooses its name and update instructions. |
 | Managed installation | A launcher copy maintained by a package manager, such as Homebrew or APT. Updates go through that manager. |
+| Downloaded archive | The downloaded launcher archive kept together with the digest computed while writing it, ready for checksum verification. |
 | Candidate preparation | Download the selected archive, verify its published checksum, and extract the launcher for executable verification. |
 | Candidate | The downloaded launcher being checked before it can replace the current one. |
 | Extracted candidate | A launcher extracted from a checksum-verified archive, awaiting its executable version check. |
@@ -40,8 +41,10 @@ The application supplies the current version and host target to domain rules.
 Release comparison and artifact selection do not discover those facts themselves.
 
 Each adapter returns its own concrete error: `ReleaseDiscoveryError`,
-`CandidatePreparationError`, `ArchiveError`, `HttpError`, or `ExecutableError`.
-Infrastructure never returns the application error. The application composes
+`ArtifactError`, `ArchiveError`, `HttpError`, or `ExecutableError`.
+Infrastructure never returns the application error. Application-owned
+`CandidatePreparationError` composes artifact, archive, and progress failures.
+The application composes
 discovery, candidate preparation, executable, selection, and progress failures
 in `SelfUpdateError`; it does not recursively wrap itself. Presentation matches
 these typed causes for recovery instructions without runtime downcasts. Package-manager ownership is resolved
@@ -49,6 +52,9 @@ by the application once per interaction and supplied to instruction rendering;
 instruction rendering never performs filesystem discovery. Archive format remains
 explicit from release selection through extraction.
 
+`application/candidate_preparation.rs` owns the preparation sequence and its
+progress stages. The artifact adapter retrieves checksums, downloads archives,
+and checks their digests; the archive adapter extracts the executable.
 `prepare_candidate` names the complete artifact preparation operation. It returns
 an `ExtractedCandidate`; executable verification consumes it and returns a
 `VerifiedCandidate`. The executable adapter runs the candidate with a timeout;

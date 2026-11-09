@@ -1,3 +1,4 @@
+use crate::ErrorKind;
 use crate::catalog::{CatalogError, ReleaseError};
 
 /// Failures owned by WGUS discovery.
@@ -30,3 +31,24 @@ pub enum WgusError {
 }
 
 pub(crate) type Result<T> = std::result::Result<T, WgusError>;
+
+impl WgusError {
+    pub(crate) fn kind(&self) -> ErrorKind {
+        match self {
+            WgusError::Http(_) => ErrorKind::Network,
+            WgusError::Catalog(_) => ErrorKind::InvalidSelection,
+            WgusError::Release(error) => error.kind(),
+            WgusError::Xml(_)
+            | WgusError::Url(_)
+            | WgusError::MissingPatchChain(_)
+            | WgusError::MissingWebSeed(_)
+            | WgusError::RedirectLimit(_) => ErrorKind::InvalidResponse,
+        }
+    }
+}
+
+impl From<WgusError> for crate::Error {
+    fn from(error: WgusError) -> Self {
+        Self::new(error.kind(), error)
+    }
+}

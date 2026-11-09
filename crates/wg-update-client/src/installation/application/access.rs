@@ -43,7 +43,7 @@ impl LockedInstallation {
     ) -> Result<PinnedManifest> {
         match records::load_pinned_manifest(&self.layout).await? {
             Some(pending) => {
-                validate_cached_request(&pending, request)?;
+                validate_cached_request(&pending.selection(), request)?;
                 Ok(pending)
             }
             None => Ok(discovered),

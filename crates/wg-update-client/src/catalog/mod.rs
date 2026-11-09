@@ -17,4 +17,3 @@ pub(crate) use domain::release::{
 };
 pub(crate) use domain::{BuildIdentity, CatalogError, SelectedProductRequest};
 pub use domain::{BuildSelection, Game, Product, Region};
-pub(crate) use infrastructure::wgus::WgusError;

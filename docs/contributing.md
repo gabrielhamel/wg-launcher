@@ -149,7 +149,7 @@ crates/
           update_target.rs    Resolved update target, origin, status projection, pending precedence, and starting versions
           installed.rs        Shared validated installed-record loading
           status_report.rs    Build status reports and estimate volumes from explicit starting versions
-          resolution.rs       Pinned-cache reuse and live-resolution coordination
+          resolution.rs       InstallationTarget keeps the pinned release and destination together; pinned-cache reuse and live resolution
           access.rs           Locked access, record writes, matching-download adoption, and exact-release resume
           plan.rs             Consumer plan and progress package summaries
           pipeline/           InstallationPipeline execution strategies
@@ -184,7 +184,7 @@ crates/
             cleanup.rs        Count installation files and remove successful staging/cache work
             patch_workspace.rs  Recovery identity encoding, active staging, and preserved original sources
             replacement.rs    File replacement with rollback on rename failure
-      error.rs                Public Error, ErrorKind classification, and Result alias
+      error.rs                Public Error, ErrorKind contract, and Result alias; owning errors classify their failures
   wg-launcher-cli/            CLI package, README, and license
     src/
       main.rs                 Runtime bootstrap
@@ -201,7 +201,7 @@ crates/
           progress/           Shared display with separate download/extraction renderers
             installation.rs   InstallationProgress owns their terminal surface and coordinates both renderers
             download.rs       Stable download bars and styles
-            download_accounting.rs  Attempt positions, monotonic package completion credits, and lifecycle transitions
+            download_accounting.rs  Attempt positions, monotonic volume progress credits, and lifecycle transitions
       self_update/            CLI executable update context
         domain/               Release comparison and ownership/path rules
           artifact.rs         Select archive/checksum pair from an explicit host target
@@ -209,10 +209,11 @@ crates/
           ownership.rs        Direct, managed, or unresolved executable ownership and path rules
         progress.rs           Shared self-update stages, events, and observer contract
         application/          Release checks, ownership discovery, executable update workflow and outcomes
+          candidate_preparation.rs  Coordinate checksum retrieval, archive transfer, verification, and extraction
           error.rs            SelfUpdateError composes operation errors without recursive wrapping
         infrastructure/       Release HTTP, archives, ownership detection, replacement
           release.rs          Discover published releases with local ReleaseDiscoveryError
-          artifact.rs         Prepare checksum-verified candidates with local CandidatePreparationError
+          artifact.rs         Checksum retrieval, archive transfer and digest verification with local ArtifactError
           executable.rs       Extracted/verified candidates, process execution, verification, and replacement
           http.rs             Shared HTTPS, redirect, and bounded-transfer policy
         presentation/         Command handlers, notices, update instructions, event rendering
@@ -328,7 +329,8 @@ catalog entry points for live resolution and patch planning; catalog has no
 knowledge of installation storage or execution. The crate root exposes consumer workflows and reports while keeping protocol,
 transport, persistence, and execution models internal. Internal imports name the owning context or a nearby module rather than
 routing through root re-exports. The root `error.rs`
-adapts local errors to actionable public categories and preserves their sources.
+defines the public error wrapper and actionable categories. Each owning error
+classifies its failures and converts them into that wrapper, preserving its source.
 
 Within each context, domain code makes decisions without network or filesystem
 operations. Application workflows coordinate rules and infrastructure, preserving

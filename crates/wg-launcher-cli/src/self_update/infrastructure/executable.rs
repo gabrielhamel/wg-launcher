@@ -11,7 +11,7 @@ pub(crate) struct ExtractedCandidate {
 }
 
 impl ExtractedCandidate {
-    pub(super) fn from_archive(path: PathBuf) -> Self {
+    pub(crate) fn from_archive(path: PathBuf) -> Self {
         Self { path }
     }
 }

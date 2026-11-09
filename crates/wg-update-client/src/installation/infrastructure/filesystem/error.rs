@@ -1,3 +1,4 @@
+use crate::ErrorKind;
 use crate::installation::InstallationError;
 use std::path::PathBuf;
 
@@ -34,3 +35,22 @@ pub enum StorageError {
 }
 
 pub(crate) type Result<T> = std::result::Result<T, StorageError>;
+
+impl StorageError {
+    pub(crate) fn kind(&self) -> ErrorKind {
+        match self {
+            StorageError::Io(_) => ErrorKind::Io,
+            StorageError::Json(_) => ErrorKind::InvalidData,
+            StorageError::UnsafeAssetPath(_) => ErrorKind::UnsafePath,
+            StorageError::IncompleteCache { .. } => ErrorKind::IncompleteCache,
+            StorageError::InstallationLocked(_) => ErrorKind::InstallationLocked,
+            StorageError::Installation(error) => error.kind(),
+        }
+    }
+}
+
+impl From<StorageError> for crate::Error {
+    fn from(error: StorageError) -> Self {
+        Self::new(error.kind(), error)
+    }
+}

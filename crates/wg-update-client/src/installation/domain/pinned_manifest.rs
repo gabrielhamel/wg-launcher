@@ -26,6 +26,15 @@ impl From<ResolvedRelease> for PinnedManifest {
 }
 
 impl PinnedManifest {
+    pub(crate) fn selection(&self) -> super::selection::ResolvedSelection<'_> {
+        super::selection::ResolvedSelection {
+            product: &self.release.product,
+            region: &self.release.identity.region,
+            client_type: &self.release.identity.client_type,
+            language: &self.release.identity.language,
+        }
+    }
+
     /// Produce installed identity only when every selected component reached its target.
     pub(crate) fn complete_installation(&self) -> InstallationResult<InstalledBuild> {
         for component in self.release.components() {

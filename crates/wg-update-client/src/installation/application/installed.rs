@@ -19,3 +19,9 @@ pub enum InstalledBuildError {
     #[error("no wg-launcher installation record was found for {0:?}")]
     InstallationNotFound(std::path::PathBuf),
 }
+
+impl From<InstalledBuildError> for crate::Error {
+    fn from(error: InstalledBuildError) -> Self {
+        Self::new(crate::ErrorKind::InstallationNotFound, error)
+    }
+}

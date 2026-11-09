@@ -71,3 +71,9 @@ pub enum PipelineError {
     #[error("package downloads stopped before all patches were ready")]
     DownloadsStopped,
 }
+
+impl From<PipelineError> for crate::Error {
+    fn from(error: PipelineError) -> Self {
+        Self::new(crate::ErrorKind::Internal, error)
+    }
+}

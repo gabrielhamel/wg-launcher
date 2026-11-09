@@ -7,3 +7,9 @@ pub enum CatalogError {
 }
 
 pub(crate) type Result<T> = std::result::Result<T, CatalogError>;
+
+impl From<CatalogError> for crate::Error {
+    fn from(error: CatalogError) -> Self {
+        Self::new(crate::ErrorKind::InvalidSelection, error)
+    }
+}

@@ -84,7 +84,7 @@ pub(super) async fn resolve_update_target(
     storage: &InstallationLayout,
 ) -> Result<ResolvedUpdateTarget> {
     if let Some(pending) = load_pinned_manifest(storage).await? {
-        validate_cached_selection(&pending, &installed.selection())?;
+        validate_cached_selection(&pending.selection(), &installed.selection())?;
         Ok(ResolvedUpdateTarget::new(
             pending,
             UpdateTargetSource::PinnedManifest,

@@ -1,5 +1,8 @@
 use super::plan::build_plan;
-use super::{BuildSelection, InstallPlan, resolution::resolve_installation};
+use super::{
+    BuildSelection, InstallPlan,
+    resolution::{InstallationTarget, resolve_installation_target},
+};
 use crate::{
     Result,
     catalog::TransportVolume,
@@ -84,7 +87,8 @@ where
     F: Fn(DownloadAssetsEvent) + Send + Sync + 'static,
 {
     let request = options.selection.select_product()?;
-    let (manifest, root) = resolve_installation(&request, options.output).await?;
+    let InstallationTarget { manifest, root } =
+        resolve_installation_target(&request, options.output).await?;
     let access = super::access::LockedInstallation::open(InstallationLayout::for_root(&root))?;
     let manifest = access.adopt_matching_download(manifest, &request).await?;
     let all_assets = manifest.required_volumes()?;
@@ -124,4 +128,10 @@ pub enum DownloadError {
     /// No installation assets matched the component filter.
     #[error("no assets match the selected parts: {0}")]
     EmptySelection(String),
+}
+
+impl From<DownloadError> for crate::Error {
+    fn from(error: DownloadError) -> Self {
+        Self::new(crate::ErrorKind::InvalidSelection, error)
+    }
 }

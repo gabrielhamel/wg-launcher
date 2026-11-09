@@ -1,3 +1,4 @@
+use crate::ErrorKind;
 use crate::catalog::CatalogError;
 
 /// Failures owned by installation consistency.
@@ -42,3 +43,23 @@ pub enum InstallationError {
 }
 
 pub(crate) type Result<T> = std::result::Result<T, InstallationError>;
+
+impl InstallationError {
+    pub(crate) fn kind(&self) -> ErrorKind {
+        match self {
+            InstallationError::CachedSelectionMismatch(_)
+            | InstallationError::PinnedReleaseMismatch { .. } => ErrorKind::IncompatibleCache,
+            InstallationError::Catalog(_) => ErrorKind::InvalidSelection,
+            InstallationError::Release(error) => error.kind(),
+            InstallationError::InvalidInstalledProduct(_)
+            | InstallationError::InstalledRegionMismatch { .. }
+            | InstallationError::IncompleteInstallation { .. } => ErrorKind::InvalidData,
+        }
+    }
+}
+
+impl From<InstallationError> for crate::Error {
+    fn from(error: InstallationError) -> Self {
+        Self::new(error.kind(), error)
+    }
+}

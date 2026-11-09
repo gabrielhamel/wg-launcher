@@ -16,9 +16,8 @@ pub use application::{
     install_with_observer, status, update, update_with_observer,
 };
 pub(crate) use application::{
-    InstalledBuildError, download::DownloadError, extract::ExtractError, pipeline::PipelineError,
+    download::DownloadError, extract::ExtractError, pipeline::PipelineError,
 };
 pub(crate) use domain::{InstallationError, InstalledBuild, PinnedManifest};
 pub(crate) use infrastructure::filesystem::{DOWNLOAD_MANIFEST_FILE, StorageError};
-pub(crate) use infrastructure::packages::PackageError;
-pub(crate) use infrastructure::transfer::{TransferError, VolumeDownloader};
+pub(crate) use infrastructure::transfer::VolumeDownloader;

@@ -39,6 +39,7 @@ impl InstalledBuild {
     pub(crate) fn selection(&self) -> super::selection::ResolvedSelection<'_> {
         super::selection::ResolvedSelection {
             product: &self.product,
+            region: &self.identity.region,
             client_type: &self.identity.client_type,
             language: &self.identity.language,
         }

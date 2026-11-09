@@ -1,3 +1,4 @@
+use crate::ErrorKind;
 use crate::installation::StorageError;
 use std::path::PathBuf;
 
@@ -41,3 +42,42 @@ pub enum PackageError {
 }
 
 pub(crate) type Result<T> = std::result::Result<T, PackageError>;
+
+impl PackageError {
+    pub(crate) fn kind(&self) -> ErrorKind {
+        match self {
+            PackageError::Io(_) => ErrorKind::Io,
+            PackageError::Storage(error) => error.kind(),
+            PackageError::InvalidDeltaPath(_) => ErrorKind::UnsafePath,
+            PackageError::MissingArchiveVolumes { .. }
+            | PackageError::ArchiveExtraction(_)
+            | PackageError::DeltaDecode { .. }
+            | PackageError::MissingDeltaTarget(_)
+            | PackageError::EmptyDeltaOutput(_) => ErrorKind::InvalidPackage,
+        }
+    }
+}
+
+impl From<PackageError> for crate::Error {
+    fn from(error: PackageError) -> Self {
+        Self::new(error.kind(), error)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Error;
+
+    #[test]
+    fn missing_archive_volumes_are_invalid_packages_with_a_package_diagnostic() {
+        let error = Error::from(PackageError::MissingArchiveVolumes {
+            component: "client".into(),
+        });
+        assert_eq!(error.kind(), ErrorKind::InvalidPackage);
+        assert_eq!(
+            error.to_string(),
+            "cannot decode patch for client: no archive volumes were provided"
+        );
+    }
+}

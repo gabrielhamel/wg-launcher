@@ -5,11 +5,11 @@ use wg_update_client::DownloadEvent;
 
 pub(super) struct DownloadAccounting {
     expected_files: usize,
-    files: HashMap<String, FileTransfer>,
+    files: HashMap<String, VolumeProgress>,
 }
 
 #[derive(Default)]
-struct FileTransfer {
+struct VolumeProgress {
     attempt_position: u64,
     credited_bytes: u64,
     activity: FileActivity,
@@ -30,7 +30,7 @@ pub(super) struct DownloadUpdate {
     pub(super) position: u64,
     pub(super) activity: FileActivity,
     pub(super) became_active: bool,
-    pub(super) completed_bytes_delta: u64,
+    pub(super) credited_bytes_delta: u64,
 }
 
 impl DownloadAccounting {
@@ -65,7 +65,7 @@ impl DownloadAccounting {
         let became_active = activity == FileActivity::Transferring && file.activity != activity;
         // Retransmitting an earlier prefix must not count twice toward package completion.
         let credited_bytes = position.min(size).max(file.credited_bytes);
-        let completed_bytes_delta = credited_bytes - file.credited_bytes;
+        let credited_bytes_delta = credited_bytes - file.credited_bytes;
         file.credited_bytes = credited_bytes;
         file.attempt_position = position;
         file.activity = activity;
@@ -75,7 +75,7 @@ impl DownloadAccounting {
             position: file.attempt_position,
             activity,
             became_active,
-            completed_bytes_delta,
+            credited_bytes_delta,
         }
     }
 
@@ -140,9 +140,7 @@ mod tests {
             [40, 80, 0, 50, 100]
         );
         assert_eq!(
-            updates
-                .each_ref()
-                .map(|update| update.completed_bytes_delta),
+            updates.each_ref().map(|update| update.credited_bytes_delta),
             [40, 40, 0, 0, 20]
         );
         assert!(accounting.all_complete());
@@ -157,8 +155,8 @@ mod tests {
             name: "client.wgpkg".into(),
             size: 100,
         };
-        assert_eq!(accounting.observe(skipped()).completed_bytes_delta, 100);
-        assert_eq!(accounting.observe(skipped()).completed_bytes_delta, 0);
+        assert_eq!(accounting.observe(skipped()).credited_bytes_delta, 100);
+        assert_eq!(accounting.observe(skipped()).credited_bytes_delta, 0);
         assert!(accounting.all_complete());
         assert!(!accounting.is_transferring());
     }

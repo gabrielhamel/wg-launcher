@@ -1,4 +1,4 @@
-mod archive;
+pub(super) mod archive;
 pub(super) mod artifact;
 pub(crate) mod distribution;
 pub(super) mod executable;

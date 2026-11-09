@@ -1,11 +1,9 @@
 //! Workflow failures compose operation-specific adapter errors.
 
+use super::candidate_preparation::CandidatePreparationError;
 use crate::self_update::{
     domain::artifact::ArtifactSelectionError,
-    infrastructure::{
-        artifact::CandidatePreparationError, executable::ExecutableError,
-        release::ReleaseDiscoveryError,
-    },
+    infrastructure::{executable::ExecutableError, release::ReleaseDiscoveryError},
 };
 
 #[derive(Debug, thiserror::Error)]

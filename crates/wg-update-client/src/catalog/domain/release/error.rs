@@ -1,3 +1,5 @@
+use crate::ErrorKind;
+
 /// Failures owned by release selection and patch planning.
 #[derive(Debug, thiserror::Error)]
 pub enum ReleaseError {
@@ -60,3 +62,25 @@ pub enum ReleaseError {
 }
 
 pub(crate) type Result<T> = std::result::Result<T, ReleaseError>;
+
+impl ReleaseError {
+    pub(crate) fn kind(&self) -> ErrorKind {
+        match self {
+            ReleaseError::UnknownClientType { .. } | ReleaseError::UnsupportedLanguage { .. } => {
+                ErrorKind::InvalidSelection
+            }
+            ReleaseError::MissingComponentTarget { .. }
+            | ReleaseError::MissingUpdatePatch { .. }
+            | ReleaseError::MissingPatchAsset(_)
+            | ReleaseError::ConflictingPatchAsset(_)
+            | ReleaseError::AmbiguousPatchTransition { .. }
+            | ReleaseError::BrokenPatchChain { .. } => ErrorKind::InvalidResponse,
+        }
+    }
+}
+
+impl From<ReleaseError> for crate::Error {
+    fn from(error: ReleaseError) -> Self {
+        Self::new(error.kind(), error)
+    }
+}

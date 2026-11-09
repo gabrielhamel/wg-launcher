@@ -90,3 +90,9 @@ pub enum ExtractError {
     #[error("no downloaded manifest was found in {0:?}; run `wg-launcher download` first")]
     DownloadManifestNotFound(std::path::PathBuf),
 }
+
+impl From<ExtractError> for crate::Error {
+    fn from(error: ExtractError) -> Self {
+        Self::new(crate::ErrorKind::DownloadNotFound, error)
+    }
+}

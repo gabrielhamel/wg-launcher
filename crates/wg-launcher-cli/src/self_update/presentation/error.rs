@@ -1,10 +1,10 @@
 //! Turn self-update failure facts into terminal diagnostics and recovery guidance.
 
 use crate::self_update::{
-    application::SelfUpdateError,
+    application::{CandidatePreparationError, SelfUpdateError},
     domain::artifact::ArtifactSelectionError,
     infrastructure::{
-        ArchiveError, HttpError, artifact::CandidatePreparationError, executable::ExecutableError,
+        ArchiveError, HttpError, artifact::ArtifactError, executable::ExecutableError,
         release::ReleaseDiscoveryError,
     },
 };
@@ -52,21 +52,28 @@ fn describe_release(error: &ReleaseDiscoveryError) -> String {
 
 fn describe_preparation(error: &CandidatePreparationError) -> String {
     match error {
-        CandidatePreparationError::InvalidChecksum => {
+        CandidatePreparationError::Artifact(error) => describe_artifact(error),
+        CandidatePreparationError::Archive(error) => describe_archive(error),
+        CandidatePreparationError::Progress(error) => error.to_string(),
+    }
+}
+
+fn describe_artifact(error: &ArtifactError) -> String {
+    match error {
+        ArtifactError::InvalidChecksum => {
             "The CLI archive checksum is invalid; the installed executable was preserved.".into()
         }
-        CandidatePreparationError::TooLarge => {
+        ArtifactError::TooLarge => {
             "CLI archive is too large; the installed executable was preserved.".into()
         }
-        CandidatePreparationError::ChecksumMismatch => {
+        ArtifactError::ChecksumMismatch => {
             "CLI archive checksum mismatch; the installed executable was preserved.".into()
         }
-        CandidatePreparationError::Http(error) => describe_http(error),
-        CandidatePreparationError::Archive(error) => describe_archive(error),
-        CandidatePreparationError::Request(_)
-        | CandidatePreparationError::Url(_)
-        | CandidatePreparationError::Utf8(_)
-        | CandidatePreparationError::Io(_) => error.to_string(),
+        ArtifactError::Http(error) => describe_http(error),
+        ArtifactError::Request(_)
+        | ArtifactError::Url(_)
+        | ArtifactError::Utf8(_)
+        | ArtifactError::Io(_) => error.to_string(),
     }
 }
 
