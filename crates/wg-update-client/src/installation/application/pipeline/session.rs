@@ -3,7 +3,7 @@
 use super::super::access::LockedInstallation;
 use super::finalization::finalize_installation;
 use super::patch::{PatchCompletion, PatchProgress, apply_and_checkpoint_patch};
-use super::{ExtractionEvent, ExtractionOptions, ExtractionReport};
+use super::{ExtractionEvent, ExtractionReport, PackageRetention};
 use crate::Result;
 use crate::installation::{
     PinnedManifest,
@@ -48,7 +48,7 @@ impl InstallationSession {
         &mut self,
         patch: &LocalPatch,
         progress: PatchProgress,
-        options: ExtractionOptions,
+        retention: PackageRetention,
         observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
     ) -> Result<PatchCompletion> {
         let completion = apply_and_checkpoint_patch(
@@ -56,7 +56,7 @@ impl InstallationSession {
             patch,
             &self.access,
             progress,
-            options,
+            retention,
             observer,
         )?;
         self.applied_deltas += completion.applied_deltas;
@@ -65,13 +65,13 @@ impl InstallationSession {
 
     pub(super) fn finalize(
         self,
-        options: ExtractionOptions,
+        retention: PackageRetention,
         observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
     ) -> Result<ExtractionReport> {
         finalize_installation(
             &self.manifest,
             &self.access,
-            options,
+            retention,
             self.applied_deltas,
             observer,
         )

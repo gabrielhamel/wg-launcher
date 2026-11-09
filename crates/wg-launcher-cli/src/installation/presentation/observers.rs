@@ -1,9 +1,8 @@
 //! Presentation adapters own shared progress state and its event/finish lifecycle.
 
-use super::output::print_plan;
+use super::output::{print_install_plan, print_plan};
 use super::progress::{DownloadProgress, ExtractionProgress, InstallationProgress};
 use super::progress_state::ProgressState;
-use crate::terminal::human_bytes;
 use wg_update_client::{
     DownloadAssetsEvent, ExtractEvent, ExtractionReport, InstallEvent, InstallationReport,
 };
@@ -18,17 +17,7 @@ impl InstallObserver {
         match event {
             InstallEvent::Planned(plan) => {
                 let plan = *plan;
-                println!(
-                    "{} {} {} {}: {} assets, {} -> {}",
-                    plan.build.region,
-                    plan.build.version,
-                    plan.build.client_type,
-                    plan.build.language,
-                    plan.packages.len(),
-                    human_bytes(plan.compressed_bytes),
-                    plan.root.display(),
-                );
-                println!("  package cache: {}", plan.cache.display());
+                print_install_plan(&plan);
                 self.state.initialize(InstallationProgress::new(&plan));
             }
             InstallEvent::Progress(event) => {

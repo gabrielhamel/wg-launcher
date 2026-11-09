@@ -74,6 +74,7 @@ installation manages the copy on a person's machine.
 | `application/pipeline/session.rs` | Execution state holding locked access, authoritative checkpoints, and execution totals. |
 | `application/pipeline/mod.rs`, `execution_plan.rs` | Resolve remaining work under the session lock, own its consumer summary, and hand patches to execution once. |
 | `application/pipeline/extraction.rs`, `streaming.rs` | Local execution or overlapping downloads and patch application. |
+| `application/pipeline/options.rs`, `reports.rs` | Execution configuration, package-retention policy, and extraction/installation totals. Configuration becomes one retention policy at the execution boundary. |
 | `application/pipeline/patch.rs`, `finalization.rs` | Coordinate package execution, checkpoint/release ordering, installed-state writes, and successful cleanup. |
 | `application/pipeline/prefetch.rs`, `prefetch_budget.rs` | Ordered download delivery, cancellation, and queued-byte policy. The coordinator owns the next patch position and supplies its progress position with the downloaded patch. |
 | `application/transfer.rs` | Public transfer options, observer events, and reports, shared by workflows and implemented by infrastructure. |

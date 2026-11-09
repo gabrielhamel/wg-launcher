@@ -3,6 +3,7 @@
 mod execution_plan;
 mod extraction;
 mod finalization;
+mod options;
 mod patch;
 mod prefetch;
 mod prefetch_budget;
@@ -11,7 +12,8 @@ mod session;
 mod streaming;
 
 use super::progress::{ExtractionEvent, InstallationEvent};
-pub use reports::{ExtractionOptions, ExtractionReport, InstallationReport};
+pub(crate) use options::{ExtractionOptions, PackageRetention};
+pub use reports::{ExtractionReport, InstallationReport};
 
 /// Coordinates local extraction and streaming installation of a pinned release.
 ///

@@ -155,7 +155,8 @@ crates/
           pipeline/           InstallationPipeline execution strategies
             session.rs        Execution state holding locked access, restored checkpoints, totals, and finalization
             execution_plan.rs  Remaining patches resolved under the lock and their consumer summary
-            reports.rs        Execution totals, public options, and internal package-retention policy
+            reports.rs        Extraction and installation execution totals
+            options.rs        Extraction configuration and package-retention policy
             extraction.rs     Apply already downloaded patches
             finalization.rs   Record the installed build and clean up successful work
             prefetch.rs       Async patch downloads, ordered delivery with progress positions, and cancellation
@@ -250,7 +251,9 @@ e2e/                          Independent black-box system test package
 Each directory's `mod.rs` is its entry point. Workflow options, events, and results
 live beside their workflow; shared installation observer events live in
 `installation/application/progress.rs`, while pipeline reports and execution options
-live in `installation/application/pipeline/reports.rs`. Update-target resolution
+live in `installation/application/pipeline/reports.rs` and `options.rs`, respectively.
+Execution boundaries convert cleanup configuration once into a package-retention
+policy shared by patch completion and finalization. Update-target resolution
 lives in `installation/application/update_target.rs`; publisher delta filename
 recognition lives in `installation/infrastructure/packages/delta_filename.rs`.
 Service URL and prefix types live in `release_serving/domain/address.rs`. End-to-end scenarios and their

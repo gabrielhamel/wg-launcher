@@ -1,15 +1,15 @@
 use super::{
     args::{DownloadArgs, ExtractArgs, InstallArgs, PathArgs, UpdateArgs},
     observers::{DownloadObserver, ExtractObserver, InstallObserver},
-    output::print_install_summary,
-    status::print_status,
+    output::{print_download_summary, print_extract_summary, print_install_summary},
+    status::{print_current_target, print_status},
 };
-use crate::terminal::{DiscoveryProgress, human_bytes};
+use crate::terminal::DiscoveryProgress;
 use std::path::PathBuf;
 use wg_update_client::{
     DownloadAssetsOptions, DownloadOptions, ExtractOptions, InstallOptions, StatusOptions,
-    UpdateOptions, UpdateTargetSource, download_with_observer, extract_with_observer,
-    install_with_observer, status, update_with_observer,
+    UpdateOptions, download_with_observer, extract_with_observer, install_with_observer, status,
+    update_with_observer,
 };
 
 pub(crate) async fn run_download(args: DownloadArgs) -> Result<(), Box<dyn std::error::Error>> {
@@ -32,13 +32,7 @@ pub(crate) async fn run_download(args: DownloadArgs) -> Result<(), Box<dyn std::
     match result {
         Ok(outcome) => {
             progress.finish_success();
-            println!(
-                "download complete: {} volumes completed, {} reused, {} newly retained",
-                outcome.report.downloaded_files,
-                outcome.report.skipped_files,
-                human_bytes(outcome.report.downloaded_bytes),
-            );
-            println!("packages kept in {}", outcome.plan.cache.display());
+            print_download_summary(&outcome);
             Ok(())
         }
         Err(error) => {
@@ -62,10 +56,7 @@ pub(crate) async fn run_extract(args: ExtractArgs) -> Result<(), Box<dyn std::er
     match result {
         Ok(outcome) => {
             progress.finish_success(&outcome.report);
-            println!(
-                "complete: {} files in installation before finalization (including launcher metadata), {} deltas applied",
-                outcome.report.files_before_finalization, outcome.report.applied_deltas,
-            );
+            print_extract_summary(&outcome.report);
             Ok(())
         }
         Err(error) => {
@@ -117,15 +108,7 @@ pub(crate) async fn run_update(args: UpdateArgs) -> Result<(), Box<dyn std::erro
                 Ok(())
             }
             None => {
-                match outcome.status.target.source {
-                    UpdateTargetSource::LiveCatalog => {
-                        println!("Already up to date ({})", outcome.status.installed.version)
-                    }
-                    UpdateTargetSource::PinnedManifest => println!(
-                        "Already at pinned target ({})",
-                        outcome.status.target.version
-                    ),
-                }
+                print_current_target(&outcome.status);
                 Ok(())
             }
         },

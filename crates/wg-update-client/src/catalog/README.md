@@ -23,7 +23,7 @@ selection to prepare the game on someone's machine.
 | Region | The publisher's label for an offering, such as Europe or worldwide. |
 | Channel | A stream of releases, such as the regular game or a public test. |
 | Component release | A validated view associating one selected component with its required target and published patches. Planning and completion use the same target. |
-| Patch transitions | Published patch steps grouped by their starting version. A required step must have exactly one successor; unused alternatives do not affect planning. |
+| Patch transitions | Published patch steps grouped by their typed source: a full component or a specific starting version. A required step must have exactly one successor; unused alternatives do not affect planning. |
 | Volume binding | Match a selected archive declaration to one download source by filename, component, source version, and target version, then confirm its compressed and optional archive sizes agree. Ambiguous sources are rejected. |
 | Planned volume | One selected transport volume whose identity and archive sizes have been checked against its patch declaration. |
 | Release contents | The selected components, their target versions, published patches, and download sources kept together as one immutable set. Planning checks the chain actually needed. |

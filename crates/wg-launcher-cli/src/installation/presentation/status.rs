@@ -42,3 +42,14 @@ pub(crate) fn print_status(report: &StatusReport, current: &Path) {
         println!("{}", style("Up to date.").green());
     }
 }
+
+pub(crate) fn print_current_target(report: &StatusReport) {
+    match report.target.source {
+        UpdateTargetSource::LiveCatalog => {
+            println!("Already up to date ({})", report.installed.version)
+        }
+        UpdateTargetSource::PinnedManifest => {
+            println!("Already at pinned target ({})", report.target.version)
+        }
+    }
+}

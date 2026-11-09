@@ -118,9 +118,9 @@ impl PatchDownloads {
 }
 
 pub(super) fn merge_download_report(total: &mut DownloadReport, patch: DownloadReport) {
-    total.downloaded_files += patch.downloaded_files;
-    total.skipped_files += patch.skipped_files;
-    total.downloaded_bytes += patch.downloaded_bytes;
+    total.completed_volumes += patch.completed_volumes;
+    total.reused_volumes += patch.reused_volumes;
+    total.new_bytes_retained += patch.new_bytes_retained;
 }
 
 /// A patch becomes ready for application together with its transfer result.

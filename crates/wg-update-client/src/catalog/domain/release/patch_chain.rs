@@ -1,5 +1,5 @@
-use super::Patch;
 use super::error::{ReleaseError as Error, Result};
+use super::{Patch, PatchSource};
 use crate::catalog::ComponentVersions;
 use std::collections::{HashMap, HashSet};
 
@@ -10,63 +10,73 @@ pub(super) fn ordered_patches<'a>(
     let mut ordered = Vec::new();
     let component_id = component.id;
     let target = component.target_version();
-    let mut version = base_versions.version_or_zero(component_id);
+    let mut source = PatchSource::from(base_versions.version_or_zero(component_id).to_owned());
     let transitions = PatchTransitions::new(component.patches());
     // A publisher may replace an obsolete delta chain with a full package.
-    if version != target
-        && !transitions.contains_source(version)
-        && transitions.contains_source("0")
+    if source.version() != Some(target)
+        && !transitions.contains_source(&source)
+        && transitions.has_full_install()
     {
-        version = "0";
+        source = PatchSource::Full;
     }
     let mut seen = HashSet::new();
-    while version != target {
-        if !seen.insert(version) {
+    while source.version() != Some(target) {
+        let version = source
+            .version()
+            .expect("planned sources are full or versioned");
+        if !seen.insert(source.clone()) {
             return Err(Error::BrokenPatchChain {
                 part: component_id.to_owned(),
                 version: version.to_owned(),
             });
         }
         let next = transitions
-            .unique_successor(component_id, version)?
+            .successor_from(component_id, &source)?
             .ok_or_else(|| Error::MissingUpdatePatch {
                 part: component_id.to_owned(),
                 version: version.to_owned(),
                 target: target.to_owned(),
             })?;
         ordered.push(next);
-        version = &next.version_to;
+        source = PatchSource::from(next.version_to.clone());
     }
     Ok(ordered)
 }
 
 /// Published transitions indexed by source, retaining ambiguity until a step is needed.
 struct PatchTransitions<'a> {
-    by_source: HashMap<&'a str, Vec<&'a Patch>>,
+    by_source: HashMap<PatchSource, Vec<&'a Patch>>,
 }
 
 impl<'a> PatchTransitions<'a> {
     fn new(patches: impl Iterator<Item = &'a Patch>) -> Self {
-        let mut by_source: HashMap<&str, Vec<&Patch>> = HashMap::new();
+        let mut by_source: HashMap<PatchSource, Vec<&Patch>> = HashMap::new();
         for patch in patches {
-            if let Some(source) = patch.source.version() {
-                by_source.entry(source).or_default().push(patch);
+            if patch.source != PatchSource::Unspecified {
+                by_source
+                    .entry(patch.source.clone())
+                    .or_default()
+                    .push(patch);
             }
         }
         Self { by_source }
     }
 
-    fn contains_source(&self, source: &str) -> bool {
+    fn contains_source(&self, source: &PatchSource) -> bool {
         self.by_source.contains_key(source)
     }
 
-    fn unique_successor(&self, component: &str, source: &str) -> Result<Option<&'a Patch>> {
+    fn has_full_install(&self) -> bool {
+        self.contains_source(&PatchSource::Full)
+    }
+
+    fn successor_from(&self, component: &str, source: &PatchSource) -> Result<Option<&'a Patch>> {
         match self.by_source.get(source).map(Vec::as_slice) {
             None => Ok(None),
             Some([patch]) => Ok(Some(*patch)),
             Some(_) => Err(Error::AmbiguousPatchTransition {
                 part: component.to_owned(),
-                version: source.to_owned(),
+                version: source.version().unwrap_or("?").to_owned(),
             }),
         }
     }
@@ -122,6 +132,26 @@ mod tests {
             .into_iter()
             .collect();
         assert!(ordered_patches(&component, &versions).unwrap().is_empty());
+    }
+
+    #[test]
+    fn prefers_available_delta_over_ambiguous_full_packages_and_ignores_unspecified_sources() {
+        let mut unspecified = patch("1", "2");
+        unspecified.source = PatchSource::Unspecified;
+        let patches = [
+            patch("0", "2"),
+            patch("0", "3"),
+            patch("1", "2"),
+            unspecified,
+        ];
+        let component = ComponentRelease::new("client", Some("2"), &patches).unwrap();
+        let versions = [("client".to_owned(), "1".to_owned())]
+            .into_iter()
+            .collect();
+        assert_eq!(
+            ordered_patches(&component, &versions).unwrap(),
+            vec![&patches[2]]
+        );
     }
 
     #[test]

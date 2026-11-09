@@ -91,10 +91,10 @@ impl VolumeDownloader {
         for result in results {
             let outcome = result?;
             match outcome {
-                VolumeOutcome::Reused => report.skipped_files += 1,
+                VolumeOutcome::Reused => report.reused_volumes += 1,
                 VolumeOutcome::Completed { new_bytes_retained } => {
-                    report.downloaded_files += 1;
-                    report.downloaded_bytes += new_bytes_retained;
+                    report.completed_volumes += 1;
+                    report.new_bytes_retained += new_bytes_retained;
                 }
             }
         }

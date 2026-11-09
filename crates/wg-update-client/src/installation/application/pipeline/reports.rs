@@ -26,37 +26,3 @@ pub struct InstallationReport {
     /// cache cleanup. Zero when cache cleanup is disabled.
     pub released_package_bytes: u64,
 }
-
-/// Controls cache retention. The default removes downloaded packages after success.
-#[derive(Debug, Clone, Copy)]
-pub struct ExtractionOptions {
-    /// Remove the cache on successful finalization and release each patch's volumes
-    /// after successful extraction. When `false`, retain
-    /// packages; temporary `.wg-launcher/installing` work is still removed after success.
-    pub clean_download_cache: bool,
-}
-
-/// Lifecycle of successfully applied transport packages.
-#[derive(Clone, Copy)]
-pub(super) enum PackageRetention {
-    ReleaseAfterCheckpoint,
-    KeepDownloaded,
-}
-
-impl ExtractionOptions {
-    pub(super) fn package_retention(self) -> PackageRetention {
-        if self.clean_download_cache {
-            PackageRetention::ReleaseAfterCheckpoint
-        } else {
-            PackageRetention::KeepDownloaded
-        }
-    }
-}
-
-impl Default for ExtractionOptions {
-    fn default() -> Self {
-        Self {
-            clean_download_cache: true,
-        }
-    }
-}

@@ -37,7 +37,7 @@ pub struct PatchVolume {
 /// Whether a patch supplies a component in full or changes an existing version.
 /// WGUS omission is normalized before construction. Unspecified preserves the
 /// previous handling of nullable sources in saved manifests, without inferring a chain.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(from = "Option<String>", into = "Option<String>")]
 pub(crate) enum PatchSource {
     Full,

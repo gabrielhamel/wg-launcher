@@ -104,7 +104,9 @@ retained bytes. Completing a volume includes promoting a complete partial file
 without an HTTP request. Reuse means a final cache file already has the expected
 size. Newly retained bytes count successful attempts only, excluding resumed
 prefixes and traffic from failed attempts. The public `DownloadReport` fields
-remain `downloaded_files`, `skipped_files`, and `downloaded_bytes`, respectively.
+are `completed_volumes`, `reused_volumes`, and `new_bytes_retained`, respectively. These replace `downloaded_files`,
+`skipped_files`, and `downloaded_bytes`; Rust consumers and serialized-report
+readers must use the new names. Installation state and pinned manifests are unchanged.
 
 Delta application reports preservation of the original file, the start of
 application, and throttled cumulative reconstructed bytes through

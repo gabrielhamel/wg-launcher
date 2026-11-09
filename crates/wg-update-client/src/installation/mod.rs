@@ -4,7 +4,7 @@ mod application;
 mod domain;
 mod infrastructure;
 
-pub(crate) use application::pipeline::{ExtractionOptions, InstallationPipeline};
+pub(crate) use application::pipeline::{ExtractionOptions, InstallationPipeline, PackageRetention};
 pub use application::pipeline::{ExtractionReport, InstallationReport};
 pub use application::progress::{ExtractionEvent, InstallationEvent};
 pub use application::transfer::{DownloadEvent, DownloadOptions, DownloadReport};

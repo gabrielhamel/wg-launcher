@@ -36,6 +36,7 @@ impl InstallationPipeline {
     where
         F: Fn(InstallationEvent) + Send + Sync + 'static,
     {
+        let retention = extraction_options.package_retention();
         let (mut session, patches) = self.into_execution();
         let cache = session.access.layout().cache.clone();
         let _lock = session.retain_lock();
@@ -74,7 +75,7 @@ impl InstallationPipeline {
                     let completion = session.apply_patch(
                         &patch,
                         downloaded.progress,
-                        extraction_options,
+                        retention,
                         &patch_observer,
                     )?;
                     Ok::<_, Error>((completion, session))
@@ -96,11 +97,10 @@ impl InstallationPipeline {
         downloads.cancel_and_wait().await;
         let (session, mut report) = result?;
 
-        report.extraction = tokio::task::spawn_blocking(move || {
-            session.finalize(extraction_options, finalization_observer)
-        })
-        .await
-        .map_err(crate::installation::PipelineError::WorkerFailed)??;
+        report.extraction =
+            tokio::task::spawn_blocking(move || session.finalize(retention, finalization_observer))
+                .await
+                .map_err(crate::installation::PipelineError::WorkerFailed)??;
         Ok(report)
     }
 }

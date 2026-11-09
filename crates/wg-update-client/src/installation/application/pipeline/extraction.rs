@@ -3,13 +3,13 @@ use super::patch::PatchProgress;
 use super::session::InstallationSession;
 use crate::Result;
 use crate::installation::infrastructure::filesystem::cache::{LocalPatch, verify_cache};
-use crate::installation::{ExtractionEvent, ExtractionOptions, ExtractionReport};
+use crate::installation::{ExtractionEvent, ExtractionOptions, ExtractionReport, PackageRetention};
 use std::sync::Arc;
 
 pub(super) fn extract_sync(
     mut session: InstallationSession,
     patches: Vec<crate::catalog::PlannedPatch>,
-    options: ExtractionOptions,
+    retention: PackageRetention,
     observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<ExtractionReport> {
     let cache = &session.access.layout().cache;
@@ -25,9 +25,9 @@ pub(super) fn extract_sync(
 
     let total = patches.len();
     for (index, patch) in patches.into_iter().enumerate() {
-        session.apply_patch(&patch, PatchProgress { index, total }, options, &observer)?;
+        session.apply_patch(&patch, PatchProgress { index, total }, retention, &observer)?;
     }
-    session.finalize(options, observer)
+    session.finalize(retention, observer)
 }
 
 impl InstallationPipeline {
@@ -70,9 +70,10 @@ impl InstallationPipeline {
     where
         F: Fn(ExtractionEvent) + Send + Sync + 'static,
     {
+        let retention = options.package_retention();
         let (session, patches) = self.into_execution();
         let observer: Arc<dyn Fn(ExtractionEvent) + Send + Sync> = Arc::new(observer);
-        tokio::task::spawn_blocking(move || extract_sync(session, patches, options, observer))
+        tokio::task::spawn_blocking(move || extract_sync(session, patches, retention, observer))
             .await
             .map_err(crate::installation::PipelineError::WorkerFailed)?
     }

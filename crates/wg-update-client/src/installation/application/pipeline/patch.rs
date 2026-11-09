@@ -1,5 +1,4 @@
 use super::super::access::LockedInstallation;
-use super::reports::PackageRetention;
 use crate::Result;
 use crate::catalog::PatchIdentity;
 use crate::installation::infrastructure::{
@@ -9,7 +8,7 @@ use crate::installation::infrastructure::{
     },
     packages::apply_patch_contents,
 };
-use crate::installation::{ExtractionEvent, ExtractionOptions, PinnedManifest};
+use crate::installation::{ExtractionEvent, PackageRetention, PinnedManifest};
 use std::sync::Arc;
 
 /// Position in the remaining chain; the index is zero-based until presented to an observer.
@@ -25,11 +24,11 @@ pub(super) fn apply_and_checkpoint_patch(
     local: &LocalPatch,
     access: &LockedInstallation,
     progress: PatchProgress,
-    options: ExtractionOptions,
+    retention: PackageRetention,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<PatchCompletion> {
     CheckpointedPatch::apply_and_persist(manifest, local, access, progress, observer)?
-        .release(options.package_retention())
+        .release(retention)
 }
 
 /// Cleanup authority for the exact patch whose completion was successfully saved.

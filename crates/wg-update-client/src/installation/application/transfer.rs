@@ -70,10 +70,10 @@ pub enum DownloadEvent {
 pub struct DownloadReport {
     /// Volumes completed or promoted from complete partial files.
     /// A promoted partial file counts here even when no network request was needed.
-    pub downloaded_files: usize,
+    pub completed_volumes: usize,
     /// Volumes whose final files already had the expected size.
-    pub skipped_files: usize,
+    pub reused_volumes: usize,
     /// New bytes retained by successful file attempts, excluding resumed prefixes
     /// and skipped volumes. This is not total network traffic across failed attempts.
-    pub downloaded_bytes: u64,
+    pub new_bytes_retained: u64,
 }
