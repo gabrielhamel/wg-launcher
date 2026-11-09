@@ -1,6 +1,5 @@
 //! Overlapping downloads and ordered patch application under one installation lock.
 
-use super::patch::PatchProgress;
 use super::prefetch::{DOWNLOAD_PREFETCH_BYTES, PatchDownloads, merge_download_report};
 use super::{
     ExtractionEvent, ExtractionOptions, InstallationEvent, InstallationPipeline, InstallationReport,
@@ -53,7 +52,6 @@ impl InstallationPipeline {
         .await
         .map_err(crate::installation::PipelineError::WorkerFailed)??;
 
-        let total = patches.len();
         let mut report = InstallationReport::default();
         let mut downloads = PatchDownloads::start(
             downloader,
@@ -67,8 +65,7 @@ impl InstallationPipeline {
         let finalization_observer = Arc::clone(&extraction_observer);
         let pending_downloads = &mut downloads;
         let result = async move {
-            for index in 0..total {
-                let downloaded = pending_downloads.ready_for_application(index).await?;
+            while let Some(downloaded) = pending_downloads.next_ready_patch().await? {
                 merge_download_report(&mut report.download, downloaded.report);
                 let patch = downloaded.patch;
 
@@ -76,7 +73,7 @@ impl InstallationPipeline {
                 let extraction = tokio::task::spawn_blocking(move || {
                     let completion = session.apply_patch(
                         &patch,
-                        PatchProgress { index, total },
+                        downloaded.progress,
                         extraction_options,
                         &patch_observer,
                     )?;

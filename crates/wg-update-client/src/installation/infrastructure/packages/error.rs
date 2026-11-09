@@ -1,4 +1,3 @@
-use crate::catalog::ReleaseError;
 use crate::installation::StorageError;
 use std::path::PathBuf;
 
@@ -30,9 +29,12 @@ pub enum PackageError {
     /// A delta decoder unexpectedly produced an empty output file.
     #[error("delta decoder produced no output: {0:?}")]
     EmptyDeltaOutput(PathBuf),
-    /// Failure from the underlying release operation.
-    #[error(transparent)]
-    Release(#[from] ReleaseError),
+    /// The selected patch has no volumes to decode as an archive.
+    #[error("cannot decode patch for {component}: no archive volumes were provided")]
+    MissingArchiveVolumes {
+        /// Component whose patch has no archive volumes.
+        component: String,
+    },
     /// Failure from the underlying storage operation.
     #[error(transparent)]
     Storage(#[from] StorageError),

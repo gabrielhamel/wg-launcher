@@ -89,6 +89,10 @@ fn failed_checkpoint_after_extraction_keeps_packages_for_replay() {
         serde_json::from_slice(&fs::read(cache.join("manifest.json")).unwrap()).unwrap();
     assert_ne!(pinned["base_versions"]["client"], "1.0");
     assert!(cache.join("client.wgpkg").is_file());
+    assert!(
+        game.join(".wg-launcher/installing/active/patch.json")
+            .is_file()
+    );
     assert!(!game.join(".wg-launcher/state.json").exists());
     fs::remove_dir(blocker).unwrap();
     server.stop();

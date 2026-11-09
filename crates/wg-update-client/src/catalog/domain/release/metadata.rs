@@ -82,9 +82,8 @@ impl GameMetadata {
                 available: self
                     .client_types
                     .iter()
-                    .map(|client| client.id.as_str())
-                    .collect::<Vec<_>>()
-                    .join(", "),
+                    .map(|client| client.id.clone())
+                    .collect(),
             })
     }
 
@@ -94,7 +93,7 @@ impl GameMetadata {
         {
             return Err(super::ReleaseError::UnsupportedLanguage {
                 requested: language.to_owned(),
-                available: self.supported_languages.join(", "),
+                available: self.supported_languages.clone(),
             });
         }
         Ok(())

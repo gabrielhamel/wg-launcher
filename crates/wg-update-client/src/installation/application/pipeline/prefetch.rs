@@ -1,5 +1,5 @@
-use super::InstallationEvent;
 use super::prefetch_budget::PrefetchBudget;
+use super::{InstallationEvent, patch::PatchProgress};
 use crate::Result;
 use crate::catalog::PlannedPatch;
 use crate::installation::infrastructure::filesystem::cache::LocalPatch;
@@ -14,6 +14,8 @@ pub(super) struct PatchDownloads {
     tasks: tokio::task::JoinSet<()>,
     reports: tokio::sync::mpsc::UnboundedReceiver<Result<DownloadedPatch>>,
     applying_patch: tokio::sync::watch::Sender<usize>,
+    next_index: usize,
+    total: usize,
 }
 
 impl PatchDownloads {
@@ -25,6 +27,7 @@ impl PatchDownloads {
         observer: Arc<dyn Fn(InstallationEvent) + Send + Sync>,
         prefetch_bytes: u64,
     ) -> Self {
+        let total = patches.len();
         let (reports_tx, reports) = tokio::sync::mpsc::unbounded_channel();
         let (applying_patch, mut applying_patch_rx) = tokio::sync::watch::channel(0_usize);
         let mut tasks = tokio::task::JoinSet::new();
@@ -65,6 +68,7 @@ impl PatchDownloads {
                             .map(|report| DownloadedPatch {
                                 patch: local,
                                 report,
+                                progress: PatchProgress { index, total },
                             })
                             .map_err(Into::into),
                     )
@@ -79,14 +83,24 @@ impl PatchDownloads {
             tasks,
             reports,
             applying_patch,
+            next_index: 0,
+            total,
         }
     }
 
-    /// Announce the applying position to release prefetch capacity, then await its packages.
-    pub(super) async fn ready_for_application(&mut self, index: usize) -> Result<DownloadedPatch> {
-        self.applying_patch.send_replace(index);
+    /// Advance through the planned patches, announcing each position before waiting.
+    /// No caller-supplied index can move the prefetch budget ahead of this sequence.
+    pub(super) async fn next_ready_patch(&mut self) -> Result<Option<DownloadedPatch>> {
+        if self.next_index == self.total {
+            return Ok(None);
+        }
+        self.applying_patch.send_replace(self.next_index);
         match self.reports.recv().await {
-            Some(result) => result,
+            Some(result) => {
+                let downloaded = result?;
+                self.next_index += 1;
+                Ok(Some(downloaded))
+            }
             None => {
                 let error = match self.tasks.join_next().await {
                     Some(Err(error)) => crate::installation::PipelineError::WorkerFailed(error),
@@ -113,4 +127,5 @@ pub(super) fn merge_download_report(total: &mut DownloadReport, patch: DownloadR
 pub(super) struct DownloadedPatch {
     pub(super) patch: LocalPatch,
     pub(super) report: DownloadReport,
+    pub(super) progress: PatchProgress,
 }

@@ -50,6 +50,7 @@ installation manages the copy on a person's machine.
 | Patch workspace | Temporary files and preserved originals for the patch being applied. They remain available after failure until that patch is saved as complete. |
 | Patch contents | The files decoded from a patch: complete replacement files and delta files that change existing content. Replacements are installed before deltas are applied. |
 | Local patch | A planned patch bound to safe package paths in the installation cache. Each planned volume supplies a download source already checked against its archive declaration. The same paths are used for verification, archive reading, and package release; binding paths alone does not verify their contents. |
+| Checkpointed patch | A successfully applied patch whose completion has been saved. Only this value can authorize the patch coordinator to release its recovery files and eligible packages. |
 | Patch completion | Apply a patch successfully, save its checkpoint, then release its recovery files and, when cleanup is enabled, its downloaded packages. |
 | Selection mismatch | The product, region, edition, or language fields that make cached work incompatible with a request. Omitted edition and language accept the pinned choice. |
 | Release differences | The published fields that differ between requested and saved work. The same comparison decides whether work can resume and explains why it cannot. |
@@ -74,7 +75,7 @@ installation manages the copy on a person's machine.
 | `application/pipeline/mod.rs`, `execution_plan.rs` | Resolve remaining work under the session lock, own its consumer summary, and hand patches to execution once. |
 | `application/pipeline/extraction.rs`, `streaming.rs` | Local execution or overlapping downloads and patch application. |
 | `application/pipeline/patch.rs`, `finalization.rs` | Coordinate package execution, checkpoint/release ordering, installed-state writes, and successful cleanup. |
-| `application/pipeline/prefetch.rs`, `prefetch_budget.rs` | Download coordination, cancellation, and queued-byte policy. |
+| `application/pipeline/prefetch.rs`, `prefetch_budget.rs` | Ordered download delivery, cancellation, and queued-byte policy. The coordinator owns the next patch position and supplies its progress position with the downloaded patch. |
 | `application/transfer.rs` | Public transfer options, observer events, and reports, shared by workflows and implemented by infrastructure. |
 | `infrastructure/transfer/` | `downloader.rs` owns concurrency, retries, and totals; `local.rs` and `attempt.rs` own cache preparation and HTTP attempts. |
 | `infrastructure/packages/` | Split-volume reading, archive decoding, replacement/delta classification, and application. |
@@ -103,8 +104,9 @@ installation manages the copy on a person's machine.
   extraction verifies declared patch sizes; archive reading retains filename ordering
   for split volumes. Execution and package release consume those same paths.
 - Application record writes go through locked installation access. Patch execution and finalization require that lock owner, rather than paths alone.
-- Each patch is applied, checkpointed, then its recovery files and eligible packages
-  are released. Failures retain uncheckpointed packages and original delta sources.
+- Each patch is applied and its checkpoint is persisted before constructing a
+  checkpointed patch. Consuming that value releases its recovery files and eligible
+  packages. Failures retain uncheckpointed packages and original delta sources.
   Package retention controls both early release and final cache cleanup.
 - Full content is decoded before each live file replacement. Delta patches install
   replacements before applying source-dependent changes. Recognized delta filenames
@@ -113,8 +115,9 @@ installation manages the copy on a person's machine.
 - Blocking workers retain the session lock if their awaiting future is dropped.
   Extraction failure cancels pending downloads before exclusive access is released.
   Background worker failures retain their technical causes. Prefetch readiness
-  announces the applying position before awaiting its packages; cancellation waits for the
-  producer to stop before the lock is released.
+  owns the next position and announces it before awaiting its packages; each delivered
+  patch carries its progress position. Cancellation waits for the producer to stop before
+  the lock is released.
 - Finalization validates completion, counts files, writes installed identity, and
   removes temporary work and eligible cache data. `files_before_finalization`
   includes existing game files and launcher metadata, not just newly extracted files.

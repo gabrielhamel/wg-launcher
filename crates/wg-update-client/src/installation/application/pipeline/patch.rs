@@ -28,28 +28,62 @@ pub(super) fn apply_and_checkpoint_patch(
     options: ExtractionOptions,
     observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
 ) -> Result<PatchCompletion> {
-    let storage = access.layout();
-    let patch = local.patch();
-    observer(ExtractionEvent::ExtractingPatch {
-        part: patch.component_id.clone(),
-        version_from: patch.source.version().unwrap_or("?").to_owned(),
-        version_to: patch.version_to.clone(),
-        index: progress.index + 1,
-        total: progress.total,
-    });
-    let workspace = PatchWorkspace::prepare(PatchIdentity::from(patch), &storage.staging)?;
-    let applied_deltas = apply_patch_contents(local, storage.root(), &workspace, observer)?;
-    manifest.checkpoint(patch);
-    access.save_manifest(manifest)?;
-    workspace.release()?;
-    let released_package_bytes = match options.package_retention() {
-        PackageRetention::ReleaseAfterCheckpoint => remove_patch_volumes(&storage.cache, local)?,
-        PackageRetention::KeepDownloaded => 0,
-    };
-    Ok(PatchCompletion {
-        applied_deltas,
-        released_package_bytes,
-    })
+    CheckpointedPatch::apply_and_persist(manifest, local, access, progress, observer)?
+        .release(options.package_retention())
+}
+
+/// Cleanup authority for the exact patch whose completion was successfully saved.
+/// Construction stays private to the apply-and-persist operation below.
+struct CheckpointedPatch<'a> {
+    local: &'a LocalPatch,
+    access: &'a LockedInstallation,
+    workspace: PatchWorkspace,
+    applied_deltas: usize,
+}
+
+impl<'a> CheckpointedPatch<'a> {
+    fn apply_and_persist(
+        manifest: &mut PinnedManifest,
+        local: &'a LocalPatch,
+        access: &'a LockedInstallation,
+        progress: PatchProgress,
+        observer: &Arc<dyn Fn(ExtractionEvent) + Send + Sync>,
+    ) -> Result<Self> {
+        let storage = access.layout();
+        let patch = local.patch();
+        observer(ExtractionEvent::ExtractingPatch {
+            part: patch.component_id.clone(),
+            version_from: patch.source.version().unwrap_or("?").to_owned(),
+            version_to: patch.version_to.clone(),
+            index: progress.index + 1,
+            total: progress.total,
+        });
+        let workspace = PatchWorkspace::prepare(PatchIdentity::from(patch), &storage.staging)?;
+        let applied_deltas = apply_patch_contents(local, storage.root(), &workspace, observer)?;
+        manifest.checkpoint(patch);
+        access.save_manifest(manifest)?;
+        Ok(Self {
+            local,
+            access,
+            workspace,
+            applied_deltas,
+        })
+    }
+
+    /// Consumes persisted completion before releasing recovery files and eligible packages.
+    fn release(self, retention: PackageRetention) -> Result<PatchCompletion> {
+        self.workspace.release()?;
+        let released_package_bytes = match retention {
+            PackageRetention::ReleaseAfterCheckpoint => {
+                remove_patch_volumes(&self.access.layout().cache, self.local)?
+            }
+            PackageRetention::KeepDownloaded => 0,
+        };
+        Ok(PatchCompletion {
+            applied_deltas: self.applied_deltas,
+            released_package_bytes,
+        })
+    }
 }
 
 pub(super) struct PatchCompletion {

@@ -94,6 +94,7 @@ selection to prepare the game on someone's machine.
   versions become component targets.
 - Published volume bytes include all offered volumes. Required volumes describe
   the selected chain from supplied starting versions; neither subtracts cached bytes.
+- Selection errors retain available identifiers in publisher order; display formatting joins them only when rendering a diagnostic.
 - Consumer reports expose build and patch information without exposing protocol,
   transport execution, or persistence models.
 

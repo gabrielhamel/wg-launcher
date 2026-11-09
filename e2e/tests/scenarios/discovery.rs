@@ -454,3 +454,44 @@ fn listing_variants_reuses_one_product_metadata_response() {
             .all(|request| request.path.starts_with("/updates/api/v1/"))
     );
 }
+
+#[test]
+fn unsupported_variant_and_language_list_available_choices_in_publisher_order() {
+    let sandbox = Sandbox::new();
+    let fixture = sandbox.fixture(Release::V1);
+    let server = WgUpdateService::start(resources_with_client_types(&fixture, "large"));
+    let config = sandbox.configuration(&server);
+    let args = [
+        "inspect",
+        "--game",
+        "wot",
+        "--product",
+        config.to_str().unwrap(),
+        "--region",
+        "local",
+    ];
+    for (option, value, message) in [
+        (
+            "--client-type",
+            "missing",
+            "unknown client type 'missing' (available: large, small)",
+        ),
+        (
+            "--language",
+            "DE",
+            "unsupported language 'DE' (available: EN, FR)",
+        ),
+    ] {
+        let mut invalid = args.to_vec();
+        invalid.extend([option, value]);
+        failure(sandbox.run(&sandbox.path, &invalid), message);
+    }
+    assert_eq!(server.requests().len(), 2);
+    assert!(
+        server
+            .requests()
+            .iter()
+            .all(|request| request.path.ends_with("/metadata/"))
+    );
+    assert!(!sandbox.game().exists());
+}

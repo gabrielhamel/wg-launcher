@@ -2,30 +2,24 @@
 #[derive(Debug, thiserror::Error)]
 pub enum ReleaseError {
     /// The requested client variant was not advertised.
-    #[error("unknown client type '{requested}' (available: {available})")]
+    #[error("unknown client type '{requested}' (available: {})", .available.join(", "))]
     UnknownClientType {
         /// Requested identifier or build selection.
         requested: String,
-        /// Human-readable list of supported identifiers.
-        available: String,
+        /// Supported identifiers in publisher order.
+        available: Vec<String>,
     },
     /// The requested language was not advertised.
-    #[error("unsupported language '{requested}' (available: {available})")]
+    #[error("unsupported language '{requested}' (available: {})", .available.join(", "))]
     UnsupportedLanguage {
         /// Requested identifier or build selection.
         requested: String,
-        /// Human-readable list of supported identifiers.
-        available: String,
+        /// Supported identifiers in publisher order.
+        available: Vec<String>,
     },
     /// A selected component has no published target version.
     #[error("cannot plan {part}: the release has no target version for this component")]
     MissingComponentTarget {
-        /// Affected component identifier.
-        part: String,
-    },
-    /// A component had no usable full-install patch starting at version `0`.
-    #[error("cannot extract {part}: no full-install patch starts at version 0")]
-    MissingFullPatch {
         /// Affected component identifier.
         part: String,
     },

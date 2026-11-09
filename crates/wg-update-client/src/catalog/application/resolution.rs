@@ -45,9 +45,8 @@ async fn resolve_smallest_installable_variant(
     let available = metadata
         .client_types
         .iter()
-        .map(|client_type| client_type.id.as_str())
-        .collect::<Vec<_>>()
-        .join(", ");
+        .map(|client_type| client_type.id.clone())
+        .collect();
     let mut best: Option<(u64, ResolvedRelease)> = None;
     let mut first_error: Option<Error> = None;
     for client_type in &metadata.client_types {

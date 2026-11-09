@@ -33,10 +33,9 @@ pub(super) fn decode_archive(
         .collect::<Vec<_>>();
     volumes.sort();
     if volumes.is_empty() {
-        return Err(crate::catalog::ReleaseError::MissingFullPatch {
-            part: patch.patch().component_id.clone(),
-        }
-        .into());
+        return Err(Error::MissingArchiveVolumes {
+            component: patch.patch().component_id.clone(),
+        });
     }
 
     let reader = MultiVolumeReader::open(&volumes)?;

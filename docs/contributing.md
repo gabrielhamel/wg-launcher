@@ -158,10 +158,10 @@ crates/
             reports.rs        Execution totals, public options, and internal package-retention policy
             extraction.rs     Apply already downloaded patches
             finalization.rs   Record the installed build and clean up successful work
-            prefetch.rs       Async patch download coordination and cancellation
+            prefetch.rs       Async patch downloads, ordered delivery with progress positions, and cancellation
             prefetch_budget.rs  Byte-budget policy for queued patches
             streaming.rs      Overlapping downloads and ordered patch execution
-            patch.rs          Call package execution, persist its checkpoint, then release sources and packages
+            patch.rs          Apply and persist completion before consuming a checkpointed patch to release sources/packages
         infrastructure/
           transfer/           Resumable HTTP package downloads
             mod.rs            HTTP transfer implementation entry point
@@ -196,7 +196,7 @@ crates/
         presentation/         Arguments, summaries, observer adapters, progress
           commands.rs         download, extract, install, status, update handlers
           observers.rs        Workflow-specific event mapping and progress finish behavior
-          progress_state.rs   Shared optional display, synchronization, and initialization warnings
+          progress_state.rs   One-time shared display initialization and warnings; renderers own synchronization
           progress/           Shared display with separate download/extraction renderers
             installation.rs   InstallationProgress owns their terminal surface and coordinates both renderers
             download.rs       Stable download bars and styles
@@ -280,7 +280,9 @@ filesystem adapter preserves the existing recovery-record array encoding.
 Patch sources distinguish full content from changes to a specific version, while
 retaining the saved `version_from` string or null representation. Planned patches
 keep each step with its resolved packages; prefetch delivers the patch with its
-transfer result instead of coordinating separate patch and package lists.
+transfer result and progress position instead of coordinating separate patch and
+package lists. The download coordinator owns the next position, announces it to the
+prefetch budget before waiting, and ends delivery after all planned patches.
 Component release views validate and group each selected component target with
 its patches and available transport volumes, preserving publisher order and the saved
 release format. Each component resolves selected patches to their required
@@ -292,9 +294,10 @@ allows a whole patch to cross the byte budget, while coordination owns task
 cancellation. Worker errors preserve their source chain and distinguish premature
 download termination from a failed background task.
 
-The patch coordinator persists each checkpoint before releasing its workspace
-and cached volumes. `PatchWorkspace` owns the active patch's staging paths and
-original sources, without deleting recovery files on failure.
+The patch coordinator constructs a private `CheckpointedPatch` only after applying
+its content and successfully persisting its checkpoint. Consuming that value releases
+the matching workspace and eligible cached volumes. `PatchWorkspace` owns the active
+patch's staging paths and original sources, without deleting recovery files on failure.
 
 CLI self-update emits events and returns outcomes; its presentation commands own
 terminal output and adapt those events to the stable progress display.

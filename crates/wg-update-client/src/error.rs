@@ -62,7 +62,6 @@ fn release_kind(error: &ReleaseError) -> ErrorKind {
             ErrorKind::InvalidSelection
         }
         ReleaseError::MissingComponentTarget { .. }
-        | ReleaseError::MissingFullPatch { .. }
         | ReleaseError::MissingUpdatePatch { .. }
         | ReleaseError::MissingPatchAsset(_)
         | ReleaseError::ConflictingPatchAsset(_)
@@ -108,9 +107,9 @@ fn package_kind(error: &PackageError) -> ErrorKind {
     match error {
         PackageError::Io(_) => ErrorKind::Io,
         PackageError::Storage(error) => storage_kind(error),
-        PackageError::Release(error) => release_kind(error),
         PackageError::InvalidDeltaPath(_) => ErrorKind::UnsafePath,
-        PackageError::ArchiveExtraction(_)
+        PackageError::MissingArchiveVolumes { .. }
+        | PackageError::ArchiveExtraction(_)
         | PackageError::DeltaDecode { .. }
         | PackageError::MissingDeltaTarget(_)
         | PackageError::EmptyDeltaOutput(_) => ErrorKind::InvalidPackage,
@@ -163,3 +162,20 @@ impl From<std::io::Error> for Error {
 
 /// Result of a high-level launcher workflow.
 pub type Result<T> = std::result::Result<T, Error>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn missing_archive_volumes_are_invalid_packages_with_a_package_diagnostic() {
+        let error = Error::from(PackageError::MissingArchiveVolumes {
+            component: "client".into(),
+        });
+        assert_eq!(error.kind(), ErrorKind::InvalidPackage);
+        assert_eq!(
+            error.to_string(),
+            "cannot decode patch for client: no archive volumes were provided"
+        );
+    }
+}

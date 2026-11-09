@@ -37,7 +37,8 @@ full-package fallback, already-reached targets, and cyclic chains.
 
 Discovery regression coverage includes publisher-order tie breaking for equally
 sized variants and retention of the first missing-component-target error when
-every candidate fails. These checks resolve metadata without downloading packages.
+every candidate fails. Unsupported variant and language diagnostics retain available
+choices in publisher order. These checks resolve metadata without downloading packages.
 Custom-product staged installation checks that saved manifests retain their `assets`,
 patch `files`, `component_versions`, and `base_versions` fields. Cache rejection
 names mismatched products, client types, and languages without new service requests;
@@ -52,7 +53,9 @@ of the configured product and component versions.
 
 Focused unit regressions cover selected volume identity and archive-size matching,
 ambiguous sources, retry-safe package completion accounting, and supported
-candidate version formats. The launcher packages enable their unit-test harnesses
+candidate version formats. Additional unit regressions cover package-owned
+missing-volume errors and concurrent access to a shared progress display without an
+outer rendering lock. The launcher packages enable their unit-test harnesses
 so these checks run with `cargo test --workspace --locked`. They use no network,
 package archives, additional dependencies, or process harnesses.
 The overall download bar credits package bytes once across retries; each file bar
