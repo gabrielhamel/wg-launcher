@@ -92,8 +92,8 @@ where
 #[derive(Debug, Deserialize)]
 #[serde(rename = "protocol")]
 pub(crate) struct PatchesXml {
-    #[serde(default)]
-    pub patches_chain: Option<PatchesChainXml>,
+    #[serde(rename = "patches_chain", default)]
+    pub patch_chains: Vec<PatchesChainXml>,
     #[serde(default)]
     pub web_seeds: WebSeedsXml,
     #[serde(default)]
@@ -122,6 +122,8 @@ pub(crate) struct ChangedGameInfoXml {
 
 #[derive(Debug, Deserialize)]
 pub(crate) struct PatchesChainXml {
+    #[serde(rename = "@type", default)]
+    pub chain_type: Option<String>,
     #[serde(rename = "patch", default)]
     pub patches: Vec<PatchXml>,
 }

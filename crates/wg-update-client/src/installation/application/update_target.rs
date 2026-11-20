@@ -5,7 +5,7 @@ use crate::installation::infrastructure::filesystem::{
     InstallationLayout, records::load_pinned_manifest,
 };
 use crate::installation::{InstalledBuild, PinnedManifest};
-use crate::{Result, catalog::resolve_update_release};
+use crate::{ReleaseMode, Result, catalog::resolve_update_release};
 use serde::Serialize;
 
 /// Source of the build chosen for comparison with an installation.
@@ -45,12 +45,13 @@ impl ResolvedUpdateTarget {
         Self { manifest, source }
     }
 
-    pub(super) async fn live(installed: &InstalledBuild) -> Result<Self> {
+    pub(super) async fn live(installed: &InstalledBuild, mode: ReleaseMode) -> Result<Self> {
         let release = resolve_update_release(
             &installed.product,
             &installed.identity.client_type,
             &installed.identity.language,
             &installed.component_versions,
+            mode,
         )
         .await?;
         Ok(Self::new(
@@ -82,6 +83,7 @@ impl ResolvedUpdateTarget {
 pub(super) async fn resolve_update_target(
     installed: &InstalledBuild,
     storage: &InstallationLayout,
+    mode: ReleaseMode,
 ) -> Result<ResolvedUpdateTarget> {
     if let Some(pending) = load_pinned_manifest(storage).await? {
         validate_cached_selection(&pending.selection(), &installed.selection())?;
@@ -91,6 +93,6 @@ pub(super) async fn resolve_update_target(
             installed,
         ))
     } else {
-        ResolvedUpdateTarget::live(installed).await
+        ResolvedUpdateTarget::live(installed, mode).await
     }
 }

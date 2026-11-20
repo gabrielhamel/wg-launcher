@@ -4,6 +4,7 @@ mod patch_chains;
 pub mod recovery;
 mod volumes;
 pub use delta::DeltaFixture;
+pub use patch_chains::advertise_preload;
 
 use std::{collections::BTreeMap, fs, path::Path};
 

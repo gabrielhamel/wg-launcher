@@ -11,7 +11,7 @@ mod wire;
 
 use self::error::Result;
 
-use crate::catalog::{Product, ResolvedRelease};
+use crate::catalog::{Product, ReleaseMode, ResolvedRelease};
 use endpoint::DiscoveryEndpoint;
 use reqwest::Client;
 use std::time::Duration;
@@ -84,10 +84,11 @@ impl WgusClient {
         client_type: &str,
         language: Option<&str>,
         component_versions: &ComponentVersions,
+        mode: ReleaseMode,
     ) -> Result<ResolvedRelease> {
         self.discover(product)
             .await?
-            .resolve_release(self, client_type, language, component_versions)
+            .resolve_release(self, client_type, language, component_versions, mode)
             .await
     }
 

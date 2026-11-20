@@ -1,7 +1,7 @@
 //! Normalize publisher transitions and component targets before resolving package URLs.
 
 use super::error::{Result, WgusError as Error};
-use super::wire::{self, PatchesChainXml};
+use super::wire::{self, PatchXml};
 use crate::catalog::{ClientVariant, ComponentVersions, Patch, PatchSource, PatchVolume, Product};
 use std::collections::HashMap;
 use url::Url;
@@ -16,13 +16,13 @@ impl NormalizedPatchChain {
     pub(super) fn from_wire(
         product: &Product,
         selected: &ClientVariant,
-        chain: Option<PatchesChainXml>,
+        chain: Option<Vec<PatchXml>>,
         component_versions: &ComponentVersions,
     ) -> Result<Self> {
         let chain = require_patch_chain(product, selected, chain, component_versions)?;
         let mut normalization = PatchChainNormalization::from_known_versions(component_versions);
-        let mut patches = Vec::with_capacity(chain.patches.len());
-        for patch in chain.patches {
+        let mut patches = Vec::with_capacity(chain.len());
+        for patch in chain {
             let source = normalization.resolve_source_and_advance(
                 patch.version_from,
                 &patch.part,
@@ -59,9 +59,9 @@ impl NormalizedPatchChain {
 fn require_patch_chain(
     product: &Product,
     selected: &ClientVariant,
-    chain: Option<PatchesChainXml>,
+    chain: Option<Vec<PatchXml>>,
     component_versions: &ComponentVersions,
-) -> Result<PatchesChainXml> {
+) -> Result<Vec<PatchXml>> {
     match chain {
         Some(chain) => Ok(chain),
         None if selected
@@ -69,9 +69,7 @@ fn require_patch_chain(
             .iter()
             .all(|part| component_versions.get(&part.id).is_some()) =>
         {
-            Ok(wire::PatchesChainXml {
-                patches: Vec::new(),
-            })
+            Ok(Vec::new())
         }
         None => Err(Error::MissingPatchChain(
             product.application_id().to_owned(),

@@ -4,14 +4,18 @@ use super::{
     output::{build_table, print_inspection, print_install_hint},
 };
 use crate::terminal::DiscoveryProgress;
-use wg_update_client::{InspectOptions, ListOptions, inspect, list};
+use wg_update_client::{InspectOptions, ListOptions};
 
 pub(crate) async fn run_inspect(args: InspectArgs) -> Result<(), Box<dyn std::error::Error>> {
     let loader = DiscoveryProgress::new("Inspecting build")?;
-    let result = inspect(InspectOptions {
-        selection: args.build.try_into()?,
-    })
-    .await;
+    let result = args
+        .build
+        .release
+        .mode()
+        .inspect(InspectOptions {
+            selection: args.build.try_into()?,
+        })
+        .await;
     loader.finish();
     print_inspection(&result?);
     Ok(())
@@ -39,12 +43,15 @@ pub(crate) async fn run_list(args: ListArgs) -> Result<(), Box<dyn std::error::E
         }
         (None, None) => "Loading builds for all games and regions".to_owned(),
     })?;
-    let result = list(ListOptions {
-        game,
-        region,
-        products,
-    })
-    .await;
+    let result = args
+        .release
+        .mode()
+        .list(ListOptions {
+            game,
+            region,
+            products,
+        })
+        .await;
 
     loader.finish();
 
@@ -59,6 +66,6 @@ pub(crate) async fn run_list(args: ListArgs) -> Result<(), Box<dyn std::error::E
     println!("Available game builds\n");
     println!("{}", build_table(&report.builds));
     println!("\n* default language for the region");
-    print_install_hint(args.product.as_deref());
+    print_install_hint(args.product.as_deref(), args.release.preload);
     Ok(())
 }

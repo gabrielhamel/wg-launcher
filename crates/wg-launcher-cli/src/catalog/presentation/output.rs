@@ -4,12 +4,13 @@ use comfy_table::{
 };
 use wg_update_client::{BuildSummary, InspectReport};
 
-pub(crate) fn print_install_hint(product: Option<&std::path::Path>) {
+pub(crate) fn print_install_hint(product: Option<&std::path::Path>, preload: bool) {
     let product = product
         .map(|path| format!(" --product \"{}\"", path.display()))
         .unwrap_or_default();
+    let preload_flag = if preload { " --preload" } else { "" };
     let invocation = format!(
-        "wg-launcher install{product} --game <game> --region <region> --client-type <client-type> --language <language>"
+        "wg-launcher install{product} --game <game> --region <region> --client-type <client-type> --language <language>{preload_flag}"
     );
     println!("Install with: {}", command(&invocation));
 }

@@ -1,6 +1,6 @@
 use super::super::infrastructure::wgus::WgusClient;
 use crate::Result;
-use crate::catalog::{Product, required_volumes};
+use crate::catalog::{Product, ReleaseMode, required_volumes};
 use serde::Serialize;
 
 /// Configures discovery. By default every supported region is queried.
@@ -77,10 +77,24 @@ pub struct ListReport {
 /// if the HTTP client cannot be created, or if a region's metadata
 /// cannot be fetched or parsed. Such a failure stops discovery.
 pub async fn list(options: ListOptions) -> Result<ListReport> {
-    list_with_client(&WgusClient::new()?, options).await
+    ReleaseMode::Production.list(options).await
 }
 
-async fn list_with_client(client: &WgusClient, options: ListOptions) -> Result<ListReport> {
+impl ReleaseMode {
+    /// Lists live builds and sizes using this release mode.
+    ///
+    /// # Errors
+    /// Returns the same errors as [`list()`].
+    pub async fn list(self, options: ListOptions) -> Result<ListReport> {
+        list_with_client(&WgusClient::new()?, options, self).await
+    }
+}
+
+async fn list_with_client(
+    client: &WgusClient,
+    options: ListOptions,
+    mode: ReleaseMode,
+) -> Result<ListReport> {
     let products = crate::catalog::domain::select_products(
         options.products.as_deref(),
         options.game.as_deref(),
@@ -99,6 +113,7 @@ async fn list_with_client(client: &WgusClient, options: ListOptions) -> Result<L
                     &client_type.id,
                     Some(&metadata.default_language),
                     &Default::default(),
+                    mode,
                 )
                 .await
                 .map_err(crate::Error::from)

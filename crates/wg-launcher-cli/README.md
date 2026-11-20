@@ -331,6 +331,20 @@ a full download only when it is new or the publisher no longer provides an
 applicable delta chain. Interrupted updates reuse their pinned chain and completed
 patch checkpoints.
 
+Add `--preload` to include advertised preload patches. `install --preload`
+and `update --preload` apply them immediately, before Wargaming promotes the
+update to production:
+
+```console
+wg-launcher inspect --game wot --region eu --preload
+wg-launcher update --path ./world-of-tanks --preload
+```
+
+The flag also works with `list`, `status`, and `download`. A staged download
+with `--preload` pins those patches for local `extract`. Retries reuse their
+pinned selection. WGUS may continue to show the production build label while
+the installed component versions reflect the preload.
+
 The current state format requires component versions. Older installations and
 pinned manifests are not migrated; create a fresh installation to use this format.
 

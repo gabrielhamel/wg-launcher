@@ -65,6 +65,14 @@ additional decoded file. This is per-file protection, not whole-patch rollback.
 Transport `.wgpkg` and `.dspkg` archives are extracted into the game tree.
 Game-owned `.pkg` files inside them remain intact.
 
+Live discovery defaults to the publisher's install chain. WGUS-compatible
+services can also supply an untyped install chain. Use CLI `--preload` or
+the library's `ReleaseMode::IncludePreload` to append any advertised preload
+patches to the install chain. Installation and update apply these patches
+immediately, even during the publisher's preload period. The advertised build
+label may still be the production version. The manifest records the selected
+patches and their target component versions for extraction and retry.
+
 `status` checks the live component update chain matching the installed identity.
 Its `StatusReport.update_download_bytes` estimates the compressed size of applicable
 packages, excluding unchanged components. The CLI shows this as `Update size`

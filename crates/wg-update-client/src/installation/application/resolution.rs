@@ -1,6 +1,6 @@
 use crate::Result;
-use crate::catalog::SelectedProductRequest;
 use crate::catalog::resolve;
+use crate::catalog::{ReleaseMode, SelectedProductRequest};
 use crate::installation::PinnedManifest;
 use crate::installation::domain::initial_directory_name;
 use crate::installation::{
@@ -18,6 +18,7 @@ pub(super) struct InstallationTarget {
 pub(super) async fn resolve_installation_target(
     selection: &SelectedProductRequest<'_>,
     requested_root: Option<PathBuf>,
+    mode: ReleaseMode,
 ) -> Result<InstallationTarget> {
     if let Some(root) = requested_root {
         let storage = InstallationLayout::for_root(&root);
@@ -26,12 +27,12 @@ pub(super) async fn resolve_installation_target(
             return Ok(InstallationTarget { manifest, root });
         }
         return Ok(InstallationTarget {
-            manifest: resolve(selection).await?.into(),
+            manifest: resolve(selection, mode).await?.into(),
             root,
         });
     }
 
-    let live = PinnedManifest::from(resolve(selection).await?);
+    let live = PinnedManifest::from(resolve(selection, mode).await?);
     let root = initial_directory_name(&live.release.product, &live.release.identity);
     let storage = InstallationLayout::for_root(&root);
     if let Some(manifest) = load_pinned_manifest(&storage).await? {

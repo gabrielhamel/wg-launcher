@@ -3,7 +3,7 @@ use console::style;
 use std::path::Path;
 use wg_update_client::{StatusReport, UpdateTargetSource};
 
-pub(crate) fn print_status(report: &StatusReport, current: &Path) {
+pub(crate) fn print_status(report: &StatusReport, current: &Path, preload: bool) {
     println!("Installation: {}", report.path.display());
     println!("Game:         {}", report.installed.name);
     println!("Region:       {}", report.installed.region);
@@ -25,17 +25,14 @@ pub(crate) fn print_status(report: &StatusReport, current: &Path) {
             human_bytes(report.update_download_bytes)
         );
         let available = style("Update available.").green().bold();
-        if current == report.path {
-            println!("{available} Run: {}", command("wg-launcher update"));
-        } else {
-            println!(
-                "{available} Run: {}",
-                command(&format!(
-                    "wg-launcher update --path \"{}\"",
-                    report.path.display()
-                ))
-            );
+        let mut invocation = "wg-launcher update".to_owned();
+        if preload {
+            invocation.push_str(" --preload");
         }
+        if current != report.path {
+            invocation.push_str(&format!(" --path \"{}\"", report.path.display()));
+        }
+        println!("{available} Run: {}", command(&invocation));
     } else {
         println!("Installed:    {}", report.installed.version);
         println!("{target_label:<14}{}", report.target.version);
