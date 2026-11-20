@@ -4,7 +4,7 @@ use super::{
     resolution::{InstallationTarget, resolve_installation_target},
 };
 use crate::{
-    Result,
+    ReleaseMode, Result,
     catalog::TransportVolume,
     installation::infrastructure::filesystem::InstallationLayout,
     installation::{DownloadEvent, DownloadOptions, DownloadReport, VolumeDownloader},
@@ -86,27 +86,55 @@ pub async fn download_with_observer<F>(
 where
     F: Fn(DownloadAssetsEvent) + Send + Sync + 'static,
 {
-    let request = options.selection.select_product()?;
-    let InstallationTarget { manifest, root } =
-        resolve_installation_target(&request, options.output).await?;
-    let access = super::access::LockedInstallation::open(InstallationLayout::for_root(&root))?;
-    let manifest = access.adopt_matching_download(manifest, &request).await?;
-    let all_assets = manifest.required_volumes()?;
-    let assets = select_download_volumes(all_assets, &options.parts);
-    if assets.is_empty() {
-        return Err(
-            crate::installation::DownloadError::EmptySelection(options.parts.join(", ")).into(),
-        );
+    ReleaseMode::Production
+        .download_with_observer(options, observer)
+        .await
+}
+
+impl ReleaseMode {
+    /// Runs [`download()`] using this mode for live release discovery.
+    ///
+    /// # Errors
+    /// Returns the same errors as [`download()`].
+    pub async fn download(self, options: DownloadAssetsOptions) -> Result<DownloadAssetsOutcome> {
+        self.download_with_observer(options, |_| {}).await
     }
-    let plan = build_plan(&manifest, root, &assets);
-    observer(DownloadAssetsEvent::Planned(Box::new(plan.clone())));
-    access.save_manifest(&manifest)?;
-    let report = VolumeDownloader::new()?
-        .download_with_observer(assets, &plan.cache, options.download, move |event| {
-            observer(DownloadAssetsEvent::Progress(event));
-        })
-        .await?;
-    Ok(DownloadAssetsOutcome { plan, report })
+
+    /// Runs [`download_with_observer()`] using this mode for live release discovery.
+    ///
+    /// # Errors
+    /// Returns the same errors as [`download_with_observer()`].
+    pub async fn download_with_observer<F>(
+        self,
+        options: DownloadAssetsOptions,
+        observer: F,
+    ) -> Result<DownloadAssetsOutcome>
+    where
+        F: Fn(DownloadAssetsEvent) + Send + Sync + 'static,
+    {
+        let request = options.selection.select_product()?;
+        let InstallationTarget { manifest, root } =
+            resolve_installation_target(&request, options.output, self).await?;
+        let access = super::access::LockedInstallation::open(InstallationLayout::for_root(&root))?;
+        let manifest = access.adopt_matching_download(manifest, &request).await?;
+        let all_assets = manifest.required_volumes()?;
+        let assets = select_download_volumes(all_assets, &options.parts);
+        if assets.is_empty() {
+            return Err(crate::installation::DownloadError::EmptySelection(
+                options.parts.join(", "),
+            )
+            .into());
+        }
+        let plan = build_plan(&manifest, root, &assets);
+        observer(DownloadAssetsEvent::Planned(Box::new(plan.clone())));
+        access.save_manifest(&manifest)?;
+        let report = VolumeDownloader::new()?
+            .download_with_observer(assets, &plan.cache, options.download, move |event| {
+                observer(DownloadAssetsEvent::Progress(event));
+            })
+            .await?;
+        Ok(DownloadAssetsOutcome { plan, report })
+    }
 }
 
 pub(super) fn select_download_volumes(

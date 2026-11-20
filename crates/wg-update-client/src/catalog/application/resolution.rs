@@ -1,9 +1,12 @@
 use super::super::infrastructure::wgus::{DiscoveredProduct, WgusClient};
-use crate::catalog::ComponentVersions;
+use crate::catalog::{ComponentVersions, ReleaseMode};
 use crate::catalog::{ResolvedRelease, SelectedProductRequest, required_volumes};
 use crate::{Error, Result};
 
-pub(crate) async fn resolve(selection: &SelectedProductRequest<'_>) -> Result<ResolvedRelease> {
+pub(crate) async fn resolve(
+    selection: &SelectedProductRequest<'_>,
+    mode: ReleaseMode,
+) -> Result<ResolvedRelease> {
     let client = WgusClient::new()?;
     let discovered = client.discover(&selection.product).await?;
     if let Some(client_type) = selection.client_type {
@@ -13,6 +16,7 @@ pub(crate) async fn resolve(selection: &SelectedProductRequest<'_>) -> Result<Re
                 client_type,
                 selection.language,
                 &Default::default(),
+                mode,
             )
             .await
             .map_err(Into::into);
@@ -26,12 +30,13 @@ pub(crate) async fn resolve(selection: &SelectedProductRequest<'_>) -> Result<Re
                 default_client_type,
                 selection.language,
                 &Default::default(),
+                mode,
             )
             .await
             .map_err(Into::into);
     }
 
-    resolve_smallest_installable_variant(&client, &discovered, selection.language).await
+    resolve_smallest_installable_variant(&client, &discovered, selection.language, mode).await
 }
 
 /// Resolve candidates in publisher order; equal sizes keep the first candidate,
@@ -40,6 +45,7 @@ async fn resolve_smallest_installable_variant(
     client: &WgusClient,
     discovered: &DiscoveredProduct,
     language: Option<&str>,
+    mode: ReleaseMode,
 ) -> Result<ResolvedRelease> {
     let metadata = discovered.metadata();
     let available = metadata
@@ -51,7 +57,7 @@ async fn resolve_smallest_installable_variant(
     let mut first_error: Option<Error> = None;
     for client_type in &metadata.client_types {
         match discovered
-            .resolve_release(client, &client_type.id, language, &Default::default())
+            .resolve_release(client, &client_type.id, language, &Default::default(), mode)
             .await
         {
             Ok(release) => match required_volumes(&release, &Default::default()) {
@@ -88,8 +94,15 @@ pub(crate) async fn resolve_update_release(
     client_type: &str,
     language: &str,
     component_versions: &ComponentVersions,
+    mode: ReleaseMode,
 ) -> Result<ResolvedRelease> {
     Ok(WgusClient::new()?
-        .release_from_versions(product, client_type, Some(language), component_versions)
+        .release_from_versions(
+            product,
+            client_type,
+            Some(language),
+            component_versions,
+            mode,
+        )
         .await?)
 }

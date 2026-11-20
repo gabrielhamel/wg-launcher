@@ -5,10 +5,11 @@ use super::{
     conversion::{metadata_from_wire, normalize_language, release_from_wire},
     endpoint::DiscoveryEndpoint,
     error::{Result, WgusError},
+    patch_chain_conversion::patch_chain_from_wire,
     request::PatchChainRequestContext,
     wire::{MetadataXml, PatchesXml},
 };
-use crate::catalog::{ComponentVersions, GameMetadata, Product, ResolvedRelease};
+use crate::catalog::{ComponentVersions, GameMetadata, Product, ReleaseMode, ResolvedRelease};
 
 /// A metadata response and the exact product endpoint it describes.
 /// Redirected responses are local to each release resolution, not a global cache.
@@ -45,6 +46,7 @@ impl DiscoveredProduct {
         client_type: &str,
         language: Option<&str>,
         component_versions: &ComponentVersions,
+        mode: ReleaseMode,
     ) -> Result<ResolvedRelease> {
         let mut redirected = None;
         for hop in 0..=MAX_REDIRECTS {
@@ -76,15 +78,23 @@ impl DiscoveredProduct {
                 redirected = Some(client.discover_endpoint(&self.product, endpoint).await?);
                 continue;
             }
-            return release_from_wire(
+            let chain = patch_chain_from_wire(
+                &self.product,
+                selected,
+                response.patch_chains,
+                response.web_seeds,
+                component_versions,
+                mode,
+            )?;
+            return Ok(release_from_wire(
                 &self.product,
                 current.endpoint.hostname().to_owned(),
                 metadata.clone(),
                 selected,
                 language,
-                response,
-                component_versions,
-            );
+                response.version_name,
+                chain,
+            ));
         }
         Err(WgusError::RedirectLimit(
             self.product.application_id().to_owned(),

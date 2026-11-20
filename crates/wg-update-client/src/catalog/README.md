@@ -47,6 +47,8 @@ selection to prepare the game on someone's machine.
 | Patch source | What a patch starts from: a full component needs no earlier version; a delta needs a specific version. An unspecified saved source cannot establish a chain. |
 | Planned patch | One step selected for installation, kept together with the packages needed to apply it. |
 | Patch chain | The ordered steps needed to reach a component's target version. |
+| Preload | Patches a publisher makes available ahead of a production release. |
+| Release mode | Whether discovery selects the install chain alone or includes the publisher's advertised preload patches. |
 | Component versions | The known version of each named component. A component with no recorded version starts at `0`; installation separately owns checkpoint precedence. |
 | Patch volume | A downloadable archive piece declared by a patch, before its HTTP address is resolved. |
 | Transport volume | One downloadable file, with a resolved HTTP URL. Several volumes can form one patch archive; these are distinct from game-owned assets. |
@@ -67,7 +69,7 @@ selection to prepare the game on someone's machine.
 | `domain/release/patch_chain.rs` | Version traversal, required-transition ambiguity rejection, cycle detection, and full-package fallback. |
 | `domain/release/package_plan.rs`, `volume_index.rs` | Assemble selected patch plans and bind their declarations through one release-wide volume index. |
 | `application/` | Listing, release resolution, and consumer build/inspection reports. Installation composes the inspect workflow and supplies its suggested folder. |
-| `infrastructure/wgus/` | `discovery.rs` owns discovered metadata and redirect-aware variant resolution; `mod.rs` owns HTTP client setup and metadata transport. `endpoint.rs` owns transient discovery addresses and redirects; `request.rs` owns the protocol request context and query encoding. HTTP/XML, language normalization, and response conversion. `patch_chain_normalization.rs` returns patches and targets without resolving download sources; `patch_chain_conversion.rs` parses web seeds and binds normalized patches to HTTP volumes. |
+| `infrastructure/wgus/` | `discovery.rs` owns discovered metadata and redirect-aware variant resolution; `mod.rs` owns HTTP client setup and metadata transport. `endpoint.rs` owns transient discovery addresses and redirects; `request.rs` owns the protocol request context and query encoding. HTTP/XML, language normalization, and response conversion. `patch_chain_normalization.rs` returns patches and targets without resolving download sources; `patch_chain_conversion.rs` selects which publisher chains to use, parses web seeds, and binds normalized patches to HTTP volumes. |
 
 ## Invariants
 

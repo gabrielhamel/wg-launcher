@@ -3,7 +3,7 @@ use super::status::StatusReport;
 use super::update_target::resolve_update_target;
 use super::{InstallEvent, InstallOutcome, install::install_resolved};
 use crate::installation::DownloadOptions;
-use crate::{Result, installation::infrastructure::filesystem::InstallationLayout};
+use crate::{ReleaseMode, Result, installation::infrastructure::filesystem::InstallationLayout};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -57,26 +57,53 @@ pub async fn update_with_observer<F>(options: UpdateOptions, observer: F) -> Res
 where
     F: Fn(InstallEvent) + Send + Sync + 'static,
 {
-    let path = std::path::absolute(options.path)?;
-    let storage = InstallationLayout::for_root(&path);
-    let installed = load_installed_build(&path).await?;
-    let target = resolve_update_target(&installed, &storage).await?;
-    let status = target.status_report(path, &installed)?;
-    if !status.update_available {
-        return Ok(UpdateOutcome {
-            status,
-            installation: None,
-        });
+    ReleaseMode::Production
+        .update_with_observer(options, observer)
+        .await
+}
+
+impl ReleaseMode {
+    /// Runs [`update()`] using this mode for live release discovery.
+    ///
+    /// # Errors
+    /// Returns the same errors as [`update()`].
+    pub async fn update(self, options: UpdateOptions) -> Result<UpdateOutcome> {
+        self.update_with_observer(options, |_| {}).await
     }
-    let installation = install_resolved(
-        target.into_manifest(),
-        status.path.clone(),
-        options.download,
-        observer,
-    )
-    .await?;
-    Ok(UpdateOutcome {
-        status,
-        installation: Some(installation),
-    })
+
+    /// Runs [`update_with_observer()`] using this mode for live release discovery.
+    ///
+    /// # Errors
+    /// Returns the same errors as [`update_with_observer()`].
+    pub async fn update_with_observer<F>(
+        self,
+        options: UpdateOptions,
+        observer: F,
+    ) -> Result<UpdateOutcome>
+    where
+        F: Fn(InstallEvent) + Send + Sync + 'static,
+    {
+        let path = std::path::absolute(options.path)?;
+        let storage = InstallationLayout::for_root(&path);
+        let installed = load_installed_build(&path).await?;
+        let target = resolve_update_target(&installed, &storage, self).await?;
+        let status = target.status_report(path, &installed)?;
+        if !status.update_available {
+            return Ok(UpdateOutcome {
+                status,
+                installation: None,
+            });
+        }
+        let installation = install_resolved(
+            target.into_manifest(),
+            status.path.clone(),
+            options.download,
+            observer,
+        )
+        .await?;
+        Ok(UpdateOutcome {
+            status,
+            installation: Some(installation),
+        })
+    }
 }

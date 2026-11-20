@@ -1,7 +1,7 @@
 use super::super::infrastructure::read_products;
 use clap::Args;
 use std::path::PathBuf;
-use wg_update_client::{BuildSelection, Game};
+use wg_update_client::{BuildSelection, Game, ReleaseMode};
 
 #[derive(Debug, Args)]
 pub(crate) struct InspectArgs {
@@ -18,6 +18,8 @@ pub(crate) struct ListArgs {
     pub(crate) game: String,
     #[arg(long, default_value = "all")]
     pub(crate) region: String,
+    #[command(flatten)]
+    pub(crate) release: ReleaseArgs,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -37,6 +39,25 @@ pub(crate) struct BuildArgs {
 
     #[arg(long)]
     pub(crate) language: Option<String>,
+    #[command(flatten)]
+    pub(crate) release: ReleaseArgs,
+}
+
+#[derive(Debug, Clone, Copy, Args)]
+pub(crate) struct ReleaseArgs {
+    /// Include advertised preload patches in the selected release.
+    #[arg(long)]
+    pub(crate) preload: bool,
+}
+
+impl ReleaseArgs {
+    pub(crate) fn mode(self) -> ReleaseMode {
+        if self.preload {
+            ReleaseMode::IncludePreload
+        } else {
+            ReleaseMode::Production
+        }
+    }
 }
 
 impl TryFrom<BuildArgs> for BuildSelection {

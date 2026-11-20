@@ -16,6 +16,6 @@ pub(crate) use domain::release::{
     TransportVolume, WebSeed, required_volumes,
 };
 pub(crate) use domain::{BuildIdentity, CatalogError, SelectedProductRequest};
-pub use domain::{BuildSelection, Game, Product, Region};
+pub use domain::{BuildSelection, Game, Product, Region, ReleaseMode};
 
 pub(crate) use domain::validate_service_base_url;

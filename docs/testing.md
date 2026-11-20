@@ -53,6 +53,8 @@ of the configured product and component versions.
 The EU dual-chain scenario checks that list, inspect, install, and update use the
 install chain even when a preload is advertised first. It also checks that an
 update with only a preload available transfers no packages.
+The opt-in scenario covers discovery with `--preload`, integrated and staged
+installation, and applying a preload-only update to an installed production build.
 
 Focused unit regressions cover selected volume identity and archive-size matching,
 ambiguous sources, retry-safe package completion accounting, and supported

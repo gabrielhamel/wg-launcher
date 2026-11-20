@@ -4,11 +4,12 @@ use super::Fixture;
 use std::collections::BTreeMap;
 
 pub fn advertise_preload(resources: &mut BTreeMap<String, Vec<u8>>, production_version: &str) {
+    let size = resources.get("preload.wgpkg").map_or(1000, Vec::len);
     let chain = resources.get_mut("updates/api/v1/patches_chain/").unwrap();
     let preload = format!(
         r#"<patches_chain type="preload">
           <patch><part>client</part><version_from>{production_version}</version_from><version_to>3.0</version_to>
-            <files><file><name>preload.wgpkg</name><size>1000</size></file></files></patch>
+            <files><file><name>preload.wgpkg</name><size>{size}</size></file></files></patch>
         </patches_chain>"#,
     );
     let xml = String::from_utf8(chain.clone()).unwrap();

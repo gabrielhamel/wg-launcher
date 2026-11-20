@@ -1,4 +1,4 @@
-use crate::catalog::BuildArgs;
+use crate::catalog::{BuildArgs, ReleaseArgs};
 use clap::Args;
 use std::path::PathBuf;
 
@@ -40,12 +40,14 @@ pub(crate) struct InstallArgs {
 pub(crate) struct PathArgs {
     #[arg(long)]
     pub(crate) path: Option<PathBuf>,
+    #[command(flatten)]
+    pub(crate) release: ReleaseArgs,
 }
 
 #[derive(Debug, Args)]
 pub(crate) struct UpdateArgs {
-    #[arg(long)]
-    pub(crate) path: Option<PathBuf>,
+    #[command(flatten)]
+    pub(crate) installation: PathArgs,
 
     #[arg(long, default_value_t = 3)]
     pub(crate) concurrency: usize,

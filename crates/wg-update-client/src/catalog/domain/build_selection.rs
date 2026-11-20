@@ -1,6 +1,16 @@
 use super::error::{CatalogError as Error, Result};
 use super::{Product, Region};
 
+/// Controls whether live discovery includes the publisher's preload patches.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum ReleaseMode {
+    /// Use the production install chain for the selected product.
+    #[default]
+    Production,
+    /// Apply the advertised preload after the install chain, when available.
+    IncludePreload,
+}
+
 /// Selects a catalog build.
 ///
 /// A game must be selected. Other defaults are EU, the publisher's default client

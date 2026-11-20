@@ -1,9 +1,7 @@
 //! Translate WGUS wire responses into catalog releases, without network or local state.
 
-use super::error::Result;
-use super::patch_chain_conversion::patch_chain_from_wire;
-use super::wire::{MetadataXml, PatchesXml};
-use crate::catalog::ComponentVersions;
+use super::patch_chain_conversion::ConvertedPatchChain;
+use super::wire::MetadataXml;
 use crate::catalog::{
     ClientVariant, ComponentDefinition, Executable, GameMetadata, Product, ReleaseContents,
     ResolvedRelease,
@@ -15,30 +13,16 @@ pub(super) fn release_from_wire(
     metadata: GameMetadata,
     selected: &ClientVariant,
     language: String,
-    response: PatchesXml,
-    component_versions: &ComponentVersions,
-) -> Result<ResolvedRelease> {
-    // Prefer the explicit install chain, with an untyped fallback for compatible services.
-    let install_chain = response
-        .patch_chains
-        .into_iter()
-        .filter(|chain| matches!(chain.chain_type.as_deref(), Some("install") | None))
-        .min_by_key(|chain| chain.chain_type.is_none());
-    let chain = patch_chain_from_wire(
-        product,
-        selected,
-        install_chain,
-        response.web_seeds,
-        component_versions,
-    )?;
+    version_name: Option<String>,
+    chain: ConvertedPatchChain,
+) -> ResolvedRelease {
     let patches = chain.patches;
-    let version = response
-        .version_name
+    let version = version_name
         .filter(|version| !version.trim().is_empty())
         .or_else(|| patches.first().map(|patch| patch.version_to.clone()))
         .unwrap_or_else(|| "unknown".to_owned());
 
-    Ok(ResolvedRelease {
+    ResolvedRelease {
         identity: crate::catalog::BuildIdentity {
             region: product.region.clone(),
             channel: product.channel.clone(),
@@ -65,7 +49,7 @@ pub(super) fn release_from_wire(
             chain.volumes,
         ),
         web_seeds: chain.web_seeds,
-    })
+    }
 }
 
 pub(super) fn metadata_from_wire(wire: &MetadataXml) -> GameMetadata {

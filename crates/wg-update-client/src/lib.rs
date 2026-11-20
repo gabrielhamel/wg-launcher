@@ -7,7 +7,7 @@ mod installation;
 
 pub use catalog::{
     BuildInfo, BuildSelection, BuildSummary, Game, InspectReport, ListOptions, ListReport,
-    ListWarning, PatchSummary, Product, Region, list,
+    ListWarning, PatchSummary, Product, Region, ReleaseMode, list,
 };
 pub use error::{Error, ErrorKind, Result};
 pub use installation::{

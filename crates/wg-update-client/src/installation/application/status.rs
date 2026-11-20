@@ -1,7 +1,7 @@
 use super::installed::load_installed_build;
 use super::update_target::{ResolvedUpdateTarget, UpdateTarget};
-use crate::Result;
 use crate::catalog::BuildInfo;
+use crate::{ReleaseMode, Result};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -45,8 +45,18 @@ pub struct StatusReport {
 /// Returns an error if the installation record is missing, unreadable, or invalid,
 /// or live manifest resolution fails.
 pub async fn status(options: StatusOptions) -> Result<StatusReport> {
-    let path = std::path::absolute(options.path)?;
-    let installed = load_installed_build(&path).await?;
-    let target = ResolvedUpdateTarget::live(&installed).await?;
-    target.status_report(path, &installed)
+    ReleaseMode::Production.status(options).await
+}
+
+impl ReleaseMode {
+    /// Compares an installation with the live release selected by this mode.
+    ///
+    /// # Errors
+    /// Returns the same errors as [`status()`].
+    pub async fn status(self, options: StatusOptions) -> Result<StatusReport> {
+        let path = std::path::absolute(options.path)?;
+        let installed = load_installed_build(&path).await?;
+        let target = ResolvedUpdateTarget::live(&installed, self).await?;
+        target.status_report(path, &installed)
+    }
 }

@@ -8,26 +8,27 @@ use crate::terminal::DiscoveryProgress;
 use std::path::PathBuf;
 use wg_update_client::{
     DownloadAssetsOptions, DownloadOptions, ExtractOptions, InstallOptions, StatusOptions,
-    UpdateOptions, download_with_observer, extract_with_observer, install_with_observer, status,
-    update_with_observer,
+    UpdateOptions, extract_with_observer,
 };
 
 pub(crate) async fn run_download(args: DownloadArgs) -> Result<(), Box<dyn std::error::Error>> {
     let progress = DownloadObserver::default();
     let observed_progress = progress.clone();
-    let result = download_with_observer(
-        DownloadAssetsOptions {
-            selection: args.build.try_into()?,
-            output: args.output,
-            parts: args.parts,
-            download: DownloadOptions {
-                concurrency: args.concurrency,
-                ..DownloadOptions::default()
+    let mode = args.build.release.mode();
+    let result = mode
+        .download_with_observer(
+            DownloadAssetsOptions {
+                selection: args.build.try_into()?,
+                output: args.output,
+                parts: args.parts,
+                download: DownloadOptions {
+                    concurrency: args.concurrency,
+                    ..DownloadOptions::default()
+                },
             },
-        },
-        move |event| observed_progress.observe(event),
-    )
-    .await;
+            move |event| observed_progress.observe(event),
+        )
+        .await;
 
     match result {
         Ok(outcome) => {
@@ -68,14 +69,17 @@ pub(crate) async fn run_extract(args: ExtractArgs) -> Result<(), Box<dyn std::er
 
 pub(crate) async fn run_status(args: PathArgs) -> Result<(), Box<dyn std::error::Error>> {
     let loader = DiscoveryProgress::new("Checking for updates")?;
-    let result = status(StatusOptions {
-        path: game_path(args.path)?,
-    })
-    .await;
+    let result = args
+        .release
+        .mode()
+        .status(StatusOptions {
+            path: game_path(args.path)?,
+        })
+        .await;
     loader.finish();
     let report = result?;
     let current = std::path::absolute(std::env::current_dir()?)?;
-    print_status(&report, &current);
+    print_status(&report, &current, args.release.preload);
     Ok(())
 }
 
@@ -84,20 +88,22 @@ pub(crate) async fn run_update(args: UpdateArgs) -> Result<(), Box<dyn std::erro
     let progress = InstallObserver::default();
     let observed_progress = progress.clone();
     let observed_loader = loader.clone();
-    let result = update_with_observer(
-        UpdateOptions {
-            path: game_path(args.path)?,
-            download: DownloadOptions {
-                concurrency: args.concurrency,
-                ..DownloadOptions::default()
+    let mode = args.installation.release.mode();
+    let result = mode
+        .update_with_observer(
+            UpdateOptions {
+                path: game_path(args.installation.path)?,
+                download: DownloadOptions {
+                    concurrency: args.concurrency,
+                    ..DownloadOptions::default()
+                },
             },
-        },
-        move |event| {
-            observed_loader.finish();
-            observed_progress.observe(event);
-        },
-    )
-    .await;
+            move |event| {
+                observed_loader.finish();
+                observed_progress.observe(event);
+            },
+        )
+        .await;
     loader.finish();
 
     match result {
@@ -126,18 +132,20 @@ fn game_path(path: Option<PathBuf>) -> Result<PathBuf, std::io::Error> {
 pub(crate) async fn run_install(args: InstallArgs) -> Result<(), Box<dyn std::error::Error>> {
     let progress = InstallObserver::default();
     let observed_progress = progress.clone();
-    let result = install_with_observer(
-        InstallOptions {
-            selection: args.build.try_into()?,
-            output: args.output,
-            download: DownloadOptions {
-                concurrency: args.concurrency,
-                ..DownloadOptions::default()
+    let mode = args.build.release.mode();
+    let result = mode
+        .install_with_observer(
+            InstallOptions {
+                selection: args.build.try_into()?,
+                output: args.output,
+                download: DownloadOptions {
+                    concurrency: args.concurrency,
+                    ..DownloadOptions::default()
+                },
             },
-        },
-        move |event| observed_progress.observe(event),
-    )
-    .await;
+            move |event| observed_progress.observe(event),
+        )
+        .await;
 
     match result {
         Ok(outcome) => {

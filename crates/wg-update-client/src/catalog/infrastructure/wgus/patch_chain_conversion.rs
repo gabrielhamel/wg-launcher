@@ -2,9 +2,9 @@
 
 use super::error::{Result, WgusError as Error};
 use super::patch_chain_normalization::NormalizedPatchChain;
-use super::wire::{PatchesChainXml, WebSeedsXml};
+use super::wire::{PatchXml, PatchesChainXml, WebSeedsXml};
 use crate::catalog::ComponentVersions;
-use crate::catalog::{ClientVariant, Patch, Product, TransportVolume, WebSeed};
+use crate::catalog::{ClientVariant, Patch, Product, ReleaseMode, TransportVolume, WebSeed};
 use url::Url;
 
 pub(super) struct ConvertedPatchChain {
@@ -17,12 +17,15 @@ pub(super) struct ConvertedPatchChain {
 pub(super) fn patch_chain_from_wire(
     product: &Product,
     selected: &ClientVariant,
-    chain: Option<PatchesChainXml>,
+    chains: Vec<PatchesChainXml>,
     seeds: WebSeedsXml,
     component_versions: &ComponentVersions,
+    mode: ReleaseMode,
 ) -> Result<ConvertedPatchChain> {
     let web_seeds = parse_web_seeds(seeds)?;
-    let normalized = NormalizedPatchChain::from_wire(product, selected, chain, component_versions)?;
+    let patches = selected_patches(chains, mode);
+    let normalized =
+        NormalizedPatchChain::from_wire(product, selected, patches, component_versions)?;
     let mut volumes = Vec::new();
     for patch in &normalized.patches {
         volumes.extend(resolve_transport_volumes(
@@ -37,6 +40,24 @@ pub(super) fn patch_chain_from_wire(
         web_seeds,
         component_versions: normalized.component_versions,
     })
+}
+
+fn selected_patches(mut chains: Vec<PatchesChainXml>, mode: ReleaseMode) -> Option<Vec<PatchXml>> {
+    // Prefer the explicit install chain, with an untyped fallback for compatible services.
+    let install = chains
+        .iter()
+        .position(|chain| chain.chain_type.as_deref() == Some("install"))
+        .or_else(|| chains.iter().position(|chain| chain.chain_type.is_none()));
+    let mut patches = install.map(|index| chains.remove(index).patches);
+    if mode == ReleaseMode::IncludePreload {
+        for chain in chains
+            .into_iter()
+            .filter(|chain| chain.chain_type.as_deref() == Some("preload"))
+        {
+            patches.get_or_insert_with(Vec::new).extend(chain.patches);
+        }
+    }
+    patches
 }
 
 fn parse_web_seeds(seeds: WebSeedsXml) -> Result<Vec<WebSeed>> {

@@ -2,10 +2,10 @@ use super::{
     BuildSelection, InstallPlan,
     resolution::{InstallationTarget, resolve_installation_target},
 };
-use crate::Result;
 use crate::installation::{
     DownloadOptions, InstallationEvent, InstallationPipeline, InstallationReport, VolumeDownloader,
 };
+use crate::{ReleaseMode, Result};
 use serde::Serialize;
 use std::path::PathBuf;
 
@@ -82,10 +82,37 @@ pub async fn install_with_observer<F>(
 where
     F: Fn(InstallEvent) + Send + Sync + 'static,
 {
-    let request = options.selection.select_product()?;
-    let InstallationTarget { manifest, root } =
-        resolve_installation_target(&request, options.output).await?;
-    install_resolved(manifest, root, options.download, observer).await
+    ReleaseMode::Production
+        .install_with_observer(options, observer)
+        .await
+}
+
+impl ReleaseMode {
+    /// Runs [`install()`] using this mode for live release discovery.
+    ///
+    /// # Errors
+    /// Returns the same errors as [`install()`].
+    pub async fn install(self, options: InstallOptions) -> Result<InstallOutcome> {
+        self.install_with_observer(options, |_| {}).await
+    }
+
+    /// Runs [`install_with_observer()`] using this mode for live release discovery.
+    ///
+    /// # Errors
+    /// Returns the same errors as [`install_with_observer()`].
+    pub async fn install_with_observer<F>(
+        self,
+        options: InstallOptions,
+        observer: F,
+    ) -> Result<InstallOutcome>
+    where
+        F: Fn(InstallEvent) + Send + Sync + 'static,
+    {
+        let request = options.selection.select_product()?;
+        let InstallationTarget { manifest, root } =
+            resolve_installation_target(&request, options.output, self).await?;
+        install_resolved(manifest, root, options.download, observer).await
+    }
 }
 
 pub(super) async fn install_resolved<F>(
