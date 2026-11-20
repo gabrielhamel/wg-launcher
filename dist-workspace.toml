@@ -20,3 +20,7 @@ install-path = "CARGO_HOME"
 install-updater = false
 publish-jobs = ["./publish-crates", "./publish-homebrew", "./publish-apt", "./publish-winget"]
 github-custom-job-permissions = { "publish-crates" = { contents = "read" }, "publish-homebrew" = { contents = "read" }, "publish-apt" = { contents = "write", pages = "write", id-token = "write" }, "publish-winget" = { contents = "write" } }
+
+# GitHub Actions retired cargo-dist 0.33.1's default Apple Silicon runner (macos-14).
+[dist.github-custom-runners]
+aarch64-apple-darwin = { runner = "macos-15", host = "aarch64-apple-darwin" }
