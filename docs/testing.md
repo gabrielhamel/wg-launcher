@@ -50,6 +50,9 @@ Discovery scenarios also assert that listing multiple variants and choosing a
 publisher default or smallest variant reuse one product metadata response.
 Redirect coverage verifies fresh metadata requests at each hop and preservation
 of the configured product and component versions.
+The EU dual-chain scenario checks that list, inspect, install, and update use the
+install chain even when a preload is advertised first. It also checks that an
+update with only a preload available transfers no packages.
 
 Focused unit regressions cover selected volume identity and archive-size matching,
 ambiguous sources, retry-safe package completion accounting, and supported

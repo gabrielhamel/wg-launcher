@@ -18,10 +18,16 @@ pub(super) fn release_from_wire(
     response: PatchesXml,
     component_versions: &ComponentVersions,
 ) -> Result<ResolvedRelease> {
+    // Prefer the explicit install chain, with an untyped fallback for compatible services.
+    let install_chain = response
+        .patch_chains
+        .into_iter()
+        .filter(|chain| matches!(chain.chain_type.as_deref(), Some("install") | None))
+        .min_by_key(|chain| chain.chain_type.is_none());
     let chain = patch_chain_from_wire(
         product,
         selected,
-        response.patches_chain,
+        install_chain,
         response.web_seeds,
         component_versions,
     )?;

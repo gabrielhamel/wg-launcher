@@ -65,6 +65,9 @@ additional decoded file. This is per-file protection, not whole-patch rollback.
 Transport `.wgpkg` and `.dspkg` archives are extracted into the game tree.
 Game-owned `.pkg` files inside them remain intact.
 
+Live discovery uses the publisher's install chain and skips preload chains.
+WGUS-compatible services can also supply an untyped install chain.
+
 `status` checks the live component update chain matching the installed identity.
 Its `StatusReport.update_download_bytes` estimates the compressed size of applicable
 packages, excluding unchanged components. The CLI shows this as `Update size`

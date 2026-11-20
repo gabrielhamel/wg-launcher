@@ -70,6 +70,7 @@ fn require_patch_chain(
             .all(|part| component_versions.get(&part.id).is_some()) =>
         {
             Ok(wire::PatchesChainXml {
+                chain_type: None,
                 patches: Vec::new(),
             })
         }

@@ -1,7 +1,7 @@
 use crate::{
-    fixture::{DeltaFixture, Fixture, Release},
+    fixture::{DeltaFixture, Fixture, Release, advertise_preload},
     server::WgUpdateService,
-    support::{Sandbox, assert_installed, failure, success},
+    support::{Sandbox, assert_installed, assert_installed_in_region, failure, success},
 };
 use std::fs;
 
@@ -51,6 +51,76 @@ fn install_crosses_both_public_clis_and_the_http_boundary() {
     assert_installed(&game, Release::V1);
     let status = success(sandbox.run(&game, &["status"]));
     assert!(status.contains("Up to date."));
+}
+
+#[test]
+fn eu_workflows_use_the_install_chain_when_preload_is_advertised() {
+    let sandbox = Sandbox::new();
+    let initial = sandbox.fixture(Release::V1);
+    let mut resources = initial.service_resources("updates");
+    advertise_preload(&mut resources, "1.0");
+    let service = WgUpdateService::start(resources);
+    let config = sandbox.path.join("products.json");
+    fs::write(
+        &config,
+        Fixture::products(&service.url()).replace(r#""region":"local""#, r#""region":"eu""#),
+    )
+    .unwrap();
+    let selection = [
+        "--game",
+        "wot",
+        "--region",
+        "eu",
+        "--product",
+        config.to_str().unwrap(),
+    ];
+    for command in ["list", "inspect"] {
+        let mut args = vec![command];
+        args.extend(selection);
+        let output = success(sandbox.run(&sandbox.path, &args));
+        assert!(output.contains("1.0"), "{output}");
+        assert!(!output.contains("3.0"), "{output}");
+    }
+
+    let game = sandbox.game();
+    let mut args = vec!["install", "--output", game.to_str().unwrap()];
+    args.extend(selection);
+    success(sandbox.run(&sandbox.path, &args));
+    assert_installed_in_region(&game, Release::V1, "eu");
+
+    let mut delta = DeltaFixture::build(&initial, &sandbox.path.join("delta"), false);
+    advertise_preload(&mut delta.resources, "2.0");
+    service.replace_resources(delta.resources.clone());
+    success(sandbox.run(&game, &["update"]));
+    assert_eq!(fs::read(game.join("payload.pkg")).unwrap(), delta.payload);
+    let state: serde_json::Value =
+        serde_json::from_slice(&fs::read(game.join(".wg-launcher/state.json")).unwrap()).unwrap();
+    assert_eq!(state["version"], "2.0");
+    assert_eq!(
+        state["component_versions"],
+        serde_json::json!({"client": "2.0", "locale": "1.0"})
+    );
+
+    delta.resources.insert(
+        "updates/api/v1/patches_chain/".into(),
+        b"<protocol><version_name>2.0</version_name></protocol>".to_vec(),
+    );
+    advertise_preload(&mut delta.resources, "2.0");
+    service.replace_resources(delta.resources);
+    let before = service.requests().len();
+    let output = success(sandbox.run(&game, &["update"]));
+    assert!(output.contains("Already up to date (2.0)"), "{output}");
+    let requests = service.requests();
+    assert!(
+        requests[before..]
+            .iter()
+            .all(|request| !request.path.ends_with(".wgpkg"))
+    );
+    assert!(
+        requests
+            .iter()
+            .all(|request| request.path != "/preload.wgpkg")
+    );
 }
 
 #[test]

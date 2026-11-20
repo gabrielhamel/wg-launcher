@@ -1,7 +1,32 @@
-//! Publisher chains with ambiguous selected or unused transitions.
+//! Publisher responses with multiple chains or ambiguous transitions.
 
 use super::Fixture;
 use std::collections::BTreeMap;
+
+pub fn advertise_preload(resources: &mut BTreeMap<String, Vec<u8>>, production_version: &str) {
+    let chain = resources.get_mut("updates/api/v1/patches_chain/").unwrap();
+    let preload = format!(
+        r#"<patches_chain type="preload">
+          <patch><part>client</part><version_from>{production_version}</version_from><version_to>3.0</version_to>
+            <files><file><name>preload.wgpkg</name><size>1000</size></file></files></patch>
+        </patches_chain>"#,
+    );
+    let xml = String::from_utf8(chain.clone()).unwrap();
+    let xml = if xml.contains("<patches_chain>") {
+        xml.replace(
+            "<patches_chain>",
+            &format!(r#"{preload}<patches_chain type="install">"#),
+        )
+    } else {
+        xml.replace("</protocol>", &format!("{preload}</protocol>"))
+    };
+    *chain = xml
+        .replace(
+            "</protocol>",
+            "<delay_preload>True</delay_preload></protocol>",
+        )
+        .into_bytes();
+}
 
 impl Fixture {
     pub fn ambiguous_transition_resources(&self, source: &str) -> BTreeMap<String, Vec<u8>> {
